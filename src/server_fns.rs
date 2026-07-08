@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 
-use crate::models::{Assignment, Client, Invoice, Project, Task, TimeEntry, User};
+use crate::models::{Approval, Assignment, Client, Invoice, Project, Task, TimeEntry, User};
 
 /// Extract the session user UUID from the request context.
 /// Returns `Err(401)` if the session has no user (not logged in).
@@ -54,6 +54,35 @@ async fn require_admin() -> Result<crate::models::User, ServerFnError> {
     if !user.is_admin() {
         return Err(ServerFnError::ServerError {
             message: "Admin access required".into(),
+            code: 403,
+            details: None,
+        });
+    }
+    Ok(user)
+}
+
+#[cfg(feature = "server")]
+async fn require_manager() -> Result<crate::models::User, ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let user = sqlx::query_as::<_, crate::models::User>(
+        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+                cost_rate_cents, billable_rate_cents, active, created_at
+         FROM users WHERE id = $1 AND active = true",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| server_err(e))?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "User not found".into(),
+        code: 404,
+        details: None,
+    })?;
+
+    if !user.is_manager_or_above() {
+        return Err(ServerFnError::ServerError {
+            message: "Manager access required".into(),
             code: 403,
             details: None,
         });
@@ -640,4 +669,194 @@ pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
     .map_err(|e| server_err(e))?;
 
     Ok(users)
+}
+
+// ── Approvals (M7) ──────────────────────────────────────────────────────────
+
+/// Submit a week of time entries for approval.
+/// Transitions all 'open' entries in [week_start, week_start+6] to 'submitted'
+/// and creates an approval row.
+#[server]
+pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+
+    let ws: chrono::NaiveDate = week_start
+        .parse()
+        .map_err(|_| server_err("Invalid week_start (use YYYY-MM-DD)"))?;
+    let we = ws + chrono::Duration::days(6);
+
+    // Get user's org_id
+    let (org_id,): (uuid::Uuid,) =
+        sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| server_err(e))?;
+
+    // Transition open entries to submitted, snapshotting rounded_minutes
+    let result = sqlx::query(
+        "UPDATE time_entries
+         SET state = 'submitted'::entry_state,
+             rounded_minutes = minutes,
+             updated_at = now()
+         WHERE user_id = $1
+           AND spent_date BETWEEN $2 AND $3
+           AND state = 'open'",
+    )
+    .bind(user_id)
+    .bind(ws)
+    .bind(we)
+    .execute(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ServerFnError::ServerError {
+            message: "No open entries found for this week".into(),
+            code: 404,
+            details: None,
+        });
+    }
+
+    // Create approval row
+    let id = uuid::Uuid::now_v7();
+    let approval = sqlx::query_as::<_, Approval>(
+        "INSERT INTO approvals (id, org_id, user_id, period_start, period_end, state)
+         VALUES ($1, $2, $3, $4, $5, 'submitted'::entry_state)
+         ON CONFLICT (user_id, period_start) DO UPDATE
+           SET state = 'submitted'::entry_state, submitted_at = now()
+         RETURNING id, org_id, user_id, period_start, period_end,
+                   state::text AS state, submitted_at, approved_by, approved_at",
+    )
+    .bind(id)
+    .bind(org_id)
+    .bind(user_id)
+    .bind(ws)
+    .bind(we)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    Ok(approval)
+}
+
+/// List approvals, optionally filtered by state. Requires manager role.
+#[server]
+pub async fn list_approvals(status: Option<String>) -> Result<Vec<Approval>, ServerFnError> {
+    let _manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+
+    let approvals = sqlx::query_as::<_, Approval>(
+        "SELECT id, org_id, user_id, period_start, period_end,
+                state::text AS state, submitted_at, approved_by, approved_at
+         FROM approvals
+         WHERE ($1::text IS NULL OR state::text = $1)
+         ORDER BY period_start DESC",
+    )
+    .bind(&status)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    Ok(approvals)
+}
+
+/// Approve a submitted week. Requires manager role.
+#[server]
+pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let approval_id: uuid::Uuid = approval_id
+        .parse()
+        .map_err(|_| server_err("Invalid approval_id"))?;
+
+    // Update approval row
+    let approval = sqlx::query_as::<_, Approval>(
+        "UPDATE approvals
+         SET state = 'approved'::entry_state,
+             approved_by = $2,
+             approved_at = now()
+         WHERE id = $1 AND state = 'submitted'::entry_state
+         RETURNING id, org_id, user_id, period_start, period_end,
+                   state::text AS state, submitted_at, approved_by, approved_at",
+    )
+    .bind(approval_id)
+    .bind(manager.id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| server_err(e))?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Approval not found or not in 'submitted' state".into(),
+        code: 404,
+        details: None,
+    })?;
+
+    // Transition corresponding time entries to approved
+    sqlx::query(
+        "UPDATE time_entries
+         SET state = 'approved'::entry_state, updated_at = now()
+         WHERE user_id = $1
+           AND spent_date BETWEEN $2 AND $3
+           AND state = 'submitted'",
+    )
+    .bind(approval.user_id)
+    .bind(approval.period_start)
+    .bind(approval.period_end)
+    .execute(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    Ok(approval)
+}
+
+/// Reject a submitted week. Requires manager role.
+/// Reopens the time entries and deletes the approval row.
+#[server]
+pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError> {
+    let _manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let approval_id: uuid::Uuid = approval_id
+        .parse()
+        .map_err(|_| server_err("Invalid approval_id"))?;
+
+    // Fetch the approval to know user + period
+    let approval = sqlx::query_as::<_, Approval>(
+        "SELECT id, org_id, user_id, period_start, period_end,
+                state::text AS state, submitted_at, approved_by, approved_at
+         FROM approvals WHERE id = $1",
+    )
+    .bind(approval_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| server_err(e))?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Approval not found".into(),
+        code: 404,
+        details: None,
+    })?;
+
+    // Reopen entries
+    sqlx::query(
+        "UPDATE time_entries
+         SET state = 'open'::entry_state, rounded_minutes = NULL, updated_at = now()
+         WHERE user_id = $1
+           AND spent_date BETWEEN $2 AND $3
+           AND state = 'submitted'",
+    )
+    .bind(approval.user_id)
+    .bind(approval.period_start)
+    .bind(approval.period_end)
+    .execute(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    // Delete the approval row (per schema: "reject deletes the row")
+    sqlx::query("DELETE FROM approvals WHERE id = $1")
+        .bind(approval_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| server_err(e))?;
+
+    Ok(())
 }

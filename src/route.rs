@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::pages::{
     admin::AdminUsers,
+    approvals::Approvals,
     clients::{ClientDetail, ClientList},
     dashboard::Dashboard,
     invoices::{InvoiceDetail, InvoiceList},
@@ -53,6 +54,8 @@ pub enum Route {
     TimeList {},
     #[route("/timesheet")]
     Timesheet {},
+    #[route("/approvals")]
+    Approvals {},
     #[route("/invoices")]
     InvoiceList {},
     #[route("/invoices/:id")]

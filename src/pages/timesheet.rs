@@ -95,6 +95,13 @@ pub fn Timesheet() -> Element {
     let daily_totals: Vec<i32> = by_day.iter().map(|d| d.iter().map(|e| e.minutes).sum()).collect();
     let week_total: i32 = daily_totals.iter().sum();
 
+    // Check if any entries are non-open (already submitted/approved)
+    let has_non_open = week_entries.iter().any(|e| e.state != "open");
+    let has_open = week_entries.iter().any(|e| e.state == "open");
+    let all_submitted_or_approved = !week_entries.is_empty() && !has_open;
+
+    let mut submit_status = use_signal(|| None::<String>);
+
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();
 
@@ -156,11 +163,46 @@ pub fn Timesheet() -> Element {
                 None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
                 Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
                 Some(Ok(_)) => rsx! {
-                    // Weekly total banner
-                    div { style: "margin-bottom: 1rem; display: flex; align-items: baseline; gap: 0.5rem;",
-                        span { class: "text-muted text-sm", "Week total:" }
-                        span { class: "text-mono", style: "font-size: 1.25rem; font-weight: 600; color: var(--color-primary);",
-                            "{format_decimal_hours(week_total)}"
+                    // Weekly total banner + submit button
+                    div { style: "margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;",
+                        div { style: "display: flex; align-items: baseline; gap: 0.5rem;",
+                            span { class: "text-muted text-sm", "Week total:" }
+                            span { class: "text-mono", style: "font-size: 1.25rem; font-weight: 600; color: var(--color-primary);",
+                                "{format_decimal_hours(week_total)}"
+                            }
+                        }
+
+                        if all_submitted_or_approved {
+                            span { class: "badge badge-success", "Submitted" }
+                        } else if !week_entries.is_empty() && has_open {
+                            button {
+                                class: "btn btn-accent",
+                                disabled: has_non_open && has_open,
+                                onclick: {
+                                    let ws_str = ws.to_string();
+                                    move |_| {
+                                        let ws_str = ws_str.clone();
+                                        let mut entries = entries;
+                                        let mut submit_status = submit_status;
+                                        spawn(async move {
+                                            match server_fns::submit_week(ws_str).await {
+                                                Ok(_) => {
+                                                    submit_status.set(None);
+                                                    entries.restart();
+                                                }
+                                                Err(e) => {
+                                                    submit_status.set(Some(format!("{e}")));
+                                                }
+                                            }
+                                        });
+                                    }
+                                },
+                                "Submit Week"
+                            }
+                        }
+
+                        if let Some(err) = &*submit_status.read() {
+                            span { style: "color: var(--color-danger); font-size: 0.85rem;", "{err}" }
                         }
                     }
 

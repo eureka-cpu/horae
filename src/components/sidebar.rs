@@ -27,6 +27,9 @@ pub fn Sidebar() -> Element {
                     Link { to: Route::ProjectList {}, "Projects" }
                 }
                 li {
+                    Link { to: Route::Approvals {}, "Approvals" }
+                }
+                li {
                     Link { to: Route::InvoiceList {}, "Invoices" }
                 }
             }
