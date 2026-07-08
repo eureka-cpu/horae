@@ -2,129 +2,162 @@
 
 Self-hostable time tracking — like Harvest or Kimai, but fully yours.
 
-Built with Rust, [Dioxus](https://dioxuslabs.com/) (server + WASM), SQLite, and Axum.
+Built with Rust, [Dioxus](https://dioxuslabs.com/) (fullstack SSR + WASM), PostgreSQL, and Axum.
 
 ---
 
-## Quick start
+## Quick start (dev)
 
-### With Nix (recommended)
+### Prerequisites
+
+- [Nix](https://nixos.org/download/) with flakes enabled
+- A nix-darwin Linux builder (for the dev VM) — or a running PostgreSQL instance
+
+### 1. Start the dev VM (provides PostgreSQL)
 
 ```sh
-nix develop          # enter the dev shell (rustc, cargo, dx, sqlx-cli, wasm-pack, nil)
-dx serve             # hot-reload dev server on http://127.0.0.1:8080
+nix develop                    # enter the dev shell
+nix run .#dev-vm               # boots a NixOS VM with Postgres (QEMU + HVF on Apple Silicon)
 ```
 
-### Without Nix
-
-Install the prerequisites manually:
-
-| Tool | Install |
-|---|---|
-| Rust (stable) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| `wasm32` target | `rustup target add wasm32-unknown-unknown` |
-| dioxus CLI | `cargo install dioxus-cli` |
-| sqlx CLI | `cargo install sqlx-cli --no-default-features --features sqlite` |
-
-Then:
+The VM forwards ports 2222 (SSH), 3000, and 5432 to localhost. Log in via:
 
 ```sh
-dx serve             # dev server with hot reload on http://127.0.0.1:8080
+ssh -o StrictHostKeyChecking=no -p 2222 root@127.0.0.1
+```
+
+> **Note:** QEMU's port 5432 forwarding can be unreliable. Use an SSH tunnel instead:
+> ```sh
+> ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+>     -N -L 15432:/run/postgresql/.s.PGSQL.5432 -p 2222 root@127.0.0.1
+> ```
+> Then use `DATABASE_URL=postgres://horae@127.0.0.1:15432/horae` for all commands below.
+
+### 2. Run migrations and seed
+
+```sh
+DATABASE_URL=postgres://horae@127.0.0.1:15432/horae cargo run --features server -- migrate run
+DATABASE_URL=postgres://horae@127.0.0.1:15432/horae cargo run --features server -- seed
+```
+
+The seed creates: 1 org, 1 admin user, 2 clients, 2 projects, 4 tasks, 10 time entries.
+
+### 3. Start the dev server
+
+```sh
+DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:15432/horae dx serve
+```
+
+Open **http://localhost:8080/auth/login** and click **"Sign in as Admin"**.
+
+The first build compiles both the server binary and WASM bundle (~30s). Subsequent hot-reloads are fast.
+
+---
+
+## Using without the dev VM
+
+If you have PostgreSQL running locally:
+
+```sh
+createdb horae
+DATABASE_URL=postgres://localhost/horae cargo run --features server -- migrate run
+DATABASE_URL=postgres://localhost/horae cargo run --features server -- seed
+DEV_LOGIN=1 DATABASE_URL=postgres://localhost/horae dx serve
 ```
 
 ---
 
-## Development
-
-### Hot-reload dev server
-
-```sh
-dx serve             # reload on Rust + RSX changes
-dx serve --hotpatch  # subsecond hot-patch for RSX template changes (requires nightly)
-```
-
-The first run downloads all Cargo dependencies and compiles both the server binary and the WASM bundle — this takes a few minutes. Subsequent reloads are fast.
-
-By default the server listens on `http://127.0.0.1:8080`. The database is created at `horae.db` in the current directory.
-
-### Environment variables
+## Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:horae.db` | SQLite database path |
+| `DATABASE_URL` | `postgres://localhost/horae` | PostgreSQL connection string |
+| `DEV_LOGIN` | _(unset)_ | Set to `1` to enable one-click admin login (no OIDC) |
+| `SESSION_SECRET` | `dev-secret-...` | Cookie signing secret (change in prod) |
 | `HORAE_HOST` | `127.0.0.1` | Bind address |
 | `HORAE_PORT` | `3000` | Port (overridden to `8080` by `dx serve`) |
 | `HORAE_LOG` | `info` | Log level (`trace`, `debug`, `info`, `warn`, `error`) |
-| `HORAE_DATA_DIR` | `.` | Data directory (plugins live in `$HORAE_DATA_DIR/plugins/`) |
+| `OIDC_ISSUER` | _(unset)_ | OIDC provider URL (required in prod) |
+| `OIDC_CLIENT_ID` | _(unset)_ | OIDC client ID |
+| `OIDC_CLIENT_SECRET` | _(unset)_ | OIDC client secret |
 
-### Running without the dx CLI
+---
 
-```sh
-# Build the server binary only (no WASM)
-cargo build --features server
-
-# Run migrations then start the server
-cargo run --features server -- migrate
-cargo run --features server -- serve --host 127.0.0.1 --port 3000
-```
-
-### Running migrations manually
+## CLI commands
 
 ```sh
-cargo run --features server -- migrate        # apply pending migrations
-cargo run --features server -- migrate reset --confirm   # drop + re-create (dev only)
-
-# Or via sqlx-cli directly:
-sqlx migrate run --database-url sqlite:horae.db
-```
-
-### User management
-
-```sh
-cargo run --features server -- user list
-cargo run --features server -- user create --email admin@example.com --name "Admin" --role admin
+horae migrate run                   # apply pending migrations
+horae migrate reset --confirm       # drop + re-create (dev only)
+horae seed                          # insert demo data (idempotent)
+horae serve --host 0.0.0.0 --port 3000
+horae user list
+horae user create --email admin@example.com --name "Admin" --role admin
 ```
 
 ---
 
-## Production build
+## Pages
 
-```sh
-# 1. Build the WASM frontend + server binary
-dx build --release
+| Route | Description |
+|---|---|
+| `/auth/login` | Sign-in page (Axum-served, DEV_LOGIN or OIDC) |
+| `/` | Dashboard — weekly hours, active projects, timer |
+| `/time` | Time entries list with add/edit/delete |
+| `/timesheet` | Day / Week / Calendar views with weekly totals |
+| `/clients` | Client list + create (admin) |
+| `/projects` | Project list + create (admin); detail with assignments |
+| `/invoices` | Invoice list (Phase 4) |
+| `/approvals` | Submit/approve/reject time submissions (manager+) |
+| `/reports` | Grouped time reports with CSV/XLSX export |
+| `/admin/users` | User + task management (admin) |
+| `/settings` | App settings |
 
-# 2. Or build via Nix (reproducible, self-contained)
-nix build
-result/bin/horae migrate
-result/bin/horae serve
+## API
+
+### Internal server functions
+
+All data mutations use Dioxus `#[server]` functions (auto-routed, session-authenticated).
+
+### Harvest-compatible API
+
+Read-only endpoints at `/harvest/v2` matching the [Harvest API v2](https://help.getharvest.com/api-v2/) shape:
+
+```
+GET /harvest/v2/users/me
+GET /harvest/v2/time_entries[?from=&to=&user_id=&project_id=&is_running=&page=&per_page=]
+GET /harvest/v2/time_entries/{id}
+GET /harvest/v2/projects[/{id}]
+GET /harvest/v2/clients[/{id}]
+GET /harvest/v2/tasks[/{id}]
+GET /harvest/v2/users
 ```
 
-The Nix build produces a single binary at `result/bin/horae` with the WASM assets embedded.
+Auth is session-based (cookie). Bearer token auth is planned for Phase 2.
+
+### Export
+
+```
+GET /api/reports/export/csv?from=YYYY-MM-DD&to=YYYY-MM-DD
+GET /api/reports/export/xlsx?from=YYYY-MM-DD&to=YYYY-MM-DD
+```
 
 ---
 
 ## NixOS deployment
 
 ```nix
-# In your NixOS configuration:
 {
   imports = [ horae.nixosModules.default ];
 
   services.horae = {
     enable = true;
-    host   = "127.0.0.1";
-    port   = 3000;
-    # database.createLocally = true;  # default — uses sqlite:$dataDir/horae.db
-    # secretKeyFile = /run/secrets/horae-env;  # optional env file with secrets
-    # openFirewall = true;  # open port in firewall
+    host = "127.0.0.1";
+    port = 3000;
+    database.createLocally = true;   # manages local PostgreSQL
+    # secretKeyFile = /run/secrets/horae-env;
+    # openFirewall = true;
   };
 }
-```
-
-Run the test VM locally:
-
-```sh
-nix run .#nixosConfigurations.default.config.system.build.vm
 ```
 
 ---
@@ -133,48 +166,26 @@ nix run .#nixosConfigurations.default.config.system.build.vm
 
 ```
 horae/
+├── core/                # Pure domain logic (duration, rounding, money, state machine)
 ├── src/
-│   ├── main.rs          # CLI entry points (server + web)
+│   ├── main.rs          # CLI entry + custom Axum server
 │   ├── app.rs           # Root Dioxus component
-│   ├── route.rs         # All routes (Routable derive)
-│   ├── server_fns.rs    # #[server] functions (HTTP endpoints)
-│   ├── models/          # Domain types (User, Project, TimeEntry, …)
-│   ├── pages/           # Page components
-│   ├── components/      # Shared UI components
-│   ├── plugin/          # WASM plugin host (extism)
-│   ├── db.rs            # Pool + migrations
+│   ├── route.rs         # SPA routes (Routable derive)
+│   ├── server_fns.rs    # #[server] functions (CRUD, auth, reports)
+│   ├── auth/            # Session management, DEV_LOGIN, OIDC stub
+│   ├── harvest/         # Harvest-compatible API (/harvest/v2)
+│   ├── reports.rs       # CSV/XLSX export Axum handlers
+│   ├── models/          # Domain types (User, Project, TimeEntry, ...)
+│   ├── pages/           # Page components (dashboard, time, timesheet, ...)
+│   ├── components/      # Shared UI (nav, sidebar, timer, table, form, badge)
+│   ├── seed.rs          # Demo data seeder
+│   ├── db.rs            # PgPool + migrations
+│   ├── config.rs        # Environment config
 │   └── state.rs         # Global AppState (OnceCell)
-├── migrations/          # sqlx SQL migrations (0001–0006)
+├── migrations/          # sqlx SQL migration (0001_init.sql)
 ├── assets/css/          # Design system CSS
 ├── nixos/modules/horae/ # NixOS module
-├── DESIGN.md            # Design language reference (symlinked as CLAUDE.md)
+├── flake.nix            # Nix flake (dev shell, VM, package)
+├── SPEC.md              # Phase 1 build spec
 └── Dioxus.toml          # dx CLI configuration
 ```
-
----
-
-## Plugins
-
-Drop a `.wasm` file and a matching `plugin.toml` into `$HORAE_DATA_DIR/plugins/`:
-
-```toml
-# plugins/my-plugin.toml
-[plugin]
-name    = "my-plugin"
-version = "1.0.0"
-hooks   = ["time_entry_created", "invoice_sent"]
-```
-
-Horae loads plugins at startup and calls the exported function matching each hook name with a JSON payload. Plugins are sandboxed via [extism](https://github.com/extism/extism) and can only call explicitly exposed host functions (`horae_log`, `horae_db_query`, `horae_http_post`, `horae_config_get`).
-
----
-
-## Status
-
-| Phase | What | Status |
-|---|---|---|
-| 1 | Nix flake + NixOS module | ✅ done |
-| 2 | Rust skeleton — compiles, routes render | ✅ done |
-| 3a | Auth (login/register) + time entry CRUD | 🔲 next |
-| 3b | Clients, projects, invoices | 🔲 planned |
-| 3c | Invoice PDF, pagination, CSV export, admin UI | 🔲 planned |
