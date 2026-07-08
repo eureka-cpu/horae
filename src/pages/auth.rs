@@ -25,7 +25,7 @@ pub fn Login() -> Element {
         div { class: "auth-container",
             div { class: "auth-card",
                 div { class: "auth-logo", "Horae" }
-                h1 { style: "font-size: 1.25rem; margin-bottom: 1.5rem; text-align: center;", "Sign in to your account" }
+                p { class: "auth-subtitle", "Sign in to your account" }
 
                 if let Some(err) = error_msg.read().as_ref() {
                     div { class: "alert alert-danger", "{err}" }
@@ -67,7 +67,7 @@ pub fn Register() -> Element {
         div { class: "auth-container",
             div { class: "auth-card",
                 div { class: "auth-logo", "Horae" }
-                h1 { style: "font-size: 1.25rem; margin-bottom: 1.5rem; text-align: center;", "Create Account" }
+                p { class: "auth-subtitle", "Create Account" }
                 p { class: "text-muted text-sm", "Registration is currently admin-only. Please contact your administrator." }
             }
         }

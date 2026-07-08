@@ -1,6 +1,6 @@
 # Horae Design Language
 
-Horae follows a GitHub/Gitea dark-mode visual language: dark surfaces, subtle borders, teal accent. Clean and functional — no JS frameworks, all interactivity via Dioxus reactivity.
+Horae follows the Invoicer design system: editorial warm-dark surfaces, serif display type, humanist sans-serif for UI, and monospace numerals — an accountancy aesthetic that suits time-tracking and invoicing. Visual prototypes with pixel-accurate examples live in `design/project/dark.dc.html`.
 
 ## Color Palette
 
@@ -10,84 +10,106 @@ All colors are CSS custom properties in `assets/css/horae.css`.
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-bg` | `#0d1117` | Page background |
-| `--color-bg-secondary` | `#161b22` | Cards, nav bar, sidebar |
-| `--color-bg-tertiary` | `#21262d` | Table headers, form inputs, hover |
-| `--color-bg-overlay` | `#30363d` | Dropdowns, tooltips |
+| `--color-bg` | `#100F0C` | Page background (void) |
+| `--color-bg-secondary` | `#1A1813` | Cards, nav bar, sidebar |
+| `--color-bg-tertiary` | `#232019` | Table headers, hover states |
+| `--color-bg-overlay` | `#2E2A22` | Dropdowns, tooltips |
 
 ### Text
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-text` | `#e6edf3` | Primary body text |
-| `--color-text-secondary` | `#8b949e` | Labels, captions, sidebar links |
-| `--color-text-muted` | `#6e7681` | Placeholders, section headers |
+| `--color-text` | `#EFEAE0` | Primary body text |
+| `--color-text-secondary` | `#A29C8D` | Labels, captions, sidebar links |
+| `--color-text-muted` | `#7C7565` | Placeholders, section headers |
 
 ### Borders
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-border` | `#30363d` | Card borders, nav border, table edges |
-| `--color-border-light` | `#21262d` | Table row dividers |
+| `--color-border` | `#322E26` | Card borders, nav border, table edges |
+| `--color-border-light` | `#262219` | Table row dividers |
 
 ### Accent
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-primary` | `#4aa398` | Logo, active links, timer, focus ring |
-| `--color-primary-dark` | `#3d8c82` | Button hover |
-| `--color-primary-light` | `#5ebdb2` | Active sidebar link text |
-| `--color-primary-bg` | `rgba(74,163,152,0.12)` | Active sidebar link background |
+| `--color-primary` | `#4FB79A` | Pine-300 — logo, active links, timer, focus ring |
+| `--color-primary-dark` | `#3D9E84` | Button hover |
+| `--color-primary-light` | `#6ECAB0` | Active sidebar link text |
+| `--color-primary-bg` | `rgba(79,183,154,0.14)` | Active sidebar link background |
+| `--color-accent` | `#D99A3C` | Brass — invoicing context, send/bill actions |
+| `--color-accent-bg` | `rgba(217,154,60,0.14)` | Brass tint background |
+| `--color-pine` | `#1F5C4D` | Deep pine — solid fills, marks |
 
-### Semantic (dark-tuned)
+### Semantic (warm dark-tuned)
 
 | Token | Value |
 |---|---|
-| `--color-success` | `#3fb950` |
-| `--color-warning` | `#d29922` |
-| `--color-danger` | `#f85149` |
-| `--color-info` | `#388bfd` |
+| `--color-success` | `#3FB489` |
+| `--color-warning` | `#D6A24A` |
+| `--color-danger` | `#E06661` |
+| `--color-info` | `#4FB79A` (reuses pine-300) |
 
-Semantic backgrounds are 15% opacity tints of the base color.
+Semantic backgrounds use solid dark tints (`--color-success-bg: #15291F`, etc.) rather than rgba.
 
 ## Typography
 
-System font stack only — no web fonts:
+Three typefaces loaded from Google Fonts:
 
 ```
--apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 ```
 
-Monospace for timer displays:
-```
-"SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace
-```
+| Role | Family | Token | Usage |
+|---|---|---|---|
+| Display / headings | Newsreader (serif) | `--font-family-display` | `h1–h6`, brand wordmark, card titles, page titles, auth logo |
+| UI / body | Instrument Sans (humanist sans) | `--font-family` | Body, labels, buttons, nav links, form inputs |
+| Numerals | IBM Plex Mono | `--font-family-mono` | Timer, stat values, amounts, hours, rates, dates |
+
+## Border Radius
+
+| Token | Value | Usage |
+|---|---|---|
+| `--radius-sm` | `4px` | Micro elements |
+| `--radius` | `6px` | Controls: inputs, selects |
+| `--radius-btn` | `8px` | Buttons |
+| `--radius-lg` | `11px` | Cards, table containers |
+| `--radius-panel` | `20px` | Auth card, large panels |
+| `--radius-full` | `9999px` | Badge pills |
 
 ## Layout
 
-- **Top nav** (`--nav-height: 56px`): dark `#161b22` background with teal brand name, 1px bottom border. Not a colored bar.
-- **Sidebar** (`--sidebar-width: 240px`): same dark surface as nav, fixed position.
-- **Content area**: scrollable, `max-width: 1200px`, generous padding, `--color-bg` (#0d1117) background.
+- **Top nav** (`--nav-height: 56px`): warm dark `#1A1813` background, Newsreader brand text in pine-300, 1px bottom border.
+- **Sidebar** (`--sidebar-width: 240px`): same warm surface as nav, fixed position.
+- **Content area**: scrollable, `max-width: 1200px`, generous padding, `--color-bg` (`#100F0C`) background.
 
 ## Component Inventory
 
 ### Navigation (`src/components/nav.rs`)
-Dark bar (`--color-bg-secondary`), teal brand text, secondary nav links that lighten on hover.
+Warm dark bar (`--color-bg-secondary`), Newsreader brand text in pine-300, secondary nav links that lighten on hover.
 
 ### Sidebar (`src/components/sidebar.rs`)
-Fixed left sidebar. Links default to `--color-text-secondary`; hover darkens background to `--color-bg-tertiary`; active uses teal tint background + `--color-primary-light` text.
+Fixed left sidebar. Links default to `--color-text-secondary`; hover darkens background to `--color-bg-tertiary`; active uses pine tint background + `--color-primary-light` text. Section labels: all-caps, 0.14em letter-spacing, muted warm gray.
 
 ### Timer Widget (`src/components/timer_widget.rs`)
-`HH:MM:SS` in monospace, teal when stopped, green (`--color-success`) when running.
+`HH:MM:SS` in IBM Plex Mono (`--font-family-mono`), pine-300 when stopped, green (`--color-success`) when running.
 
 ### Data Tables (`src/components/table.rs`)
-Wrapped in `.table-container` (adds border + border-radius). Headers on `--color-bg-tertiary`. Row hover on `--color-bg-tertiary`. Last row has no bottom border.
+Wrapped in `.table-container` (border + 11px radius). Headers: uppercase, 0.06em letter-spacing, tertiary warm surface. Row hover on `--color-bg-tertiary`. Last row has no bottom border.
 
 ### Forms (`src/components/form.rs`)
-Inputs on `--color-bg-tertiary` with `--color-border` border. Focus ring: `--color-primary` border + 20% teal glow.
+Inputs on `--color-bg` (void — darkest) with warm border `#3d382e`. Focus ring: `--color-primary` border + 18% pine glow. Instrument Sans for all form text.
 
 ### Status Badges (`src/components/badge.rs`)
-Pill shape. Color + background tint only — no border on semantic badges. Neutral badge keeps `--color-border`.
+Pill shape (9999px radius). Each semantic badge includes a 7px colored dot (via `::before`) + tinted background + warm border. Neutral badge uses tertiary surface + border.
+
+### Buttons (`src/components/`)
+- **Primary**: pine-300 fill, dark green text `#0d211b`
+- **Secondary**: tertiary surface, warm border
+- **Accent**: brass fill `#D99A3C`, dark text — use for "Send invoice" and billing actions
+- **Danger**: transparent with dark red border `#6e3634`, becomes tinted on hover
+- **Ghost**: transparent, warm border
 
 ## Component Conventions
 
@@ -118,9 +140,9 @@ Pill shape. Color + background tint only — no border on semantic badges. Neutr
 
 - Keyboard navigation throughout
 - ARIA labels on icon-only buttons
-- Color contrast meets WCAG AA (4.5:1 for text) — `#e6edf3` on `#161b22` is ~11:1
+- Color contrast meets WCAG AA — `#EFEAE0` on `#1A1813` is ~9:1
 - Form inputs have associated `<label>` elements
-- Status indicated by text + color (never color alone)
+- Status indicated by text + color (never color alone) — badges include both dot and text label
 
 ## Interaction Principles
 

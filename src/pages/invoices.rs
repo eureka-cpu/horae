@@ -37,14 +37,14 @@ pub fn InvoiceList() -> Element {
                                         th { "Status" }
                                         th { "Issued" }
                                         th { "Due" }
-                                        th { "Total" }
+                                        th { class: "text-right", "Total" }
                                         th { "Actions" }
                                     }
                                 }
                                 tbody {
                                     for invoice in invoices.iter() {
                                         tr { key: "{invoice.id}",
-                                            td { "{invoice.invoice_number}" }
+                                            td { class: "text-mono", "{invoice.invoice_number}" }
                                             td {
                                                 {client_names.get(&invoice.client_id)
                                                     .cloned()
@@ -61,9 +61,9 @@ pub fn InvoiceList() -> Element {
                                                     "{invoice.status}"
                                                 }
                                             }
-                                            td { "{invoice.issued_date}" }
-                                            td { "{invoice.due_date}" }
-                                            td { "${invoice.total_amount:.2}" }
+                                            td { class: "text-mono", "{invoice.issued_date}" }
+                                            td { class: "text-mono", "{invoice.due_date}" }
+                                            td { class: "text-mono text-right", "${invoice.total_amount:.2}" }
                                             td {
                                                 button { class: "btn btn-secondary btn-sm", "View" }
                                             }

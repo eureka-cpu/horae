@@ -58,7 +58,7 @@ pub fn TimeList() -> Element {
                                 tbody {
                                     for entry in entries.iter() {
                                         tr { key: "{entry.id}",
-                                            td { "{entry.started_at.format(\"%Y-%m-%d\")}" }
+                                            td { class: "text-mono", "{entry.started_at.format(\"%Y-%m-%d\")}" }
                                             td {
                                                 {project_names.get(&entry.project_id)
                                                     .cloned()
@@ -69,7 +69,7 @@ pub fn TimeList() -> Element {
                                                     .and_then(|id| task_names.get(&id).cloned())
                                                     .unwrap_or_else(|| "—".into())}
                                             }
-                                            td {
+                                            td { class: "text-mono",
                                                 if entry.is_running() {
                                                     span { class: "badge badge-success", "Running" }
                                                 } else {
