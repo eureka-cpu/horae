@@ -41,12 +41,19 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          # When building the Linux package from a Darwin host, cross-compile
+          # to aarch64-unknown-linux-gnu using the Darwin toolchain + Linux sysroot.
+          # On a native Linux host (or via a Linux builder), this is a no-op.
+          buildPkgs =
+            if system == "aarch64-linux" && pkgs.stdenv.hostPlatform.isDarwin
+            then pkgs.pkgsCross.aarch64-multiplatform
+            else pkgs;
           toolchain = fenix.packages.${system}.stable.withComponents [
             "rustc"
             "cargo"
             "rust-std"
           ];
-          rustPlatform = pkgs.makeRustPlatform {
+          rustPlatform = buildPkgs.makeRustPlatform {
             cargo = toolchain;
             rustc = toolchain;
           };
@@ -86,6 +93,7 @@
               stableToolchain
               pkgs.dioxus-cli
               pkgs.sqlx-cli
+              pkgs.postgresql
               pkgs.wasm-pack
               pkgs.nil
             ];
@@ -105,28 +113,113 @@
         _module.args.self = self;
       };
 
-      nixosConfigurations.default = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = { inherit self; };
-        modules = [
-          self.nixosModules.default
-          (
-            { ... }:
-            {
-              services.horae.enable = true;
-              services.horae.database.createLocally = true;
+      # Production NixOS configuration (no QEMU, no port forwards).
+      nixosConfigurations = (forAllSystems (system:
+        let
+          # Dev VM: NixOS with Postgres, port-forwarded to localhost.
+          # `virtualisation.host.pkgs` makes the run script and QEMU come from
+          # the host (e.g. aarch64-darwin) while the guest boots aarch64-linux.
+          hostPkgs = nixpkgs.legacyPackages.${system};
+          guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] system;
+        in
+        {
+          dev = nixpkgs.lib.nixosSystem {
+            system = null;
+            specialArgs = { inherit self; };
+            modules = [
+              "${nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
+              self.nixosModules.default
+              ({
+                virtualisation.host.pkgs = hostPkgs;
+                nixpkgs.hostPlatform = guestSystem;
+              })
+              (
+                { pkgs, ... }:
+                {
+                  services.horae.enable = true;
+                  services.horae.database.createLocally = true;
 
-              # Minimal bootable VM config
-              boot.loader.grub.device = "nodev";
-              fileSystems."/" = {
-                device = "none";
-                fsType = "tmpfs";
-                options = [ "mode=0755" ];
-              };
-              system.stateVersion = "25.05";
-            }
-          )
-        ];
+                  # Allow TCP connections from localhost (for host → guest Postgres).
+                  services.postgresql.enableTCPIP = true;
+                  services.postgresql.authentication = nixpkgs.lib.mkOverride 10 ''
+                    # TYPE  DATABASE  USER    ADDRESS         METHOD
+                    local   all       all                     trust
+                    host    all       all     127.0.0.1/32    trust
+                    host    all       all     ::1/128         trust
+                    host    all       all     10.0.2.0/24     trust
+                  '';
+
+                  # Dev login: skip OIDC, auto-login as admin.
+                  services.horae.secretKeyFile = null;
+                  systemd.services.horae.environment.DEV_LOGIN = "1";
+
+                  # Convenience login for debugging
+                  services.openssh.enable = true;
+                  services.openssh.settings.PermitRootLogin = "yes";
+                  services.openssh.settings.PermitEmptyPasswords = "yes";
+                  security.pam.services.sshd.allowNullPassword = true;
+                  users.extraUsers.root.password = "";
+
+                  # QEMU port forwards: host → guest
+                  virtualisation.forwardPorts = [
+                    { from = "host"; host.port = 2222; guest.port = 22; }
+                    { from = "host"; host.port = 3000; guest.port = 3000; }
+                    { from = "host"; host.port = 5432; guest.port = 5432; }
+                  ];
+                  virtualisation.memorySize = 1024;
+
+                  # Minimal bootable VM config
+                  boot.loader.grub.device = "nodev";
+                  fileSystems."/" = {
+                    device = "none";
+                    fsType = "tmpfs";
+                    options = [ "mode=0755" ];
+                  };
+
+                  environment.systemPackages = [ pkgs.postgresql ];
+
+                  system.stateVersion = "25.05";
+                }
+              )
+            ];
+          };
+        }
+      )) // {
+        default = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = { inherit self; };
+          modules = [
+            self.nixosModules.default
+            (
+              { ... }:
+              {
+                services.horae.enable = true;
+                services.horae.database.createLocally = true;
+
+                # Minimal bootable config
+                boot.loader.grub.device = "nodev";
+                fileSystems."/" = {
+                  device = "none";
+                  fsType = "tmpfs";
+                  options = [ "mode=0755" ];
+                };
+                system.stateVersion = "25.05";
+              }
+            )
+          ];
+        };
       };
+
+      # `nix run .#dev-vm` starts the dev NixOS VM.
+      apps = forAllSystems (system:
+        let
+          vm = self.nixosConfigurations.${system}.dev.config.system.build.vm;
+        in
+        {
+          dev-vm = {
+            type = "app";
+            program = "${vm}/bin/run-nixos-vm";
+          };
+        });
     };
 }

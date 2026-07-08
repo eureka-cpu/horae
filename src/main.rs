@@ -3,13 +3,17 @@
 // Web entry (WASM): `dioxus::launch(App)`
 
 #[cfg(feature = "server")]
+mod auth;
+#[cfg(feature = "server")]
 mod cli;
 #[cfg(feature = "server")]
 mod config;
 #[cfg(feature = "server")]
 mod db;
 #[cfg(feature = "server")]
-mod plugin;
+mod harvest;
+#[cfg(feature = "server")]
+mod seed;
 #[cfg(feature = "server")]
 mod state;
 
@@ -64,7 +68,7 @@ fn main() -> anyhow::Result<()> {
                 match action {
                     cli::UserAction::Create { email, name, role } => {
                         tracing::info!("Creating user {} ({})", name, email);
-                        // TODO: insert user with argon2 password hash
+                        // TODO: insert user via OIDC subject or admin invite
                         let _ = (pool, email, name, role);
                     }
                     cli::UserAction::List => {
@@ -77,27 +81,62 @@ fn main() -> anyhow::Result<()> {
             })?;
         }
 
+        Commands::Seed => {
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(async {
+                init_tracing(&cfg.log_level);
+                let pool = db::create_pool(&cfg.database_url).await?;
+                seed::run(&pool).await?;
+                seed::verify(&pool).await?;
+                anyhow::Ok(())
+            })?;
+        }
+
         Commands::Serve(args) => {
             init_tracing(&cfg.log_level);
-            tracing::info!("Starting Horae on {}:{}", args.host, args.port);
 
-            // dioxus::LaunchBuilder reads the bind address from the IP / PORT env vars
-            // (via dioxus_cli_config::fullstack_address_or_localhost).
-            // When launched by `dx serve`, those vars are already set — don't overwrite them.
-            // When launched manually, fall back to the CLI args.
-            #[allow(unsafe_code)]
-            unsafe {
-                if std::env::var("IP").is_err() {
-                    std::env::set_var("IP", &args.host);
-                }
-                if std::env::var("PORT").is_err() {
-                    std::env::set_var("PORT", args.port.to_string());
-                }
-            }
+            // Resolve bind address: CLI args, overridden by IP/PORT env vars when
+            // running under `dx serve` (which sets those for hot-reload proxying).
+            let host = std::env::var("IP").unwrap_or_else(|_| args.host.clone());
+            let port = std::env::var("PORT")
+                .ok()
+                .and_then(|p| p.parse::<u16>().ok())
+                .unwrap_or(args.port);
+            let addr = format!("{}:{}", host, port);
+            tracing::info!("Starting Horae on {addr}");
 
-            // The AppState (DB pool + plugins) is initialised lazily on the first
-            // server-function call via state::global_state(), inside dioxus's runtime.
-            dioxus::LaunchBuilder::new().launch(app::App);
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(async move {
+                use axum::routing::get;
+                use dioxus::prelude::{DioxusRouterExt, ServeConfig};
+
+                // Initialise DB + migrations eagerly so auth and server fns share the pool.
+                let pool = db::create_pool(&cfg.database_url).await?;
+                db::run_migrations(&pool).await?;
+                state::init_state(pool.clone()).await;
+
+                // Session middleware (Postgres-backed, idempotent migrate).
+                let session_layer = auth::make_session_layer(pool.clone()).await?;
+
+                // Build the Dioxus fullstack router (returns Router<()>), then
+                // layer our own routes on top of it.
+                let router = axum::Router::<dioxus::server::FullstackState>::new()
+                    .serve_dioxus_application(ServeConfig::new(), app::App)
+                    .route(
+                        "/health",
+                        get(|| async {
+                            axum::Json(serde_json::json!({"status": "ok"}))
+                        }),
+                    )
+                    .merge(auth::router())
+                    .merge(harvest::router())
+                    .layer(session_layer);
+
+                let listener = tokio::net::TcpListener::bind(&addr).await?;
+                tracing::info!("Listening on {addr}");
+                axum::serve(listener, router).await?;
+                anyhow::Ok(())
+            })?;
         }
     }
 

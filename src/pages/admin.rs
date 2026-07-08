@@ -31,11 +31,11 @@ pub fn AdminUsers() -> Element {
                                 tbody {
                                     for user in users.iter() {
                                         tr { key: "{user.id}",
-                                            td { "{user.display_name}" }
+                                            td { "{user.name}" }
                                             td { "{user.email}" }
-                                            td { "{user.role}" }
+                                            td { "{user.org_role}" }
                                             td {
-                                                if user.is_active {
+                                                if user.active {
                                                     span { class: "badge badge-success", "Active" }
                                                 } else {
                                                     span { class: "badge badge-neutral", "Inactive" }

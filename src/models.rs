@@ -1,13 +1,19 @@
+pub mod approval;
+pub mod assignment;
 pub mod client;
 pub mod invoice;
+pub mod organization;
 pub mod project;
 pub mod task;
 pub mod time_entry;
 pub mod user;
 
+pub use approval::Approval;
+pub use assignment::Assignment;
 pub use client::Client;
-pub use invoice::{Invoice, InvoiceStatus};
-pub use project::{BillingMethod, Project};
+pub use invoice::Invoice;
+pub use organization::Organization;
+pub use project::Project;
 pub use task::Task;
 pub use time_entry::TimeEntry;
-pub use user::{Role, User};
+pub use user::User;

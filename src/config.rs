@@ -6,7 +6,10 @@ pub struct AppConfig {
     pub port: u16,
     pub database_url: String,
     pub log_level: String,
-    pub data_dir: String,
+    /// When `DEV_LOGIN=1`, skip OIDC and log in as the seeded admin user.
+    pub dev_login: bool,
+    /// Secret for signing session cookies (set `SESSION_SECRET` in prod).
+    pub session_secret: String,
 }
 
 impl AppConfig {
@@ -18,9 +21,13 @@ impl AppConfig {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(3000),
             database_url: std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "sqlite:horae.db".into()),
+                .unwrap_or_else(|_| "postgres://localhost/horae".into()),
             log_level: std::env::var("HORAE_LOG").unwrap_or_else(|_| "info".into()),
-            data_dir: std::env::var("HORAE_DATA_DIR").unwrap_or_else(|_| ".".into()),
+            dev_login: std::env::var("DEV_LOGIN")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false),
+            session_secret: std::env::var("SESSION_SECRET")
+                .unwrap_or_else(|_| "dev-secret-change-me-in-production".into()),
         })
     }
 }

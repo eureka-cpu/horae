@@ -34,9 +34,9 @@ pub fn ProjectList() -> Element {
                                         tr { key: "{project.id}",
                                             td { "{project.name}" }
                                             td { "{project.client_id}" }
-                                            td { "{project.billing_method}" }
+                                            td { "{project.project_type}" }
                                             td {
-                                                if project.is_active {
+                                                if project.active {
                                                     span { class: "badge badge-success", "Active" }
                                                 } else {
                                                     span { class: "badge badge-neutral", "Inactive" }

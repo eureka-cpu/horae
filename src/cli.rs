@@ -29,6 +29,8 @@ pub enum Commands {
         #[command(subcommand)]
         action: UserAction,
     },
+    /// Populate the database with demo data (safe to re-run)
+    Seed,
 }
 
 #[derive(Parser, Debug, Clone, Default)]

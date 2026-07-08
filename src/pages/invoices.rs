@@ -63,7 +63,9 @@ pub fn InvoiceList() -> Element {
                                             }
                                             td { class: "text-mono", "{invoice.issued_date}" }
                                             td { class: "text-mono", "{invoice.due_date}" }
-                                            td { class: "text-mono text-right", "${invoice.total_amount:.2}" }
+                                            td { class: "text-mono text-right",
+                                                { format!("${:.2}", invoice.total_amount_cents as f64 / 100.0) }
+                                            }
                                             td {
                                                 button { class: "btn btn-secondary btn-sm", "View" }
                                             }

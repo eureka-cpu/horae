@@ -2,7 +2,6 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::pages::{
-    auth::{Login, Register},
     admin::AdminUsers,
     clients::{ClientDetail, ClientList},
     dashboard::Dashboard,
@@ -36,10 +35,8 @@ fn NotFound(route: Vec<String>) -> Element {
 
 #[derive(Routable, Clone, PartialEq)]
 pub enum Route {
-    #[route("/auth/login")]
-    Login {},
-    #[route("/auth/register")]
-    Register {},
+    // /auth/* routes are handled by Axum directly (see src/auth/mod.rs).
+    // The Dioxus router only manages the authenticated SPA.
     #[layout(AppLayout)]
     #[route("/")]
     Dashboard {},
@@ -61,6 +58,7 @@ pub enum Route {
     AdminUsers {},
     #[route("/settings")]
     Settings {},
+    #[end_layout]
     #[route("/:..route")]
     NotFound { route: Vec<String> },
 }

@@ -1,75 +1,35 @@
+/// Auth-related page components.
+///
+/// `/auth/login` and `/auth/logout` are served by Axum routes (see `src/auth/`).
+/// This module contains Dioxus components that need session-aware behaviour.
 use dioxus::prelude::*;
 
-use crate::route::Route;
 use crate::server_fns;
 
+/// A logout button that calls the `logout` server function.
+/// Full redirect to `/auth/login` happens server-side via the Axum logout route
+/// (`POST /auth/logout`). This component is used as a fallback from within the SPA.
 #[component]
-pub fn Login() -> Element {
-    let mut email = use_signal(|| String::new());
-    let mut password = use_signal(|| String::new());
-    let mut error_msg = use_signal(|| Option::<String>::None);
-    let nav = use_navigator();
+pub fn LogoutButton() -> Element {
+    let mut status = use_signal(|| String::new());
 
-    let handle_login = move |_| {
-        let email_val = email.read().clone();
-        let pass_val = password.read().clone();
+    let handle_logout = move |_| {
         spawn(async move {
-            match server_fns::login(email_val, pass_val).await {
-                Ok(_) => { nav.push(Route::Dashboard {}); }
-                Err(e) => { error_msg.set(Some(e.to_string())); }
+            match server_fns::logout().await {
+                Ok(_) => status.set("Signed out — refresh to login.".into()),
+                Err(e) => status.set(format!("Logout failed: {e}")),
             }
         });
     };
 
     rsx! {
-        div { class: "auth-container",
-            div { class: "auth-card",
-                div { class: "auth-logo", "Horae" }
-                p { class: "auth-subtitle", "Sign in to your account" }
-
-                if let Some(err) = error_msg.read().as_ref() {
-                    div { class: "alert alert-danger", "{err}" }
-                }
-
-                div { class: "form-group",
-                    label { class: "form-label", "Email" }
-                    input {
-                        class: "form-input",
-                        r#type: "email",
-                        placeholder: "you@example.com",
-                        value: "{email}",
-                        oninput: move |e| email.set(e.value()),
-                    }
-                }
-                div { class: "form-group",
-                    label { class: "form-label", "Password" }
-                    input {
-                        class: "form-input",
-                        r#type: "password",
-                        placeholder: "••••••••",
-                        value: "{password}",
-                        oninput: move |e| password.set(e.value()),
-                    }
-                }
-                button {
-                    class: "btn btn-primary w-full mt-4",
-                    onclick: handle_login,
-                    "Sign In"
-                }
-            }
+        button {
+            class: "btn btn-ghost btn-sm",
+            onclick: handle_logout,
+            "Sign out"
         }
-    }
-}
-
-#[component]
-pub fn Register() -> Element {
-    rsx! {
-        div { class: "auth-container",
-            div { class: "auth-card",
-                div { class: "auth-logo", "Horae" }
-                p { class: "auth-subtitle", "Create Account" }
-                p { class: "text-muted text-sm", "Registration is currently admin-only. Please contact your administrator." }
-            }
+        if !status.read().is_empty() {
+            span { class: "text-muted text-sm", " {status}" }
         }
     }
 }

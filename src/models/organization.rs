@@ -4,13 +4,13 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(sqlx::FromRow))]
-pub struct Client {
+pub struct Organization {
     pub id: Uuid,
-    pub org_id: Uuid,
     pub name: String,
-    pub currency: String,
-    pub address: Option<String>,
-    pub tax_id: Option<String>,
-    pub active: bool,
+    pub default_currency: String,
+    pub week_start: i16,
+    pub round_minutes: i16,
+    /// "nearest" | "up" | "down"
+    pub round_dir: String,
     pub created_at: DateTime<Utc>,
 }

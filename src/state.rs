@@ -1,28 +1,31 @@
-use std::sync::Arc;
-
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use tokio::sync::OnceCell;
-
-use crate::plugin::registry::PluginRegistry;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub db: SqlitePool,
-    pub plugins: Arc<PluginRegistry>,
+    pub db: PgPool,
 }
 
 impl AppState {
-    pub fn new(db: SqlitePool, plugins: Arc<PluginRegistry>) -> Self {
-        Self { db, plugins }
+    pub fn new(db: PgPool) -> Self {
+        Self { db }
     }
 }
 
 // Async-aware singleton: initialised exactly once, inside dioxus's tokio runtime.
 static GLOBAL_STATE: OnceCell<AppState> = OnceCell::const_new();
 
-/// Returns a reference to the global AppState, initialising it on first call.
-/// All database work happens inside the caller's tokio runtime, so the pool
-/// and pool tasks are always on the same runtime.
+/// Pre-initialise the global state with an already-created pool.
+/// Call this in `main` before starting the Axum server so that session and
+/// auth handlers share the same pool as server functions.
+pub async fn init_state(pool: sqlx::PgPool) {
+    GLOBAL_STATE
+        .get_or_init(|| async { AppState::new(pool) })
+        .await;
+}
+
+/// Returns a reference to the global AppState.
+/// Falls back to lazy initialisation if `init_state` was not called (e.g. in tests).
 pub async fn global_state() -> &'static AppState {
     GLOBAL_STATE
         .get_or_init(|| async {
@@ -39,14 +42,7 @@ pub async fn global_state() -> &'static AppState {
                 .await
                 .expect("Failed to run migrations");
 
-            let plugins = Arc::new(PluginRegistry::new());
-            let plugins_dir = std::path::Path::new(&cfg.data_dir).join("plugins");
-            plugins
-                .load_from_dir(&plugins_dir)
-                .await
-                .expect("Failed to scan plugins directory");
-
-            AppState::new(pool, plugins)
+            AppState::new(pool)
         })
         .await
 }

@@ -1,36 +1,37 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// A time entry row. The `state` column is a Postgres enum; select it as
+/// `state::text` so it decodes to `String` without custom type registration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(sqlx::FromRow))]
 pub struct TimeEntry {
     pub id: Uuid,
+    pub org_id: Uuid,
     pub user_id: Uuid,
     pub project_id: Uuid,
-    pub task_id: Option<Uuid>,
-    pub started_at: DateTime<Utc>,
-    pub ended_at: Option<DateTime<Utc>>,
-    pub duration_seconds: i64,
+    pub task_id: Uuid,
+    pub spent_date: NaiveDate,
+    /// Precise tracked minutes.
+    pub minutes: i32,
+    /// Persisted at submit time; None until the entry is locked.
+    pub rounded_minutes: Option<i32>,
     pub notes: Option<String>,
-    pub is_billable: bool,
+    pub billable: bool,
+    pub is_running: bool,
+    /// Non-null only while is_running = true.
+    pub started_at: Option<DateTime<Utc>>,
+    /// "open" | "submitted" | "approved" | "invoiced"
+    pub state: String,
     pub invoice_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl TimeEntry {
-    /// Returns true if the timer is still running (no ended_at)
-    pub fn is_running(&self) -> bool {
-        self.ended_at.is_none()
-    }
-
-    /// Computes elapsed seconds (for running timers, from started_at to now)
-    pub fn elapsed_seconds(&self) -> i64 {
-        if let Some(ended) = self.ended_at {
-            (ended - self.started_at).num_seconds()
-        } else {
-            (Utc::now() - self.started_at).num_seconds()
-        }
+    /// Format minutes as "H:MM".
+    pub fn format_duration(&self) -> String {
+        horae_core::duration::format_hhmm(self.minutes as u32)
     }
 }

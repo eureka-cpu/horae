@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use dioxus::prelude::*;
 use uuid::Uuid;
 
-use crate::server_fns;
 use crate::components::timer_widget::TimerWidget;
+use crate::server_fns;
 
 #[component]
 pub fn Dashboard() -> Element {
@@ -60,13 +60,13 @@ pub fn Dashboard() -> Element {
                                 tbody {
                                     for entry in entries.iter() {
                                         tr { key: "{entry.id}",
-                                            td { class: "text-mono", "{entry.started_at.format(\"%Y-%m-%d\")}" }
+                                            td { class: "text-mono", "{entry.spent_date}" }
                                             td {
                                                 {project_names.get(&entry.project_id)
                                                     .cloned()
                                                     .unwrap_or_else(|| entry.project_id.to_string())}
                                             }
-                                            td { class: "text-mono", "{entry.duration_seconds / 3600}h {(entry.duration_seconds % 3600) / 60}m" }
+                                            td { class: "text-mono", "{entry.format_duration()}" }
                                             td { "{entry.notes.as_deref().unwrap_or(\"-\")}" }
                                         }
                                     }

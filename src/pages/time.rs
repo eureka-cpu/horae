@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use dioxus::prelude::*;
 use uuid::Uuid;
 
-use crate::server_fns;
 use crate::components::timer_widget::TimerWidget;
+use crate::server_fns;
 
 #[component]
 pub fn TimeList() -> Element {
@@ -58,26 +58,26 @@ pub fn TimeList() -> Element {
                                 tbody {
                                     for entry in entries.iter() {
                                         tr { key: "{entry.id}",
-                                            td { class: "text-mono", "{entry.started_at.format(\"%Y-%m-%d\")}" }
+                                            td { class: "text-mono", "{entry.spent_date}" }
                                             td {
                                                 {project_names.get(&entry.project_id)
                                                     .cloned()
                                                     .unwrap_or_else(|| entry.project_id.to_string())}
                                             }
                                             td {
-                                                {entry.task_id
-                                                    .and_then(|id| task_names.get(&id).cloned())
+                                                {task_names.get(&entry.task_id)
+                                                    .cloned()
                                                     .unwrap_or_else(|| "—".into())}
                                             }
                                             td { class: "text-mono",
-                                                if entry.is_running() {
+                                                if entry.is_running {
                                                     span { class: "badge badge-success", "Running" }
                                                 } else {
-                                                    "{entry.duration_seconds / 3600}h {(entry.duration_seconds % 3600) / 60}m"
+                                                    "{entry.format_duration()}"
                                                 }
                                             }
                                             td {
-                                                if entry.is_billable {
+                                                if entry.billable {
                                                     span { class: "badge badge-info", "Billable" }
                                                 } else {
                                                     span { class: "badge badge-neutral", "No" }

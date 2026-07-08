@@ -37,8 +37,8 @@ in
         type = lib.types.nullOr lib.types.str;
         default = null;
         description = ''
-          Database connection URL. When null and database.createLocally is true,
-          defaults to a SQLite database at dataDir/horae.db.
+          PostgreSQL connection URL. When null and database.createLocally is true,
+          defaults to a local Unix-socket connection: postgres:///horae.
         '';
       };
 
@@ -46,16 +46,10 @@ in
         type = lib.types.bool;
         default = true;
         description = ''
-          When true and database.url is null, automatically configure a local
-          SQLite database at dataDir/horae.db.
+          When true and database.url is null, configure a local PostgreSQL
+          instance with a `horae` database owned by the `horae` service user.
         '';
       };
-    };
-
-    dataDir = lib.mkOption {
-      type = lib.types.path;
-      default = "/var/lib/horae";
-      description = "Directory used for Horae persistent data.";
     };
 
     secretKeyFile = lib.mkOption {
@@ -63,7 +57,7 @@ in
       default = null;
       description = ''
         Path to a file containing environment variables with secrets
-        (e.g. SECRET_KEY). Loaded via systemd EnvironmentFile.
+        (e.g. SESSION_SECRET, OIDC_CLIENT_SECRET). Loaded via systemd EnvironmentFile.
       '';
     };
 
@@ -81,20 +75,33 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Local PostgreSQL instance managed by this module.
+    services.postgresql = lib.mkIf cfg.database.createLocally {
+      enable = true;
+      ensureDatabases = [ "horae" ];
+      ensureUsers = [
+        {
+          name = "horae";
+          ensureDBOwnership = true;
+        }
+      ];
+    };
+
     systemd.services.horae = {
       description = "Horae time tracking server";
-      after = [ "network.target" ];
+      after = [ "network.target" ] ++ lib.optionals cfg.database.createLocally [ "postgresql.service" ];
+      wants = lib.optionals cfg.database.createLocally [ "postgresql.service" ];
       wantedBy = [ "multi-user.target" ];
 
       environment = {
         HORAE_LOG = cfg.logLevel;
-        HORAE_HOST = cfg.host;
-        HORAE_PORT = toString cfg.port;
         DATABASE_URL =
           if cfg.database.url != null then
             cfg.database.url
+          else if cfg.database.createLocally then
+            "postgres:///horae"
           else
-            "sqlite:${cfg.dataDir}/horae.db";
+            "postgres://localhost/horae";
       };
 
       serviceConfig =
@@ -103,7 +110,6 @@ in
           ExecStart = "${cfg.package}/bin/horae serve --host ${cfg.host} --port ${toString cfg.port}";
           DynamicUser = true;
           StateDirectory = "horae";
-          WorkingDirectory = cfg.dataDir;
           Restart = "on-failure";
 
           # Hardening
@@ -111,7 +117,6 @@ in
           ProtectSystem = "strict";
           ProtectHome = true;
           PrivateTmp = true;
-          ReadWritePaths = [ cfg.dataDir ];
         }
         // lib.optionalAttrs (cfg.secretKeyFile != null) {
           EnvironmentFile = cfg.secretKeyFile;

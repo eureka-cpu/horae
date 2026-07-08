@@ -23,8 +23,8 @@ pub fn ClientList() -> Element {
                                 thead {
                                     tr {
                                         th { "Name" }
-                                        th { "Email" }
                                         th { "Currency" }
+                                        th { "Address" }
                                         th { "Actions" }
                                     }
                                 }
@@ -32,8 +32,8 @@ pub fn ClientList() -> Element {
                                     for client in clients.iter() {
                                         tr { key: "{client.id}",
                                             td { "{client.name}" }
-                                            td { "{client.email.as_deref().unwrap_or(\"-\")}" }
                                             td { "{client.currency}" }
+                                            td { "{client.address.as_deref().unwrap_or(\"-\")}" }
                                             td {
                                                 button { class: "btn btn-secondary btn-sm", "View" }
                                             }
