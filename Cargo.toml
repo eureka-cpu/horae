@@ -24,6 +24,8 @@ server = [
   "dep:tower-sessions-sqlx-store",
   "dep:tracing-subscriber",
   "dep:openidconnect",
+  "dep:csv",
+  "dep:rust_xlsxwriter",
 ]
 web = ["dioxus/web"]
 
@@ -48,6 +50,8 @@ tower-sessions = { version = "0.14", optional = true }
 tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"], optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
 openidconnect = { version = "3", optional = true }
+csv = { version = "1", optional = true }
+rust_xlsxwriter = { version = "0.80", optional = true }
 
 [profile.release]
 opt-level = 3

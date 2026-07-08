@@ -30,6 +30,9 @@ pub fn Sidebar() -> Element {
                     Link { to: Route::Approvals {}, "Approvals" }
                 }
                 li {
+                    Link { to: Route::Reports {}, "Reports" }
+                }
+                li {
                     Link { to: Route::InvoiceList {}, "Invoices" }
                 }
             }

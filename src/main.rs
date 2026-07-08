@@ -13,6 +13,8 @@ mod db;
 #[cfg(feature = "server")]
 mod harvest;
 #[cfg(feature = "server")]
+mod reports;
+#[cfg(feature = "server")]
 mod seed;
 #[cfg(feature = "server")]
 mod state;
@@ -128,6 +130,8 @@ fn main() -> anyhow::Result<()> {
                             axum::Json(serde_json::json!({"status": "ok"}))
                         }),
                     )
+                    .route("/api/reports/export/csv", get(reports::export_csv))
+                    .route("/api/reports/export/xlsx", get(reports::export_xlsx))
                     .merge(auth::router())
                     .merge(harvest::router())
                     .layer(session_layer);

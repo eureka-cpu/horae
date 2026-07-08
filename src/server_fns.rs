@@ -1,6 +1,9 @@
 use dioxus::prelude::*;
 
-use crate::models::{Approval, Assignment, Client, Invoice, Project, Task, TimeEntry, User};
+use crate::models::{
+    Approval, Assignment, Client, DetailedReportRow, Invoice, Project, ReportRow, Task, TimeEntry,
+    User,
+};
 
 /// Extract the session user UUID from the request context.
 /// Returns `Err(401)` if the session has no user (not logged in).
@@ -859,4 +862,106 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
         .map_err(|e| server_err(e))?;
 
     Ok(())
+}
+
+// ── Reports (M8) ────────────────────────────────────────────────────────────
+
+/// Grouped time report. Groups by "project", "task", "client", or "person".
+#[server]
+pub async fn report_time(
+    from: String,
+    to: String,
+    group_by: String,
+) -> Result<Vec<ReportRow>, ServerFnError> {
+    let _user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+
+    let from_date: chrono::NaiveDate = from
+        .parse()
+        .map_err(|_| server_err("Invalid from date (use YYYY-MM-DD)"))?;
+    let to_date: chrono::NaiveDate = to
+        .parse()
+        .map_err(|_| server_err("Invalid to date (use YYYY-MM-DD)"))?;
+
+    // Fetch detailed rows and group in Rust for flexibility
+    let entries = sqlx::query_as::<_, DetailedReportRow>(
+        "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
+                u.name AS user_name, te.minutes, te.rounded_minutes, te.billable, te.notes
+         FROM time_entries te
+         JOIN projects p ON te.project_id = p.id
+         JOIN tasks t ON te.task_id = t.id
+         JOIN users u ON te.user_id = u.id
+         WHERE te.spent_date BETWEEN $1 AND $2
+         ORDER BY te.spent_date",
+    )
+    .bind(from_date)
+    .bind(to_date)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    // Group by the requested dimension
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<String, (i64, i64, i64)> = BTreeMap::new();
+    for e in &entries {
+        let label = match group_by.as_str() {
+            "task" => e.task_name.clone(),
+            "client" => e.project_name.clone(), // project serves as proxy until we join clients
+            "person" => e.user_name.clone(),
+            _ => e.project_name.clone(), // default: "project"
+        };
+        let agg = groups.entry(label).or_insert((0, 0, 0));
+        agg.0 += e.minutes as i64;
+        agg.1 += e.rounded_minutes.unwrap_or(e.minutes) as i64;
+        if e.billable {
+            agg.2 += e.rounded_minutes.unwrap_or(e.minutes) as i64;
+        }
+    }
+
+    let rows: Vec<ReportRow> = groups
+        .into_iter()
+        .map(|(label, (total, rounded, billable))| ReportRow {
+            label,
+            total_minutes: total,
+            rounded_minutes: rounded,
+            billable_minutes: billable,
+        })
+        .collect();
+
+    Ok(rows)
+}
+
+/// Detailed (per-entry) report for the given date range.
+#[server]
+pub async fn report_detailed(
+    from: String,
+    to: String,
+) -> Result<Vec<DetailedReportRow>, ServerFnError> {
+    let _user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+
+    let from_date: chrono::NaiveDate = from
+        .parse()
+        .map_err(|_| server_err("Invalid from date (use YYYY-MM-DD)"))?;
+    let to_date: chrono::NaiveDate = to
+        .parse()
+        .map_err(|_| server_err("Invalid to date (use YYYY-MM-DD)"))?;
+
+    let entries = sqlx::query_as::<_, DetailedReportRow>(
+        "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
+                u.name AS user_name, te.minutes, te.rounded_minutes, te.billable, te.notes
+         FROM time_entries te
+         JOIN projects p ON te.project_id = p.id
+         JOIN tasks t ON te.task_id = t.id
+         JOIN users u ON te.user_id = u.id
+         WHERE te.spent_date BETWEEN $1 AND $2
+         ORDER BY te.spent_date, p.name, t.name",
+    )
+    .bind(from_date)
+    .bind(to_date)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    Ok(entries)
 }

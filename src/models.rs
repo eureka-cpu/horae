@@ -17,3 +17,26 @@ pub use project::Project;
 pub use task::Task;
 pub use time_entry::TimeEntry;
 pub use user::User;
+
+// ── Report DTOs ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ReportRow {
+    pub label: String,
+    pub total_minutes: i64,
+    pub rounded_minutes: i64,
+    pub billable_minutes: i64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "server", derive(sqlx::FromRow))]
+pub struct DetailedReportRow {
+    pub spent_date: chrono::NaiveDate,
+    pub project_name: String,
+    pub task_name: String,
+    pub user_name: String,
+    pub minutes: i32,
+    pub rounded_minutes: Option<i32>,
+    pub billable: bool,
+    pub notes: Option<String>,
+}

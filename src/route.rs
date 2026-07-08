@@ -8,6 +8,7 @@ use crate::pages::{
     dashboard::Dashboard,
     invoices::{InvoiceDetail, InvoiceList},
     projects::{ProjectDetail, ProjectList},
+    reports::Reports,
     settings::Settings,
     time::TimeList,
     timesheet::Timesheet,
@@ -56,6 +57,8 @@ pub enum Route {
     Timesheet {},
     #[route("/approvals")]
     Approvals {},
+    #[route("/reports")]
+    Reports {},
     #[route("/invoices")]
     InvoiceList {},
     #[route("/invoices/:id")]
