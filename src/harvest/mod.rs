@@ -195,7 +195,7 @@ async fn list_time_entries(
 ) -> ApiResult<HarvestPagination<HarvestTimeEntry>> {
     let state = crate::state::global_state().await;
     let page = filters.page.unwrap_or(1).max(1);
-    let per_page = filters.per_page.unwrap_or(100).min(100).max(1);
+    let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
     // Build dynamic WHERE clause
@@ -206,7 +206,7 @@ async fn list_time_entries(
     // UUIDs and dates are passed as text and cast in the query.
     struct Param {
         value: String,
-        kind: ParamKind,
+        _kind: ParamKind,
     }
     enum ParamKind {
         Uuid,
@@ -221,7 +221,7 @@ async fn list_time_entries(
         conditions.push(format!("te.user_id = ${param_idx}::uuid"));
         extra_params.push(Param {
             value: uid.clone(),
-            kind: ParamKind::Uuid,
+            _kind: ParamKind::Uuid,
         });
         param_idx += 1;
     }
@@ -229,7 +229,7 @@ async fn list_time_entries(
         conditions.push(format!("te.project_id = ${param_idx}::uuid"));
         extra_params.push(Param {
             value: pid.clone(),
-            kind: ParamKind::Uuid,
+            _kind: ParamKind::Uuid,
         });
         param_idx += 1;
     }
@@ -237,7 +237,7 @@ async fn list_time_entries(
         conditions.push(format!("te.spent_date >= ${param_idx}::date"));
         extra_params.push(Param {
             value: from.clone(),
-            kind: ParamKind::Date,
+            _kind: ParamKind::Date,
         });
         param_idx += 1;
     }
@@ -245,7 +245,7 @@ async fn list_time_entries(
         conditions.push(format!("te.spent_date <= ${param_idx}::date"));
         extra_params.push(Param {
             value: to.clone(),
-            kind: ParamKind::Date,
+            _kind: ParamKind::Date,
         });
         param_idx += 1;
     }
@@ -253,7 +253,7 @@ async fn list_time_entries(
         conditions.push(format!("te.is_running = ${param_idx}::bool"));
         extra_params.push(Param {
             value: running.to_string(),
-            kind: ParamKind::Bool,
+            _kind: ParamKind::Bool,
         });
         param_idx += 1;
     }
@@ -261,7 +261,7 @@ async fn list_time_entries(
         conditions.push(format!("te.updated_at >= ${param_idx}::timestamptz"));
         extra_params.push(Param {
             value: since.clone(),
-            kind: ParamKind::Timestamp,
+            _kind: ParamKind::Timestamp,
         });
         param_idx += 1;
     }
@@ -398,7 +398,7 @@ async fn list_projects(
 ) -> ApiResult<HarvestPagination<HarvestProject>> {
     let state = crate::state::global_state().await;
     let page = filters.page.unwrap_or(1).max(1);
-    let per_page = filters.per_page.unwrap_or(100).min(100).max(1);
+    let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
     let mut conditions = vec!["p.org_id = $1".to_string()];
@@ -522,7 +522,7 @@ async fn list_clients(
 ) -> ApiResult<HarvestPagination<HarvestClient>> {
     let state = crate::state::global_state().await;
     let page = filters.page.unwrap_or(1).max(1);
-    let per_page = filters.per_page.unwrap_or(100).min(100).max(1);
+    let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
     let mut conditions = vec!["org_id = $1".to_string()];
@@ -599,6 +599,7 @@ pub struct TaskFilters {
     pub is_active: Option<bool>,
     pub page: Option<i64>,
     pub per_page: Option<i64>,
+    #[allow(dead_code)]
     pub updated_since: Option<String>,
 }
 
@@ -629,7 +630,7 @@ async fn list_tasks(
 ) -> ApiResult<HarvestPagination<HarvestTask>> {
     let state = crate::state::global_state().await;
     let page = filters.page.unwrap_or(1).max(1);
-    let per_page = filters.per_page.unwrap_or(100).min(100).max(1);
+    let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
     let mut conditions = vec!["org_id = $1".to_string()];
@@ -701,6 +702,7 @@ pub struct UserFilters {
     pub is_active: Option<bool>,
     pub page: Option<i64>,
     pub per_page: Option<i64>,
+    #[allow(dead_code)]
     pub updated_since: Option<String>,
 }
 
@@ -743,7 +745,7 @@ async fn list_users(
 ) -> ApiResult<HarvestPagination<HarvestUser>> {
     let state = crate::state::global_state().await;
     let page = filters.page.unwrap_or(1).max(1);
-    let per_page = filters.per_page.unwrap_or(100).min(100).max(1);
+    let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
     let mut conditions = vec!["org_id = $1".to_string()];

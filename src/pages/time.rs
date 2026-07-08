@@ -19,18 +19,18 @@ pub fn TimeList() -> Element {
     let mut show_form = use_signal(|| false);
 
     // Form state
-    let mut form_project = use_signal(|| String::new());
-    let mut form_task = use_signal(|| String::new());
+    let mut form_project = use_signal(String::new);
+    let mut form_task = use_signal(String::new);
     let mut form_date = use_signal(|| chrono::Utc::now().date_naive().to_string());
     let mut form_minutes = use_signal(|| String::from("0"));
-    let mut form_notes = use_signal(|| String::new());
+    let mut form_notes = use_signal(String::new);
     let mut form_billable = use_signal(|| false);
     let mut form_error = use_signal(|| Option::<String>::None);
 
     // Edit state: which entry is being edited
     let mut editing_id = use_signal(|| Option::<Uuid>::None);
-    let mut edit_minutes = use_signal(|| String::new());
-    let mut edit_notes = use_signal(|| String::new());
+    let mut edit_minutes = use_signal(String::new);
+    let mut edit_notes = use_signal(String::new);
     let mut edit_billable = use_signal(|| false);
 
     let project_names: HashMap<Uuid, String> = projects

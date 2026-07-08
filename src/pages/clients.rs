@@ -9,10 +9,10 @@ pub fn ClientList() -> Element {
     let me = use_resource(|| async move { server_fns::get_me().await });
 
     let mut show_form = use_signal(|| false);
-    let mut name = use_signal(|| String::new());
+    let mut name = use_signal(String::new);
     let mut currency = use_signal(|| "USD".to_string());
-    let mut address = use_signal(|| String::new());
-    let mut tax_id = use_signal(|| String::new());
+    let mut address = use_signal(String::new);
+    let mut tax_id = use_signal(String::new);
     let mut error = use_signal(|| None::<String>);
 
     let is_admin = match &*me.read() {

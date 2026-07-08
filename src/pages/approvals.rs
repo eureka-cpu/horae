@@ -8,9 +8,9 @@ use crate::server_fns;
 #[component]
 pub fn Approvals() -> Element {
     let me = use_resource(|| async move { server_fns::get_me().await });
-    let mut status_filter = use_signal(|| Some("submitted".to_string()));
-    let mut refresh_counter = use_signal(|| 0u32);
-    let mut action_error = use_signal(|| None::<String>);
+    let status_filter = use_signal(|| Some("submitted".to_string()));
+    let refresh_counter = use_signal(|| 0u32);
+    let action_error = use_signal(|| None::<String>);
 
     let filter = status_filter.read().clone();
     let approvals = use_resource(move || {

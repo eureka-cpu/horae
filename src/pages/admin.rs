@@ -8,7 +8,7 @@ pub fn AdminUsers() -> Element {
     let mut tasks = use_resource(|| async move { server_fns::list_tasks(None).await });
 
     let mut show_task_form = use_signal(|| false);
-    let mut task_name = use_signal(|| String::new());
+    let mut task_name = use_signal(String::new);
     let mut task_billable = use_signal(|| true);
     let mut task_error = use_signal(|| None::<String>);
 

@@ -101,7 +101,7 @@ pub fn Reports() -> Element {
             // Tabs
             div { class: "mt-4", style: "display: flex; gap: 0; border-bottom: 1px solid var(--color-border);",
                 button {
-                    class: if *active_tab.read() == "summary" { "btn btn-ghost" } else { "btn btn-ghost" },
+                    class: "btn btn-ghost",
                     style: if *active_tab.read() == "summary" {
                         "border-bottom: 2px solid var(--color-primary); border-radius: 0; color: var(--color-primary);"
                     } else {

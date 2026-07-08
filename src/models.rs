@@ -12,7 +12,6 @@ pub use approval::Approval;
 pub use assignment::Assignment;
 pub use client::Client;
 pub use invoice::Invoice;
-pub use organization::Organization;
 pub use project::Project;
 pub use task::Task;
 pub use time_entry::TimeEntry;

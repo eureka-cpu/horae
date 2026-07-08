@@ -11,7 +11,7 @@ use crate::server_fns;
 /// (`POST /auth/logout`). This component is used as a fallback from within the SPA.
 #[component]
 pub fn LogoutButton() -> Element {
-    let mut status = use_signal(|| String::new());
+    let mut status = use_signal(String::new);
 
     let handle_logout = move |_| {
         spawn(async move {

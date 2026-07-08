@@ -100,7 +100,7 @@ pub fn Timesheet() -> Element {
     let has_open = week_entries.iter().any(|e| e.state == "open");
     let all_submitted_or_approved = !week_entries.is_empty() && !has_open;
 
-    let mut submit_status = use_signal(|| None::<String>);
+    let submit_status = use_signal(|| None::<String>);
 
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();

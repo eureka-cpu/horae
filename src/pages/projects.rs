@@ -11,8 +11,8 @@ pub fn ProjectList() -> Element {
     let me = use_resource(|| async move { server_fns::get_me().await });
 
     let mut show_form = use_signal(|| false);
-    let mut client_id = use_signal(|| String::new());
-    let mut name = use_signal(|| String::new());
+    let mut client_id = use_signal(String::new);
+    let mut name = use_signal(String::new);
     let mut project_type = use_signal(|| "time_and_materials".to_string());
     let mut currency = use_signal(|| "USD".to_string());
     let mut budget_kind = use_signal(|| "none".to_string());
@@ -195,7 +195,7 @@ pub fn ProjectDetail(id: Uuid) -> Element {
     let users_res = use_resource(|| async move { server_fns::list_users().await });
 
     let mut show_assign_form = use_signal(|| false);
-    let mut assign_user_id = use_signal(|| String::new());
+    let mut assign_user_id = use_signal(String::new);
     let mut assign_role = use_signal(|| "freelancer".to_string());
     let mut error = use_signal(|| None::<String>);
 

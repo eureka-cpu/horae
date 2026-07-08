@@ -22,8 +22,8 @@ pub fn TimerWidget() -> Element {
     });
 
     // Form state for project/task selection
-    let mut selected_project = use_signal(|| String::new());
-    let mut selected_task = use_signal(|| String::new());
+    let mut selected_project = use_signal(String::new);
+    let mut selected_task = use_signal(String::new);
 
     // Build project name lookup
     let project_names: HashMap<Uuid, String> = projects

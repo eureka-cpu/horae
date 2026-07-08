@@ -47,7 +47,7 @@ async fn require_admin() -> Result<crate::models::User, ServerFnError> {
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "User not found".into(),
         code: 404,
@@ -76,7 +76,7 @@ async fn require_manager() -> Result<crate::models::User, ServerFnError> {
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "User not found".into(),
         code: 404,
@@ -116,7 +116,7 @@ pub async fn logout() -> Result<(), ServerFnError> {
 
     crate::auth::session::clear_session(&session)
         .await
-        .map_err(|e| server_err(e))
+        .map_err(server_err)
 }
 
 /// Return the currently authenticated user, or 401 if not logged in.
@@ -134,7 +134,7 @@ pub async fn get_me() -> Result<User, ServerFnError> {
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "User not found".into(),
         code: 404,
@@ -146,7 +146,7 @@ pub async fn get_me() -> Result<User, ServerFnError> {
 
 #[server]
 pub async fn list_time_entries(
-    user_id: Option<String>,
+    _user_id: Option<String>,
     project_id: Option<String>,
     date_from: Option<String>,
     limit: Option<i64>,
@@ -181,7 +181,7 @@ pub async fn list_time_entries(
     .bind(limit)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(entries)
 }
@@ -212,7 +212,7 @@ pub async fn start_timer(
     .bind(user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     // Check no timer already running
     let existing = sqlx::query_scalar::<_, bool>(
@@ -221,7 +221,7 @@ pub async fn start_timer(
     .bind(user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     if existing {
         return Err(ServerFnError::ServerError {
@@ -250,7 +250,7 @@ pub async fn start_timer(
     .bind(&notes)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 /// Stop a running timer and record elapsed minutes.
@@ -277,7 +277,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "No running timer found for this entry".into(),
         code: 404,
@@ -302,7 +302,7 @@ pub async fn get_current_timer() -> Result<Option<TimeEntry>, ServerFnError> {
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(entry)
 }
@@ -334,7 +334,7 @@ pub async fn create_time_entry(
             .bind(user_id)
             .fetch_one(&state.db)
             .await
-            .map_err(|e| server_err(e))?;
+            .map_err(server_err)?;
 
     let id = uuid::Uuid::now_v7();
 
@@ -356,7 +356,7 @@ pub async fn create_time_entry(
     .bind(billable)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 /// Update a time entry. Only allowed while the entry state is 'open'.
@@ -388,7 +388,7 @@ pub async fn update_time_entry(
     .bind(billable)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Entry not found or is locked (not in 'open' state)".into(),
         code: 409,
@@ -412,7 +412,7 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
     .bind(user_id)
     .execute(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     if result.rows_affected() == 0 {
         return Err(ServerFnError::ServerError {
@@ -439,7 +439,7 @@ pub async fn list_clients() -> Result<Vec<Client>, ServerFnError> {
     )
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(clients)
 }
@@ -467,7 +467,7 @@ pub async fn create_client(
     .bind(&tax_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────
@@ -494,7 +494,7 @@ pub async fn list_projects(
     .bind(if active { Some(true) } else { None::<bool> })
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(projects)
 }
@@ -531,7 +531,7 @@ pub async fn create_project(
     .bind(&budget_kind)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
@@ -554,7 +554,7 @@ pub async fn list_tasks(project_id: Option<String>) -> Result<Vec<Task>, ServerF
     )
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(tasks)
 }
@@ -578,7 +578,7 @@ pub async fn create_task(
     .bind(billable_default)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 // ── Assignments ─────────────────────────────────────────────────────────────
@@ -597,7 +597,7 @@ pub async fn list_assignments(project_id: String) -> Result<Vec<Assignment>, Ser
     .bind(project_id)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 #[server]
@@ -626,7 +626,7 @@ pub async fn create_assignment(
     .bind(&role)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))
+    .map_err(server_err)
 }
 
 #[server]
@@ -640,7 +640,7 @@ pub async fn delete_assignment(assignment_id: String) -> Result<(), ServerFnErro
         .bind(id)
         .execute(&state.db)
         .await
-        .map_err(|e| server_err(e))?;
+        .map_err(server_err)?;
     Ok(())
 }
 
@@ -669,7 +669,7 @@ pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
     )
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(users)
 }
@@ -695,7 +695,7 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
             .bind(user_id)
             .fetch_one(&state.db)
             .await
-            .map_err(|e| server_err(e))?;
+            .map_err(server_err)?;
 
     // Transition open entries to submitted, snapshotting rounded_minutes
     let result = sqlx::query(
@@ -712,7 +712,7 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     .bind(we)
     .execute(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     if result.rows_affected() == 0 {
         return Err(ServerFnError::ServerError {
@@ -739,7 +739,7 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     .bind(we)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(approval)
 }
@@ -760,7 +760,7 @@ pub async fn list_approvals(status: Option<String>) -> Result<Vec<Approval>, Ser
     .bind(&status)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(approvals)
 }
@@ -788,7 +788,7 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     .bind(manager.id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Approval not found or not in 'submitted' state".into(),
         code: 404,
@@ -808,7 +808,7 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     .bind(approval.period_end)
     .execute(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(approval)
 }
@@ -832,7 +832,7 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     .bind(approval_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| server_err(e))?
+    .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Approval not found".into(),
         code: 404,
@@ -852,14 +852,14 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     .bind(approval.period_end)
     .execute(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     // Delete the approval row (per schema: "reject deletes the row")
     sqlx::query("DELETE FROM approvals WHERE id = $1")
         .bind(approval_id)
         .execute(&state.db)
         .await
-        .map_err(|e| server_err(e))?;
+        .map_err(server_err)?;
 
     Ok(())
 }
@@ -898,7 +898,7 @@ pub async fn report_time(
     .bind(to_date)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     // Group by the requested dimension
     use std::collections::BTreeMap;
@@ -961,7 +961,7 @@ pub async fn report_detailed(
     .bind(to_date)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| server_err(e))?;
+    .map_err(server_err)?;
 
     Ok(entries)
 }

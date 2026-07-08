@@ -8,15 +8,25 @@ use uuid::Uuid;
 
 // ── Fixed UUIDs for idempotent seeding ───────────────────────────────────────
 
+#[allow(clippy::unusual_byte_groupings)]
 const ORG_ID:          Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000001);
+#[allow(clippy::unusual_byte_groupings)]
 const ADMIN_ID:        Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000002);
+#[allow(clippy::unusual_byte_groupings)]
 const CLIENT_ACME_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000003);
+#[allow(clippy::unusual_byte_groupings)]
 const CLIENT_TECH_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000004);
+#[allow(clippy::unusual_byte_groupings)]
 const PROJ_ACME_ID:    Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000005);
+#[allow(clippy::unusual_byte_groupings)]
 const PROJ_TECH_ID:    Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000006);
+#[allow(clippy::unusual_byte_groupings)]
 const TASK_DEV_ID:     Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000007);
+#[allow(clippy::unusual_byte_groupings)]
 const TASK_DESIGN_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000008);
+#[allow(clippy::unusual_byte_groupings)]
 const TASK_MEETING_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000009);
+#[allow(clippy::unusual_byte_groupings)]
 const TASK_REVIEW_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_00000000000a);
 
 pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
