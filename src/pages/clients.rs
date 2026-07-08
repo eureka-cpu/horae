@@ -5,16 +5,116 @@ use crate::server_fns;
 
 #[component]
 pub fn ClientList() -> Element {
-    let clients = use_resource(|| async move { server_fns::list_clients().await });
+    let mut clients = use_resource(|| async move { server_fns::list_clients().await });
+    let me = use_resource(|| async move { server_fns::get_me().await });
+
+    let mut show_form = use_signal(|| false);
+    let mut name = use_signal(|| String::new());
+    let mut currency = use_signal(|| "USD".to_string());
+    let mut address = use_signal(|| String::new());
+    let mut tax_id = use_signal(|| String::new());
+    let mut error = use_signal(|| None::<String>);
+
+    let is_admin = match &*me.read() {
+        Some(Ok(user)) => user.is_admin(),
+        _ => false,
+    };
 
     rsx! {
         div {
             div { class: "page-header",
                 h1 { class: "page-title", "Clients" }
                 div { class: "page-actions",
-                    button { class: "btn btn-primary", "New Client" }
+                    if is_admin {
+                        button {
+                            class: "btn btn-primary",
+                            onclick: move |_| show_form.set(!show_form()),
+                            if show_form() { "Cancel" } else { "Add Client" }
+                        }
+                    }
                 }
             }
+
+            if show_form() && is_admin {
+                div { class: "card",
+                    div { style: "padding: 1.25rem;",
+                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);", "New Client" }
+                        if let Some(err) = &*error.read() {
+                            div { class: "alert alert-danger", "{err}" }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "client-name", "Name" }
+                            input {
+                                class: "form-input",
+                                id: "client-name",
+                                r#type: "text",
+                                placeholder: "Client name",
+                                value: "{name}",
+                                oninput: move |e| name.set(e.value()),
+                            }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "client-currency", "Currency" }
+                            input {
+                                class: "form-input",
+                                id: "client-currency",
+                                r#type: "text",
+                                placeholder: "USD",
+                                value: "{currency}",
+                                oninput: move |e| currency.set(e.value()),
+                            }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "client-address", "Address (optional)" }
+                            textarea {
+                                class: "form-input",
+                                id: "client-address",
+                                placeholder: "Client address",
+                                value: "{address}",
+                                oninput: move |e| address.set(e.value()),
+                            }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "client-taxid", "Tax ID (optional)" }
+                            input {
+                                class: "form-input",
+                                id: "client-taxid",
+                                r#type: "text",
+                                placeholder: "Tax ID",
+                                value: "{tax_id}",
+                                oninput: move |e| tax_id.set(e.value()),
+                            }
+                        }
+                        button {
+                            class: "btn btn-primary",
+                            onclick: move |_| {
+                                let n = name();
+                                let c = currency();
+                                let a = address();
+                                let t = tax_id();
+                                spawn(async move {
+                                    let addr = if a.is_empty() { None } else { Some(a) };
+                                    let tid = if t.is_empty() { None } else { Some(t) };
+                                    match server_fns::create_client(n, c, addr, tid).await {
+                                        Ok(_) => {
+                                            name.set(String::new());
+                                            currency.set("USD".to_string());
+                                            address.set(String::new());
+                                            tax_id.set(String::new());
+                                            error.set(None);
+                                            show_form.set(false);
+                                            clients.restart();
+                                        }
+                                        Err(e) => error.set(Some(e.to_string())),
+                                    }
+                                });
+                            },
+                            "Create Client"
+                        }
+                    }
+                }
+            }
+
             div { class: "card",
                 match &*clients.read() {
                     Some(Ok(clients)) => rsx! {

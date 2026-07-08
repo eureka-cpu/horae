@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 
-use crate::models::{Client, Invoice, Project, Task, TimeEntry, User};
+use crate::models::{Assignment, Client, Invoice, Project, Task, TimeEntry, User};
 
 /// Extract the session user UUID from the request context.
 /// Returns `Err(401)` if the session has no user (not logged in).
@@ -30,6 +30,35 @@ fn server_err(msg: impl std::fmt::Display) -> ServerFnError {
         code: 500,
         details: None,
     }
+}
+
+#[cfg(feature = "server")]
+async fn require_admin() -> Result<crate::models::User, ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let user = sqlx::query_as::<_, crate::models::User>(
+        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+                cost_rate_cents, billable_rate_cents, active, created_at
+         FROM users WHERE id = $1 AND active = true",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| server_err(e))?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "User not found".into(),
+        code: 404,
+        details: None,
+    })?;
+
+    if !user.is_admin() {
+        return Err(ServerFnError::ServerError {
+            message: "Admin access required".into(),
+            code: 403,
+            details: None,
+        });
+    }
+    Ok(user)
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -173,6 +202,32 @@ pub async fn list_clients() -> Result<Vec<Client>, ServerFnError> {
     Ok(clients)
 }
 
+#[server]
+pub async fn create_client(
+    name: String,
+    currency: String,
+    address: Option<String>,
+    tax_id: Option<String>,
+) -> Result<Client, ServerFnError> {
+    let admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let id = uuid::Uuid::now_v7();
+    sqlx::query_as::<_, Client>(
+        "INSERT INTO clients (id, org_id, name, currency, address, tax_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
+    )
+    .bind(id)
+    .bind(admin.org_id)
+    .bind(&name)
+    .bind(&currency)
+    .bind(&address)
+    .bind(&tax_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))
+}
+
 // ── Projects ─────────────────────────────────────────────────────────────────
 
 #[server]
@@ -202,6 +257,41 @@ pub async fn list_projects(
     Ok(projects)
 }
 
+#[server]
+pub async fn create_project(
+    client_id: String,
+    name: String,
+    project_type: String,
+    currency: String,
+    budget_kind: String,
+) -> Result<Project, ServerFnError> {
+    let admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let id = uuid::Uuid::now_v7();
+    let client_id: uuid::Uuid = client_id
+        .parse()
+        .map_err(|_| server_err("Invalid client_id"))?;
+    sqlx::query_as::<_, Project>(
+        "INSERT INTO projects (id, org_id, client_id, name, project_type, currency, budget_kind)
+         VALUES ($1, $2, $3, $4, $5::project_type, $6, $7::budget_kind)
+         RETURNING id, org_id, client_id, code, name,
+                   project_type::text AS project_type, currency,
+                   starts_on, ends_on,
+                   budget_kind::text AS budget_kind,
+                   budget_amount_cents, budget_minutes, active, created_at",
+    )
+    .bind(id)
+    .bind(admin.org_id)
+    .bind(client_id)
+    .bind(&name)
+    .bind(&project_type)
+    .bind(&currency)
+    .bind(&budget_kind)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))
+}
+
 // ── Tasks ────────────────────────────────────────────────────────────────────
 
 /// Lists all org-level tasks.
@@ -225,6 +315,91 @@ pub async fn list_tasks(project_id: Option<String>) -> Result<Vec<Task>, ServerF
     .map_err(|e| server_err(e))?;
 
     Ok(tasks)
+}
+
+#[server]
+pub async fn create_task(
+    name: String,
+    billable_default: bool,
+) -> Result<Task, ServerFnError> {
+    let admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let id = uuid::Uuid::now_v7();
+    sqlx::query_as::<_, Task>(
+        "INSERT INTO tasks (id, org_id, name, billable_default)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, org_id, name, billable_default, default_rate_cents, active",
+    )
+    .bind(id)
+    .bind(admin.org_id)
+    .bind(&name)
+    .bind(billable_default)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))
+}
+
+// ── Assignments ─────────────────────────────────────────────────────────────
+
+#[server]
+pub async fn list_assignments(project_id: String) -> Result<Vec<Assignment>, ServerFnError> {
+    let _user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    sqlx::query_as::<_, Assignment>(
+        "SELECT id, project_id, user_id, role::text AS role, rate_cents, created_at
+         FROM assignments WHERE project_id = $1 ORDER BY created_at",
+    )
+    .bind(project_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| server_err(e))
+}
+
+#[server]
+pub async fn create_assignment(
+    project_id: String,
+    user_id: String,
+    role: String,
+) -> Result<Assignment, ServerFnError> {
+    let _admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let id = uuid::Uuid::now_v7();
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    let user_id: uuid::Uuid = user_id
+        .parse()
+        .map_err(|_| server_err("Invalid user_id"))?;
+    sqlx::query_as::<_, Assignment>(
+        "INSERT INTO assignments (id, project_id, user_id, role)
+         VALUES ($1, $2, $3, $4::project_role)
+         RETURNING id, project_id, user_id, role::text AS role, rate_cents, created_at",
+    )
+    .bind(id)
+    .bind(project_id)
+    .bind(user_id)
+    .bind(&role)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))
+}
+
+#[server]
+pub async fn delete_assignment(assignment_id: String) -> Result<(), ServerFnError> {
+    let _admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let id: uuid::Uuid = assignment_id
+        .parse()
+        .map_err(|_| server_err("Invalid assignment_id"))?;
+    sqlx::query("DELETE FROM assignments WHERE id = $1")
+        .bind(id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| server_err(e))?;
+    Ok(())
 }
 
 // ── Invoices (Phase 4 — stub) ─────────────────────────────────────────────────
