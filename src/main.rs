@@ -152,6 +152,12 @@ fn main() {
     dioxus::launch(app::App);
 }
 
+#[cfg(not(any(feature = "server", feature = "web")))]
+fn main() {
+    eprintln!("Build with --features server or --features web (or use `dx serve`).");
+    std::process::exit(1);
+}
+
 #[cfg(feature = "server")]
 fn init_tracing(log_level: &str) {
     let _ = tracing_subscriber::fmt()
