@@ -1,0 +1,15 @@
+[application]
+name = "horae"
+default_platform = "server"
+out_dir = "dist"
+asset_dir = "assets"
+
+[web.app]
+title = "Horae — Time Tracking"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "assets"]
+
+[web.resource]
+dev.script = []
