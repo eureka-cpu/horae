@@ -6,3 +6,4 @@ pub mod invoices;
 pub mod projects;
 pub mod settings;
 pub mod time;
+pub mod timesheet;

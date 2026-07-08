@@ -9,6 +9,7 @@ use crate::pages::{
     projects::{ProjectDetail, ProjectList},
     settings::Settings,
     time::TimeList,
+    timesheet::Timesheet,
 };
 use crate::components::layout::AppLayout;
 
@@ -50,6 +51,8 @@ pub enum Route {
     ProjectDetail { id: Uuid },
     #[route("/time")]
     TimeList {},
+    #[route("/timesheet")]
+    Timesheet {},
     #[route("/invoices")]
     InvoiceList {},
     #[route("/invoices/:id")]

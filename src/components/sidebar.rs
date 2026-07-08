@@ -14,6 +14,9 @@ pub fn Sidebar() -> Element {
                 li {
                     Link { to: Route::TimeList {}, "Time" }
                 }
+                li {
+                    Link { to: Route::Timesheet {}, "Timesheet" }
+                }
             }
             span { class: "sidebar-section", "Manage" }
             ul { class: "sidebar-nav",
