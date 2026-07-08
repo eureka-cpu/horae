@@ -119,18 +119,33 @@ pub async fn list_time_entries(
     date_from: Option<String>,
     limit: Option<i64>,
 ) -> Result<Vec<TimeEntry>, ServerFnError> {
+    let session_uid = session_user_id().await?;
     let state = crate::state::global_state().await;
     let limit = limit.unwrap_or(50);
-    let _ = (user_id, project_id, date_from);
+
+    let project_filter: Option<uuid::Uuid> = match project_id {
+        Some(ref s) => Some(s.parse().map_err(|_| server_err("Invalid project_id"))?),
+        None => None,
+    };
+    let date_filter: Option<chrono::NaiveDate> = match date_from {
+        Some(ref s) => Some(s.parse().map_err(|_| server_err("Invalid date_from (use YYYY-MM-DD)"))?),
+        None => None,
+    };
 
     let entries = sqlx::query_as::<_, TimeEntry>(
         "SELECT id, org_id, user_id, project_id, task_id, spent_date,
                 minutes, rounded_minutes, notes, billable, is_running, started_at,
                 state::text AS state, invoice_id, created_at, updated_at
          FROM time_entries
+         WHERE user_id = $1
+           AND ($2::uuid IS NULL OR project_id = $2)
+           AND ($3::date IS NULL OR spent_date >= $3)
          ORDER BY spent_date DESC, created_at DESC
-         LIMIT $1",
+         LIMIT $4",
     )
+    .bind(session_uid)
+    .bind(project_filter)
+    .bind(date_filter)
     .bind(limit)
     .fetch_all(&state.db)
     .await
@@ -139,48 +154,243 @@ pub async fn list_time_entries(
     Ok(entries)
 }
 
-/// Stub timer functions — rewritten in M5 with real DB logic.
+/// Start a timer for the given project and task. Only one timer may run at a time
+/// per user (enforced both here and via a DB partial unique index).
 #[server]
 pub async fn start_timer(
     project_id: String,
-    task_id: Option<String>,
+    task_id: String,
+    notes: Option<String>,
 ) -> Result<TimeEntry, ServerFnError> {
-    let _ = (project_id, task_id);
-    Err(ServerFnError::ServerError {
-        message: "Timer not yet implemented (M5).".into(),
-        code: 501,
-        details: None,
-    })
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    let task_id: uuid::Uuid = task_id
+        .parse()
+        .map_err(|_| server_err("Invalid task_id"))?;
+
+    // Get user's org_id
+    let user = sqlx::query_as::<_, User>(
+        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+                cost_rate_cents, billable_rate_cents, active, created_at
+         FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    // Check no timer already running
+    let existing = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM time_entries WHERE user_id = $1 AND is_running = true)",
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    if existing {
+        return Err(ServerFnError::ServerError {
+            message: "A timer is already running. Stop it first.".into(),
+            code: 409,
+            details: None,
+        });
+    }
+
+    let id = uuid::Uuid::now_v7();
+    let today = chrono::Utc::now().date_naive();
+
+    sqlx::query_as::<_, TimeEntry>(
+        "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, started_at, state)
+         VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), 'open'::entry_state)
+         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
+                   minutes, rounded_minutes, notes, billable, is_running, started_at,
+                   state::text AS state, invoice_id, created_at, updated_at",
+    )
+    .bind(id)
+    .bind(user.org_id)
+    .bind(user_id)
+    .bind(project_id)
+    .bind(task_id)
+    .bind(today)
+    .bind(&notes)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))
 }
 
+/// Stop a running timer and record elapsed minutes.
 #[server]
 pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
-    let _ = entry_id;
-    Err(ServerFnError::ServerError {
-        message: "Timer not yet implemented (M5).".into(),
-        code: 501,
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let entry_id: uuid::Uuid = entry_id
+        .parse()
+        .map_err(|_| server_err("Invalid entry_id"))?;
+
+    sqlx::query_as::<_, TimeEntry>(
+        "UPDATE time_entries
+         SET is_running = false,
+             minutes = GREATEST(1, EXTRACT(EPOCH FROM (now() - started_at))::int / 60),
+             started_at = NULL,
+             updated_at = now()
+         WHERE id = $1 AND user_id = $2 AND is_running = true
+         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
+                   minutes, rounded_minutes, notes, billable, is_running, started_at,
+                   state::text AS state, invoice_id, created_at, updated_at",
+    )
+    .bind(entry_id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| server_err(e))?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "No running timer found for this entry".into(),
+        code: 404,
         details: None,
     })
 }
 
+/// Return the currently running timer for the authenticated user, if any.
 #[server]
 pub async fn get_current_timer() -> Result<Option<TimeEntry>, ServerFnError> {
+    let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
 
-    // TODO: derive user_id from session in M3; for now return nothing
     let entry = sqlx::query_as::<_, TimeEntry>(
         "SELECT id, org_id, user_id, project_id, task_id, spent_date,
                 minutes, rounded_minutes, notes, billable, is_running, started_at,
                 state::text AS state, invoice_id, created_at, updated_at
          FROM time_entries
-         WHERE is_running = true
+         WHERE user_id = $1 AND is_running = true
          LIMIT 1",
     )
+    .bind(user_id)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| server_err(e))?;
 
     Ok(entry)
+}
+
+/// Create a manual (non-timer) time entry.
+#[server]
+pub async fn create_time_entry(
+    project_id: String,
+    task_id: String,
+    spent_date: String,
+    minutes: i32,
+    notes: Option<String>,
+    billable: bool,
+) -> Result<TimeEntry, ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    let task_id: uuid::Uuid = task_id
+        .parse()
+        .map_err(|_| server_err("Invalid task_id"))?;
+    let spent_date: chrono::NaiveDate = spent_date
+        .parse()
+        .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
+
+    let (org_id,): (uuid::Uuid,) =
+        sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| server_err(e))?;
+
+    let id = uuid::Uuid::now_v7();
+
+    sqlx::query_as::<_, TimeEntry>(
+        "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, 'open'::entry_state)
+         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
+                   minutes, rounded_minutes, notes, billable, is_running, started_at,
+                   state::text AS state, invoice_id, created_at, updated_at",
+    )
+    .bind(id)
+    .bind(org_id)
+    .bind(user_id)
+    .bind(project_id)
+    .bind(task_id)
+    .bind(spent_date)
+    .bind(minutes)
+    .bind(&notes)
+    .bind(billable)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| server_err(e))
+}
+
+/// Update a time entry. Only allowed while the entry state is 'open'.
+#[server]
+pub async fn update_time_entry(
+    entry_id: String,
+    minutes: i32,
+    notes: Option<String>,
+    billable: bool,
+) -> Result<TimeEntry, ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let entry_id: uuid::Uuid = entry_id
+        .parse()
+        .map_err(|_| server_err("Invalid entry_id"))?;
+
+    sqlx::query_as::<_, TimeEntry>(
+        "UPDATE time_entries
+         SET minutes = $3, notes = $4, billable = $5, updated_at = now()
+         WHERE id = $1 AND user_id = $2 AND state = 'open'
+         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
+                   minutes, rounded_minutes, notes, billable, is_running, started_at,
+                   state::text AS state, invoice_id, created_at, updated_at",
+    )
+    .bind(entry_id)
+    .bind(user_id)
+    .bind(minutes)
+    .bind(&notes)
+    .bind(billable)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| server_err(e))?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Entry not found or is locked (not in 'open' state)".into(),
+        code: 409,
+        details: None,
+    })
+}
+
+/// Delete a time entry. Only allowed while the entry state is 'open'.
+#[server]
+pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let entry_id: uuid::Uuid = entry_id
+        .parse()
+        .map_err(|_| server_err("Invalid entry_id"))?;
+
+    let result = sqlx::query(
+        "DELETE FROM time_entries WHERE id = $1 AND user_id = $2 AND state = 'open'",
+    )
+    .bind(entry_id)
+    .bind(user_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| server_err(e))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ServerFnError::ServerError {
+            message: "Entry not found or is locked (not in 'open' state)".into(),
+            code: 409,
+            details: None,
+        });
+    }
+
+    Ok(())
 }
 
 // ── Clients ──────────────────────────────────────────────────────────────────
