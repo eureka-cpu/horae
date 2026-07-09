@@ -1,3 +1,4 @@
 /target
 .dev-vm.qcow2
 nixos.qcow2
+*result*
