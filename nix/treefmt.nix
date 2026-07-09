@@ -19,6 +19,12 @@ _: {
     # JSON
     jsonfmt.enable = true;
 
+    # YAML formatting + GitHub Actions workflow linting. Keep single blank
+    # lines (e.g. between workflow steps) rather than collapsing them.
+    yamlfmt.enable = true;
+    yamlfmt.settings.formatter.retain_line_breaks_single = true;
+    actionlint.enable = true;
+
     # Shell: lint (shellcheck) then format (shfmt). Ordered below.
     shellcheck.enable = true;
     shfmt.enable = true;
