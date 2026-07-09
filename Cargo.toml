@@ -12,8 +12,7 @@ name = "horae"
 path = "src/main.rs"
 
 [features]
-default = ["fullstack"]
-fullstack = []
+default = []
 server = [
   "dioxus/server",
   "dep:tokio",

@@ -1,6 +1,6 @@
 [application]
 name = "horae"
-default_platform = "server"
+default_platform = "fullstack"
 out_dir = "dist"
 asset_dir = "assets"
 
