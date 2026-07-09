@@ -17,7 +17,7 @@ ______________________________________________________________________
 
 ```sh
 nix develop                    # enter the dev shell
-nix run .#dev-vm               # boots a NixOS VM with Postgres (QEMU + HVF on Apple Silicon)
+nix run .#qemu-vm              # boots a NixOS VM with Postgres (QEMU + HVF on Apple Silicon)
 ```
 
 The VM forwards ports 2222 (SSH), 3000, and 5432 to localhost. SSH in with:
