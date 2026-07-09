@@ -32,9 +32,12 @@
       --radius-btn:         8px;
       --nav-height:         56px;
       /* Icon variants — inline SVGs reference these */
-      --icon-bg-fill:      #1F5C4D;
-      --icon-horizon-fill: #153A31;
-      --icon-sun-fill:     #D99A3C;
+      --icon-bg-fill:         #1F5C4D;
+      --icon-horizon-line:    #0F3D33;  /* thin stripe at the waterline */
+      --icon-horizon-fill:    #164034;  /* deeper band below */
+      --icon-sun-fill:        #D99A3C;
+      --icon-ray-center:      #E7C079;  /* centre ray: pale gold */
+      --icon-ray-side:        #E4B061;  /* flanking rays: slightly deeper */
     }
 
     [data-theme="light"] {
@@ -48,7 +51,7 @@
       --color-primary:        #1F5C4D;
       --color-primary-dark:   #174a3c;
       --color-accent:         #C6802A;
-      --icon-sun-fill:        #C6802A;
+      /* icon stays full-colour on paper — no overrides needed */
     }
 
     [data-theme="light"] .btn-primary { color: #FFFFFF; }
@@ -64,9 +67,11 @@
       --color-primary:        #6EC8B5;
       --color-primary-dark:   #58B49F;
       --color-accent:         #E8B84B;
-      --icon-bg-fill:         #153A31;
-      --icon-horizon-fill:    #0F2920;
-      --icon-sun-fill:        #FFFFFF;
+      /* Reversed · on pine icon variant */
+      --icon-bg-fill:         #0F3D33;
+      --icon-horizon-line:    #072a22;
+      --icon-horizon-fill:    #0a352b;
+      --icon-sun-fill:        #EFEAE0;  /* warm cream, not pure white */
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -437,7 +442,8 @@
       <svg width="28" height="28" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs><clipPath id="nc"><rect width="128" height="128" rx="26"/></clipPath></defs>
         <rect width="128" height="128" rx="26" style="fill: var(--icon-bg-fill)"/>
-        <rect y="88" width="128" height="40" style="fill: var(--icon-horizon-fill)" clip-path="url(#nc)"/>
+        <rect y="88" width="128" height="3"  style="fill: var(--icon-horizon-line)" clip-path="url(#nc)"/>
+        <rect y="91" width="128" height="37" style="fill: var(--icon-horizon-fill)" clip-path="url(#nc)"/>
         <circle cx="64" cy="65" r="30" style="fill: var(--icon-sun-fill)"/>
       </svg>
     </a>
@@ -480,13 +486,13 @@
       <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs><clipPath id="hc"><rect width="128" height="128" rx="26"/></clipPath></defs>
         <rect width="128" height="128" rx="26" style="fill: var(--icon-bg-fill)"/>
-        <rect y="88" width="128" height="40" style="fill: var(--icon-horizon-fill)" clip-path="url(#hc)"/>
+        <rect y="88" width="128" height="3"  style="fill: var(--icon-horizon-line)" clip-path="url(#hc)"/>
+        <rect y="91" width="128" height="37" style="fill: var(--icon-horizon-fill)" clip-path="url(#hc)"/>
+        <!-- rays originate inside sun disc at y=40; circle covers the base -->
+        <line x1="64" y1="40" x2="64" y2="18" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-center)"/>
+        <line x1="64" y1="40" x2="51" y2="24" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <line x1="64" y1="40" x2="77" y2="24" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
         <circle cx="64" cy="65" r="30" style="fill: var(--icon-sun-fill)"/>
-        <g style="stroke: var(--icon-sun-fill)" stroke-width="3" stroke-linecap="round">
-          <line x1="64" y1="35" x2="64" y2="20"/>
-          <line x1="64" y1="35" x2="57" y2="26"/>
-          <line x1="64" y1="35" x2="71" y2="26"/>
-        </g>
       </svg>
       <span class="wm-text">Horae<span class="wm-dot">.</span></span>
     </div>
@@ -632,8 +638,7 @@
       document.getElementById('hljs-theme-dark').disabled  = isLight;
       document.getElementById('hljs-theme-light').disabled = !isLight;
       document.getElementById('fav').href =
-        t === 'light' ? 'favicon-light.svg' :
-        t === 'pine'  ? 'favicon-pine.svg'  : 'favicon.svg';
+        t === 'pine' ? 'favicon-pine.svg' : 'favicon.svg';
     }
 
     function toggleTheme() {
