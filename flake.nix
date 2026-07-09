@@ -37,6 +37,15 @@
         # fenix provides the Rust toolchain used by nix/package.nix.
         nixpkgs.overlays = [ inputs.fenix.overlays.default ];
       };
+
+      # Overlay that rebuilds horae against the consumer's nixpkgs (composing
+      # fenix), so cross variants resolve. Used both as overlays.shared-nixpkgs
+      # and to build the legacyPackages instances below.
+      sharedNixpkgsOverlay = import ./nix/overlays/shared-nixpkgs.nix {
+        inherit lib;
+        inherit (blueprint) mkPackagesFor;
+        fenix = inputs.fenix.overlays.default;
+      };
     in
     blueprint
     // {
@@ -48,12 +57,17 @@
         default = import ./nix/overlays/default.nix {
           inherit (blueprint) packages;
         };
-        shared-nixpkgs = import ./nix/overlays/shared-nixpkgs.nix {
-          inherit lib;
-          inherit (blueprint) mkPackagesFor;
-          fenix = inputs.fenix.overlays.default;
-        };
+        shared-nixpkgs = sharedNixpkgsOverlay;
       };
+
+      # nixpkgs instances with the shared-nixpkgs overlay applied, so horae and
+      # its cross variants are reachable directly, e.g.
+      # `nix build .#legacyPackages.aarch64-darwin.pkgsCross.aarch64-multiplatform.horae`.
+      legacyPackages = lib.genAttrs systems (system:
+        import inputs.nixpkgs {
+          inherit system;
+          overlays = [ sharedNixpkgsOverlay ];
+        });
 
       # Developer convenience: `nix run .#qemu-vm` boots a NixOS VM running
       # Horae against a local PostgreSQL, with dev login enabled. Blueprint has
