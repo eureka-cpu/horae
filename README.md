@@ -182,3 +182,7 @@ horae/
 ├── SPEC.md              # Phase 1 build spec
 └── Dioxus.toml          # dx CLI configuration
 ```
+
+______________________________________________________________________
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
