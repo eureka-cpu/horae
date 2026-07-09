@@ -104,9 +104,54 @@
 
       formatter = forAllSystems (system: treefmtEval.${system}.config.build.wrapper);
 
-      checks = forAllSystems (system: {
-        fmt = treefmtEval.${system}.config.build.check self;
-      });
+      checks = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          fmt = treefmtEval.${system}.config.build.check self;
+        } // nixpkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          # NixOS e2e test: golden path from boot to Harvest API query.
+          # Run with: nix build .#checks.aarch64-linux.e2e (or x86_64-linux)
+          e2e = pkgs.nixosTest {
+            name = "horae-e2e";
+            nodes.server = { ... }: {
+              imports = [ self.nixosModules.default ];
+              services.horae.enable = true;
+              services.horae.database.createLocally = true;
+              systemd.services.horae.environment.DEV_LOGIN = "1";
+            };
+            testScript = ''
+              server.start()
+              server.wait_for_unit("horae.service")
+              server.wait_for_open_port(3000)
+
+              # Health check
+              server.succeed("curl -sf http://localhost:3000/health | grep -q ok")
+
+              # Seed data
+              server.succeed("horae seed")
+
+              # Dev login: POST /auth/dev-login → should redirect (303) and set a cookie
+              server.succeed(
+                "curl -sf -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/auth/dev-login | grep -q 303"
+              )
+
+              # Full login flow with cookie jar
+              server.succeed(
+                "curl -sf -c /tmp/cookies.txt -L -X POST http://localhost:3000/auth/dev-login -o /dev/null"
+              )
+
+              # Harvest API: list time entries (session-authenticated)
+              result = server.succeed(
+                "curl -sf -b /tmp/cookies.txt http://localhost:3000/harvest/v2/time_entries"
+              )
+              assert '"time_entries"' in result, f"Expected Harvest envelope, got: {result[:200]}"
+              assert '"per_page"' in result, f"Missing pagination field in: {result[:200]}"
+            '';
+          };
+        }
+      );
 
       nixosModules.default = {
         imports = [ ./nixos/modules/horae/default.nix ];
