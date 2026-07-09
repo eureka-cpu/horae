@@ -3,7 +3,7 @@
 Thank you for your interest in contributing! Before you start, read through
 this guide to set up your environment and understand the project conventions.
 
----
+______________________________________________________________________
 
 ## Getting started
 
@@ -23,7 +23,7 @@ Open <http://localhost:8080/auth/login> and click **Sign in as Admin**.
 > `DATABASE_URL` defaults to `postgres://localhost/horae` and is exported
 > automatically by the dev shell.
 
----
+______________________________________________________________________
 
 ## System setup
 
@@ -74,7 +74,7 @@ nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
 </details>
 
----
+______________________________________________________________________
 
 ## Development workflow
 
@@ -94,7 +94,7 @@ cargo test --features server                    # integration tests (needs Postg
 nix flake check                                 # full suite: fmt + e2e nixosTest
 ```
 
----
+______________________________________________________________________
 
 ## Rust guidelines
 
@@ -144,7 +144,7 @@ pub enum AppError {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Submitting changes
 

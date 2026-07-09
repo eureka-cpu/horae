@@ -2,7 +2,7 @@
 
 Many higher level languages hide memory management, typically **passing by value** (copy data) or **passing by reference** (reference to shared data) without worrying about allocation, heap, stack, ownership and lifetimes, it is all delegated to the garbage collector or VM. Here is a comparison on this topic between a few languages:
 
-### 📌 Language Comparison 
+### 📌 Language Comparison
 
 | Language | Value Types | Reference/Pointer Types | Async Model & Types | Manual Memory |
 |------------ |------------------------------------- |----------------------------------------------------------- |---------------------------------------------------------------------------- |------------------------------ |
@@ -17,6 +17,7 @@ Many higher level languages hide memory management, typically **passing by value
 ## 9.1 Thread Safety
 
 Rust tracks pointers using `Send` and `Sync` traits:
+
 - `Send` means data can move across threads.
 - `Sync` means data can be referenced from multiple threads.
 
@@ -64,6 +65,7 @@ fn print_bytes(s: &String) {
     println!("{:?}", s.as_bytes())
 }
 ```
+
 ### `&mut T` - Exclusive Borrow:
 
 Probably the most common *mutable* type in a Rust code base, it is **Safe, but only allows one mutable borrow at a time**.
@@ -110,6 +112,7 @@ assert_eq!(&*x.borrow(), 42, "Not meaning of life");
 ```
 
 Panic example:
+
 ```rust
 use std::cell::RefCell;
 let x = RefCell::new(42);
@@ -154,7 +157,6 @@ An exclusive access pointer that allows a thread to read/write the data containe
 ### [`RwLock<T>`](https://doc.rust-lang.org/std/sync/struct.RwLock.html) - Thread-safe mutability
 
 Similar to a `Mutex`, but it allows multiple threads to read it OR a single thread to write. It is usually wrapped in an `Arc` to allow shared access to the RwLock.
-
 
 ### [`*const T/*mut T`](https://doc.rust-lang.org/std/primitive.pointer.html) - Raw pointers
 
@@ -252,5 +254,6 @@ let _ = &*CONFIG;
 ```
 
 ## References
+
 - [Mara Bos - Rust Atomics and Locks](https://marabos.nl/atomics/)
 - [Semicolon video on pointers](https://www.youtube.com/watch?v=Ag_6Q44PBNs)
