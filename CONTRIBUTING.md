@@ -37,10 +37,23 @@ and to cross-compile the server binary for Linux targets locally.
 Enable the Linux builder in your nix-darwin configuration:
 
 ```nix
-nix.linux-builder = {
-  enable = true;
-  ephemeral = true;
-  maxJobs = 4;
+nix = {
+  # Required for the Linux builder to be trusted by the Nix daemon.
+  settings.trusted-users = [ "root" "@admin" ];
+  linux-builder = {
+    enable = true;
+    ephemeral = true;
+    maxJobs = 4;
+    config = {
+      virtualisation = {
+        darwin-builder = {
+          diskSize = 40 * 1024;   # 40 GiB
+          memorySize = 8 * 1024;  # 8 GiB
+        };
+        cores = 6;
+      };
+    };
+  };
 };
 ```
 
