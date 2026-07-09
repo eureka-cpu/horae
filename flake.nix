@@ -65,6 +65,10 @@
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
             buildFeatures = [ "server" ];
+            # Integration tests require a live Postgres (sqlx::test creates temp DBs).
+            # They run via `cargo test --features server` with DATABASE_URL set locally
+            # or in the nixosTest e2e check — skip them in the package build.
+            checkFlags = [ "--skip" "integration" ];
             meta = {
               description = "A self-hostable time tracking server";
               mainProgram = "horae";
