@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <defs>
     <clipPath id="icon-clip">
-      <rect width="128" height="128" rx="22"/>
+      <rect width="128" height="128" rx="26"/>
     </clipPath>
   </defs>
-  <!-- Pine green background -->
-  <rect width="128" height="128" rx="22" fill="#285248"/>
-  <!-- Horizon shadow band -->
-  <rect y="78" width="128" height="50" fill="#1C3E34" clip-path="url(#icon-clip)"/>
-  <!-- Rising sun -->
-  <circle cx="64" cy="78" r="27" fill="#D99A3C"/>
-  <!-- Rays — drop away at small sizes, see favicon.svg -->
+  <!-- Pine background (#1F5C4D = --color-pine) -->
+  <rect width="128" height="128" rx="26" fill="#1F5C4D"/>
+  <!-- Horizon shadow band — horizon bisects the circle -->
+  <rect y="80" width="128" height="48" fill="#153A31" clip-path="url(#icon-clip)"/>
+  <!-- Rising sun — large, center at horizon -->
+  <circle cx="64" cy="80" r="38" fill="#D99A3C"/>
+  <!-- Rays — emanate from top of circle (y=42), drop away at small sizes -->
   <g stroke="#D99A3C" stroke-width="3.5" stroke-linecap="round">
-    <line x1="64" y1="47" x2="64" y2="37"/>
-    <line x1="64" y1="47" x2="55" y2="42"/>
-    <line x1="64" y1="47" x2="73" y2="42"/>
+    <line x1="64" y1="42" x2="64" y2="28"/>
+    <line x1="64" y1="42" x2="49" y2="35"/>
+    <line x1="64" y1="42" x2="79" y2="35"/>
   </g>
 </svg>

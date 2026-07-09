@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32">
   <defs>
     <clipPath id="fav-clip">
-      <rect width="128" height="128" rx="22"/>
+      <rect width="128" height="128" rx="26"/>
     </clipPath>
   </defs>
-  <rect width="128" height="128" rx="22" fill="#285248"/>
-  <rect y="78" width="128" height="50" fill="#1C3E34" clip-path="url(#fav-clip)"/>
-  <circle cx="64" cy="78" r="27" fill="#D99A3C"/>
+  <rect width="128" height="128" rx="26" fill="#1F5C4D"/>
+  <rect y="80" width="128" height="48" fill="#153A31" clip-path="url(#fav-clip)"/>
+  <circle cx="64" cy="80" r="38" fill="#D99A3C"/>
 </svg>
