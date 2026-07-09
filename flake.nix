@@ -13,7 +13,6 @@
     , nixpkgs
     , treefmt-nix
     , fenix
-    ,
     }:
     let
       systems = [
@@ -41,20 +40,12 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          # When building the Linux package from a Darwin host, cross-compile
-          # to aarch64-unknown-linux-gnu using the Darwin toolchain + Linux sysroot.
-          # On a native Linux host (or via a Linux builder), this is a no-op.
-          buildPkgs =
-            # TODO: This should be an evaluation time decision, not hardcoded.
-            if system == "aarch64-linux" && pkgs.stdenv.hostPlatform.isDarwin
-            then pkgs.pkgsCross.aarch64-multiplatform
-            else pkgs;
           toolchain = fenix.packages.${system}.stable.withComponents [
             "rustc"
             "cargo"
             "rust-std"
           ];
-          rustPlatform = buildPkgs.makeRustPlatform {
+          rustPlatform = pkgs.makeRustPlatform {
             cargo = toolchain;
             rustc = toolchain;
           };
@@ -263,14 +254,6 @@
 
                       # Open forwarded ports in the guest firewall
                       networking.firewall.allowedTCPPorts = [ 3000 5432 ];
-
-                      # # Minimal bootable VM config
-                      # boot.loader.grub.device = "nodev";
-                      # fileSystems."/" = {
-                      #   device = "none";
-                      #   fsType = "tmpfs";
-                      #   options = [ "mode=0755" ];
-                      # };
 
                       environment.systemPackages = [ pkgs.postgresql ];
 
