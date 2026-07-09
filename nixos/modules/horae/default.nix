@@ -61,6 +61,7 @@ in
     };
 
     logLevel = lib.mkOption {
+      # TODO: Should be an enum
       type = lib.types.str;
       default = "info";
       description = "Log verbosity level passed as HORAE_LOG.";

@@ -15,10 +15,8 @@ let
       "rust-src"
     ])
     targets.wasm32-unknown-unknown.stable.rust-std
-  ] ++ lib.optional isCross targets.${
-    with stdenv.hostPlatform.rust;
-    builtins.trace "Adding component rust-std-${rustcTarget}-stable" rustcTarget
-  }.stable.rust-std);
+  ] ++ lib.optional isCross
+    targets.${with stdenv.hostPlatform.rust; builtins.trace "Adding component rust-std-${rustcTarget}-stable" rustcTarget}.stable.rust-std);
   rustPlatform = pkgs.makeRustPlatform {
     cargo = toolchain;
     rustc = toolchain;
@@ -26,10 +24,13 @@ let
 in
 {
   horae = rustPlatform.buildRustPackage (finalAttrs: {
+    # TODO: Get metadata from Cargo.toml
     pname = "horae";
     version = "0.1.0";
-    # TODO: Exclude extraneous files from source
-    src = ../../../.;
+    src = lib.cleanSourceWith {
+      src = lib.cleanSource ../../../.;
+      filter = path: _type: !(lib.hasSuffix ".nix" path) && !(lib.hasSuffix ".md" path);
+    };
     cargoLock.lockFile = finalAttrs.src + "/Cargo.lock";
     # TODO: Build the all programs
     buildFeatures = [ "server" ];
