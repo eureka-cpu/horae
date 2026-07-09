@@ -1,9 +1,6 @@
----
-name: rust-testing
-description: Rust testing patterns including unit tests, integration tests, async testing, property-based testing, mocking, and coverage. Follows TDD methodology.
-metadata:
-  origin: ECC
----
+______________________________________________________________________
+
+## name: rust-testing description: Rust testing patterns including unit tests, integration tests, async testing, property-based testing, mocking, and coverage. Follows TDD methodology. metadata: origin: ECC
 
 # Rust Testing Patterns
 
@@ -20,12 +17,12 @@ Comprehensive Rust testing patterns for writing reliable, maintainable tests fol
 ## How It Works
 
 1. **Identify target code** — Find the function, trait, or module to test
-2. **Write a test** — Use `#[test]` in a `#[cfg(test)]` module, rstest for parameterized tests, or proptest for property-based tests
-3. **Mock dependencies** — Use mockall to isolate the unit under test
-4. **Run tests (RED)** — Verify the test fails with the expected error
-5. **Implement (GREEN)** — Write minimal code to pass
-6. **Refactor** — Improve while keeping tests green
-7. **Check coverage** — Use cargo-llvm-cov, target 80%+
+1. **Write a test** — Use `#[test]` in a `#[cfg(test)]` module, rstest for parameterized tests, or proptest for property-based tests
+1. **Mock dependencies** — Use mockall to isolate the unit under test
+1. **Run tests (RED)** — Verify the test fails with the expected error
+1. **Implement (GREEN)** — Write minimal code to pass
+1. **Refactor** — Improve while keeping tests green
+1. **Check coverage** — Use cargo-llvm-cov, target 80%+
 
 ## TDD Workflow for Rust
 
@@ -350,7 +347,7 @@ fn service_returns_none_when_not_found() {
 
 ### Executable Documentation
 
-```rust
+````rust
 /// Adds two numbers together.
 ///
 /// # Examples
@@ -386,7 +383,7 @@ pub fn add(a: i32, b: i32) -> i32 {
 pub fn parse_config(input: &str) -> Result<Config, ParseError> {
     todo!()
 }
-```
+````
 
 ## Benchmarking with Criterion
 
@@ -456,6 +453,7 @@ cargo test -- --ignored           # Run ignored tests
 ## Best Practices
 
 **DO:**
+
 - Write tests FIRST (TDD)
 - Use `#[cfg(test)]` modules for unit tests
 - Test behavior, not implementation
@@ -465,6 +463,7 @@ cargo test -- --ignored           # Run ignored tests
 - Keep tests independent — no shared mutable state
 
 **DON'T:**
+
 - Use `#[should_panic]` when you can test `Result::is_err()` instead
 - Mock everything — prefer integration tests when feasible
 - Ignore flaky tests — fix or quarantine them
