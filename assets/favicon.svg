@@ -4,10 +4,7 @@
       <rect width="128" height="128" rx="26"/>
     </clipPath>
   </defs>
-  <!-- Pine background (#1F5C4D = --color-pine) -->
   <rect width="128" height="128" rx="26" fill="#1F5C4D"/>
-  <!-- Horizon shadow band -->
-  <rect y="80" width="128" height="48" fill="#153A31" clip-path="url(#fav-clip)"/>
-  <!-- Rising sun — rays omitted, they drop away at small sizes -->
-  <circle cx="64" cy="80" r="38" fill="#D99A3C"/>
+  <rect y="88" width="128" height="40" fill="#153A31" clip-path="url(#fav-clip)"/>
+  <circle cx="64" cy="65" r="30" fill="#D99A3C"/>
 </svg>
