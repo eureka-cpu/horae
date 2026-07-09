@@ -107,13 +107,17 @@
       checks = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          # nixosTest builds a Linux VM — on Darwin this is handled by the
+          # nix-darwin Linux builder, so the test is available on all systems.
+          guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] system;
+          testPkgs = nixpkgs.legacyPackages.${guestSystem};
         in
         {
           fmt = treefmtEval.${system}.config.build.check self;
-        } // nixpkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+
           # NixOS e2e test: golden path from boot to Harvest API query.
-          # Run with: nix build .#checks.aarch64-linux.e2e (or x86_64-linux)
-          e2e = pkgs.nixosTest {
+          # Run with: nix build .#checks.<system>.e2e
+          e2e = testPkgs.testers.nixosTest {
             name = "horae-e2e";
             nodes.server = { ... }: {
               imports = [ self.nixosModules.default ];
