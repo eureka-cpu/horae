@@ -55,6 +55,9 @@ rust_xlsxwriter = { version = "0.80", optional = true }
 # web-only
 gloo-timers = { version = "0.3", features = ["futures"], optional = true }
 
+[dev-dependencies]
+serial_test = "3"
+
 [profile.release]
 opt-level = 3
 lto = true

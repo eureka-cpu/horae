@@ -1,6 +1,7 @@
 #![cfg(feature = "server")]
 
 use chrono::NaiveDate;
+use serial_test::serial;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -156,6 +157,7 @@ async fn seed_project_without_assignment(
 // ---------------------------------------------------------------------------
 
 #[sqlx::test(migrations = "./migrations")]
+#[serial]
 async fn timer_start_stop_records_minutes(pool: PgPool) {
     let org_id = seed_org(&pool).await;
     let user_id = seed_user(&pool, org_id, "member").await;
@@ -221,6 +223,7 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
 // ---------------------------------------------------------------------------
 
 #[sqlx::test(migrations = "./migrations")]
+#[serial]
 async fn one_timer_per_user_enforced(pool: PgPool) {
     let org_id = seed_org(&pool).await;
     let user_id = seed_user(&pool, org_id, "member").await;
@@ -272,6 +275,7 @@ async fn one_timer_per_user_enforced(pool: PgPool) {
 // ---------------------------------------------------------------------------
 
 #[sqlx::test(migrations = "./migrations")]
+#[serial]
 async fn submitted_entries_cannot_be_updated(pool: PgPool) {
     let org_id = seed_org(&pool).await;
     let user_id = seed_user(&pool, org_id, "member").await;
@@ -336,6 +340,7 @@ async fn submitted_entries_cannot_be_updated(pool: PgPool) {
 // ---------------------------------------------------------------------------
 
 #[sqlx::test(migrations = "./migrations")]
+#[serial]
 async fn rounding_applied_on_submit(pool: PgPool) {
     use horae_core::rounding::round;
     use horae_core::types::RoundDir;
@@ -430,6 +435,7 @@ async fn rounding_applied_on_submit(pool: PgPool) {
 // ---------------------------------------------------------------------------
 
 #[sqlx::test(migrations = "./migrations")]
+#[serial]
 async fn unassigned_user_cannot_create_entry(pool: PgPool) {
     let org_id = seed_org(&pool).await;
     let user_id = seed_user(&pool, org_id, "member").await;
@@ -452,6 +458,7 @@ async fn unassigned_user_cannot_create_entry(pool: PgPool) {
 // ---------------------------------------------------------------------------
 
 #[sqlx::test(migrations = "./migrations")]
+#[serial]
 async fn approval_workflow_approve_and_reject(pool: PgPool) {
     let org_id = seed_org(&pool).await;
     let user_id = seed_user(&pool, org_id, "member").await;
