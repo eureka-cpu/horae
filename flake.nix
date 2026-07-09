@@ -45,6 +45,7 @@
           # to aarch64-unknown-linux-gnu using the Darwin toolchain + Linux sysroot.
           # On a native Linux host (or via a Linux builder), this is a no-op.
           buildPkgs =
+            # TODO: This should be an evaluation time decision, not hardcoded.
             if system == "aarch64-linux" && pkgs.stdenv.hostPlatform.isDarwin
             then pkgs.pkgsCross.aarch64-multiplatform
             else pkgs;
@@ -62,13 +63,13 @@
           default = rustPlatform.buildRustPackage {
             pname = "horae";
             version = "0.1.0";
+            # TODO: Exclude extraneous files from source
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
+            # TODO: Build the all programs
             buildFeatures = [ "server" ];
-            # Integration tests (tests/integration.rs) require a live Postgres
-            # — sqlx::test creates temp DBs. Skip that test binary in the Nix
-            # build; run it locally with DATABASE_URL or via the nixosTest e2e.
-            cargoTestFlags = [ "--lib" "--bin" "horae" ];
+            # TODO: Add check derivations instead
+            doCheck = false;
             meta = {
               description = "A self-hostable time tracking server";
               mainProgram = "horae";
@@ -110,7 +111,6 @@
 
       checks = forAllSystems (system:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
           # nixosTest builds a Linux VM — on Darwin this is handled by the
           # nix-darwin Linux builder, so the test is available on all systems.
           guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] system;
@@ -200,6 +200,10 @@
                     host    all       all     127.0.0.1/32    trust
                     host    all       all     ::1/128         trust
                     host    all       all     10.0.2.0/24     trust
+                  '';
+                  # Grant CREATEDB so sqlx::test can create temp databases from the host.
+                  services.postgresql.initialScript = pkgs.writeText "grant-createdb.sql" ''
+                    ALTER USER horae CREATEDB;
                   '';
 
                   # Dev login: skip OIDC, auto-login as admin.
