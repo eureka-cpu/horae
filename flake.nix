@@ -40,6 +40,21 @@
     in
     blueprint
     // {
+      # Expose horae as a nixpkgs overlay for downstream flakes:
+      #   default        — reuse blueprint's prebuilt packages (cache-friendly)
+      #   shared-nixpkgs — rebuild against the consumer's nixpkgs, so cross
+      #                    compilation works (e.g. pkgsCross.<target>.horae)
+      overlays = {
+        default = import ./nix/overlays/default.nix {
+          inherit (blueprint) packages;
+        };
+        shared-nixpkgs = import ./nix/overlays/shared-nixpkgs.nix {
+          inherit lib;
+          inherit (blueprint) mkPackagesFor;
+          fenix = inputs.fenix.overlays.default;
+        };
+      };
+
       # Developer convenience: `nix run .#qemu-vm` boots a NixOS VM running
       # Horae against a local PostgreSQL, with dev login enabled. Blueprint has
       # no `apps/` convention, so this is wired up here per system.
