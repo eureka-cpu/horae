@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32">
+  <defs>
+    <clipPath id="fav-clip">
+      <rect width="128" height="128" rx="22"/>
+    </clipPath>
+  </defs>
+  <!-- Pine green background -->
+  <rect width="128" height="128" rx="22" fill="#285248"/>
+  <!-- Horizon shadow band -->
+  <rect y="78" width="128" height="50" fill="#1C3E34" clip-path="url(#fav-clip)"/>
+  <!-- Rising sun — rays omitted, they drop away at small sizes -->
+  <circle cx="64" cy="78" r="27" fill="#D99A3C"/>
+</svg>
