@@ -20,24 +20,17 @@ nix develop                    # enter the dev shell
 nix run .#dev-vm               # boots a NixOS VM with Postgres (QEMU + HVF on Apple Silicon)
 ```
 
-The VM forwards ports 2222 (SSH), 3000, and 5432 to localhost. Log in via:
+The VM forwards ports 2222 (SSH), 3000, and 5432 to localhost. SSH in with:
 
 ```sh
 ssh -o StrictHostKeyChecking=no -p 2222 root@127.0.0.1
 ```
 
-> **Note:** QEMU's port 5432 forwarding can be unreliable. Use an SSH tunnel instead:
-> ```sh
-> ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
->     -N -L 15432:/run/postgresql/.s.PGSQL.5432 -p 2222 root@127.0.0.1
-> ```
-> Then use `DATABASE_URL=postgres://horae@127.0.0.1:15432/horae` for all commands below.
-
 ### 2. Run migrations and seed
 
 ```sh
-DATABASE_URL=postgres://horae@127.0.0.1:15432/horae cargo run --features server -- migrate run
-DATABASE_URL=postgres://horae@127.0.0.1:15432/horae cargo run --features server -- seed
+DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- migrate run
+DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- seed
 ```
 
 The seed creates: 1 org, 1 admin user, 2 clients, 2 projects, 4 tasks, 10 time entries.
@@ -45,7 +38,7 @@ The seed creates: 1 org, 1 admin user, 2 clients, 2 projects, 4 tasks, 10 time e
 ### 3. Start the dev server
 
 ```sh
-DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:15432/horae dx serve
+DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:5432/horae dx serve
 ```
 
 Open **http://localhost:8080/auth/login** and click **"Sign in as Admin"**.

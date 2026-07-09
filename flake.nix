@@ -168,6 +168,9 @@
                   ];
                   virtualisation.memorySize = 1024;
 
+                  # Open forwarded ports in the guest firewall
+                  networking.firewall.allowedTCPPorts = [ 3000 5432 ];
+
                   # Minimal bootable VM config
                   boot.loader.grub.device = "nodev";
                   fileSystems."/" = {
