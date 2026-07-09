@@ -7,8 +7,21 @@ this guide to set up your environment and understand the project conventions.
 
 ## Getting started
 
-See the [README](README.md) for a full quick-start walkthrough: starting the
-dev VM, running migrations, and launching the dev server.
+**Requirements:** Nix with flakes enabled, and a running PostgreSQL instance
+(the dev VM provides one).
+
+```sh
+nix develop                                      # enter the dev shell
+nix run .#qemu-vm                                # boot the dev VM (PostgreSQL on :5432)
+cargo run --features server -- migrate run       # apply DB migrations
+cargo run --features server -- seed              # load seed data
+DEV_LOGIN=1 dx serve                             # start the dev server on :8080
+```
+
+Open <http://localhost:8080/auth/login> and click **Sign in as Admin**.
+
+> `DATABASE_URL` defaults to `postgres://localhost/horae` and is exported
+> automatically by the dev shell.
 
 ---
 
@@ -17,24 +30,22 @@ dev VM, running migrations, and launching the dev server.
 <details>
 <summary>macOS</summary>
 
-macOS requires [nix-darwin](https://github.com/LnL7/nix-darwin) to get the
-most out of the development environment. Specifically:
+macOS requires [nix-darwin](https://github.com/nix-darwin/nix-darwin) for the
+Linux builder, which is needed to run the e2e nixosTest (`nix flake check`)
+and to cross-compile the server binary for Linux targets locally.
 
-- The **Linux builder** (provided by nix-darwin) is required to run the e2e
-  nixosTest (`nix flake check`) and to cross-compile the server binary for
-  Linux targets locally.
-- Without it, `nix flake check` will fail when it tries to build or run the
-  NixOS VM test.
-
-**Install nix-darwin:**
-Follow the [nix-darwin installation guide](https://github.com/LnL7/nix-darwin?tab=readme-ov-file#installation).
-Once installed, enable the Linux builder in your nix-darwin configuration:
+Enable the Linux builder in your nix-darwin configuration:
 
 ```nix
-nix.linux-builder.enable = true;
+nix.linux-builder = {
+  enable = true;
+  ephemeral = true;
+  maxJobs = 4;
+};
 ```
 
-Then rebuild: `darwin-rebuild switch`.
+See the [nix-darwin Linux builder docs](https://github.com/nix-darwin/nix-darwin/blob/master/modules/nix/linux-builder.nix)
+for full configuration options and activation instructions.
 
 </details>
 
@@ -55,20 +66,18 @@ nix.settings.experimental-features = [ "nix-command" "flakes" ];
 ## Development workflow
 
 ```sh
-nix develop                                          # enter the dev shell
-nix run .#qemu-vm                                    # start the dev VM (PostgreSQL)
-DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- migrate run
-DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- seed
-DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:5432/horae dx serve
+nix develop                                  # enter the dev shell
+nix run .#qemu-vm                            # start the dev VM (PostgreSQL)
+cargo run --features server -- migrate run   # apply DB migrations
+cargo run --features server -- seed          # load seed data
+DEV_LOGIN=1 dx serve                         # dev server with hot reload on :8080
 ```
-
-Open <http://localhost:8080/auth/login> and click **Sign in as Admin**.
 
 **Tests:**
 
 ```sh
 cargo test -p horae-core                        # pure domain tests (no DB needed)
-DATABASE_URL=… cargo test --features server     # integration tests (needs Postgres with CREATEDB)
+cargo test --features server                    # integration tests (needs Postgres with CREATEDB)
 nix flake check                                 # full suite: fmt + e2e nixosTest
 ```
 
@@ -122,20 +131,12 @@ pub enum AppError {
 }
 ```
 
-> The existing `AppError` enum in `src/error.rs` predates this guideline
-> and will be migrated in a follow-up.
-
 ---
 
 ## Submitting changes
 
-**Branch naming:** `feat/<topic>`, `fix/<topic>`, `chore/<topic>`
+**Branch naming:** `<username>/<issue>` (e.g. `alice/42`)
 
-**PR checklist:**
-
-- [ ] `cargo clippy --features server` — no warnings
-- [ ] `nix fmt` — formatter passes (`treefmt`: rustfmt, taplo, nixpkgs-fmt,
-      mdformat)
-- [ ] Tests pass: `cargo test -p horae-core` and
-      `DATABASE_URL=… cargo test --features server`
-- [ ] `nix flake check` passes (requires Linux builder on macOS)
+If a PR is intended to close an issue, include a
+[closing keyword](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword)
+in the PR description (e.g. `Closes #42`).

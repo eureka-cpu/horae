@@ -67,6 +67,9 @@
               wasm-pack # NOTE: wasm-bindgen version must match exactly
               nil
             ]);
+            shellHook = ''
+              export DATABASE_URL="postgres://localhost/horae"
+            '';
           };
         }
       );
