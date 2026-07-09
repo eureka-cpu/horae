@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "rust-async-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/systems-programming/skills/rust-async-patterns/SKILL.md",
+      "computedHash": "20d32ef58158c94eb4dfc4aaf19bec7ae2a025ae5d42da7b49ccfbaeda389273"
+    },
+    "rust-best-practices": {
+      "source": "apollographql/skills",
+      "sourceType": "github",
+      "skillPath": "skills/rust-best-practices/SKILL.md",
+      "computedHash": "fd336f2f772eb46ddf8658de5f9dd8faa1f35615b316665307fc82eeb4b2e658"
+    },
+    "rust-testing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/rust-testing/SKILL.md",
+      "computedHash": "9a8f2bb0e7aa498b56af699e4673fd3ec1f50c5cfe9019c86dc80a93ccd08e66"
+    }
+  }
+}
