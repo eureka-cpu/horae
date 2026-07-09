@@ -124,7 +124,7 @@
               services.horae.database.createLocally = true;
               systemd.services.horae.environment.DEV_LOGIN = "1";
               # Put horae on PATH so the test script can call `horae seed`
-              environment.systemPackages = [ self.packages.${pkgs.system}.default ];
+              environment.systemPackages = [ self.packages.${pkgs.stdenv.hostPlatform.system}.default ];
             };
             testScript = ''
               server.start()
@@ -169,10 +169,10 @@
       # Production NixOS configuration (no QEMU, no port forwards).
       nixosConfigurations = {
         default = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
           specialArgs = { inherit self; };
           modules = [
             self.nixosModules.default
+            ({ nixpkgs.hostPlatform = "x86_64-linux"; })
             (
               { ... }:
               {
@@ -267,6 +267,7 @@
             {
               type = "app";
               program = "${debugConfig.config.system.build.vm}/bin/run-nixos-vm";
+              meta.description = "Start the Horae dev VM (NixOS + Postgres via QEMU)";
             };
         });
     };

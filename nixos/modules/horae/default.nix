@@ -14,8 +14,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = self.packages.${pkgs.system}.default;
-      defaultText = lib.literalExpression "horae.packages.\${pkgs.system}.default";
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      defaultText = lib.literalExpression "horae.packages.\${pkgs.stdenv.hostPlatform.system}.default";
       description = "The horae package to use.";
     };
 
