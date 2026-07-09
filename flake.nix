@@ -1,10 +1,17 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    treefmt-nix = {
+
+    blueprint = {
+      url = "github:numtide/blueprint";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    treefmt = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,12 +20,10 @@
   };
 
   outputs =
-    { self
-    , nixpkgs
-    , treefmt-nix
-    , fenix
-    }:
+    inputs:
     let
+      inherit (inputs.nixpkgs) lib;
+
       systems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -26,125 +31,33 @@
         "aarch64-darwin"
       ];
 
-      eachSystem = f: nixpkgs.lib.genAttrs systems (system:
-        let
-          pkgs = import nixpkgs {
-            inherit system;
-            overlays = [ overlays.default ];
-          };
-        in
-        f pkgs);
-
-      overlays.default = nixpkgs.lib.composeExtensions fenix.overlays.default (import ./nixos/overlays/horae);
-
-      treefmtEval = eachSystem (pkgs:
-        treefmt-nix.lib.evalModule pkgs {
-          projectRootFile = "flake.lock";
-          programs = {
-            nixpkgs-fmt.enable = true;
-            rustfmt.enable = true;
-            taplo.enable = true;
-            mdformat.enable = true;
-          };
-        });
-    in
-    {
-      legacyPackages = eachSystem (pkgs: pkgs);
-
-      packages = eachSystem (pkgs: {
-        inherit (pkgs) horae;
-        default = pkgs.horae;
-      });
-
-      devShells = eachSystem (pkgs:
-        {
-          default = pkgs.mkShell {
-            inputsFrom = builtins.attrValues self.checks.${pkgs.stdenv.buildPlatform.system};
-            packages = (with pkgs; [
-              dioxus-cli
-              sqlx-cli
-              postgresql
-              wasm-pack # NOTE: wasm-bindgen version must match exactly
-              nil
-            ]);
-          };
-        }
-      );
-
-      formatter = eachSystem (pkgs: treefmtEval.${pkgs.stdenv.buildPlatform.system}.config.build.wrapper);
-
-      checks = eachSystem (pkgs:
-        {
-          inherit (pkgs) horae;
-
-          fmt = treefmtEval.${pkgs.stdenv.buildPlatform.system}.config.build.check self;
-
-          e2e = pkgs.testers.nixosTest {
-            name = "horae-e2e";
-            nodes.server = { pkgs, ... }: {
-              imports = [ self.nixosModules.default ];
-              services.horae.enable = true;
-              services.horae.database.createLocally = true;
-              systemd.services.horae.environment.DEV_LOGIN = "1";
-              # Put horae on PATH so the test script can call `horae seed`
-              environment.systemPackages = [ self.packages.${pkgs.stdenv.hostPlatform.system}.default ];
-            };
-            testScript = ''
-              server.start()
-              server.wait_for_unit("postgresql.service")
-              server.wait_for_unit("horae.service")
-              server.wait_for_open_port(3000)
-
-              # Health check
-              server.succeed("curl -s http://localhost:3000/health | grep -q ok")
-
-              # Seed data — run as the horae user (DynamicUser in systemd creates it)
-              # so the unix socket auth matches the DB owner.
-              server.succeed("sudo -u horae DATABASE_URL=postgres:///horae horae seed")
-
-              # Dev login: POST returns 303 redirect — don't use -f (fails on non-2xx)
-              status = server.succeed(
-                "curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/auth/dev-login"
-              ).strip()
-              assert status == "303", f"Expected 303 redirect, got: {status}"
-
-              # Full login flow with cookie jar (follow redirect)
-              server.succeed(
-                "curl -s -c /tmp/cookies.txt -L -X POST http://localhost:3000/auth/dev-login -o /dev/null"
-              )
-
-              # Harvest API: list time entries (session-authenticated)
-              result = server.succeed(
-                "curl -s -b /tmp/cookies.txt http://localhost:3000/harvest/v2/time_entries"
-              )
-              assert '"time_entries"' in result, f"Expected Harvest envelope, got: {result[:200]}"
-              assert '"per_page"' in result, f"Missing pagination field in: {result[:200]}"
-            '';
-          };
-        }
-      );
-
-      nixosModules.default = {
-        imports = [ ./nixos/modules/horae ];
-        # TODO: Probably this isn't necessary
-        _module.args.self = self;
+      blueprint = inputs.blueprint {
+        inherit inputs systems;
+        prefix = "nix";
+        # fenix provides the Rust toolchain used by nix/package.nix.
+        nixpkgs.overlays = [ inputs.fenix.overlays.default ];
       };
-
-      apps = eachSystem (pkgs:
-        {
+    in
+    blueprint
+    // {
+      # Developer convenience: `nix run .#qemu-vm` boots a NixOS VM running
+      # Horae against a local PostgreSQL, with dev login enabled. Blueprint has
+      # no `apps/` convention, so this is wired up here per system.
+      apps = lib.genAttrs systems (system:
+        (blueprint.apps.${system} or { }) // {
           qemu-vm =
             let
-              guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] pkgs.stdenv.hostPlatform.system;
-              debugConfig = nixpkgs.lib.nixosSystem {
+              pkgs = inputs.nixpkgs.legacyPackages.${system};
+              guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] system;
+              debugConfig = lib.nixosSystem {
                 system = null;
-                specialArgs = { inherit self; };
                 modules = [
-                  "${nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
-                  self.nixosModules.default
-                  ({
+                  "${inputs.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
+                  inputs.self.nixosModules.horae
+                  {
                     virtualisation.host.pkgs = pkgs;
                     nixpkgs.hostPlatform = guestSystem;
-                  })
+                  }
                   (
                     { pkgs, ... }:
                     {
@@ -164,7 +77,7 @@
                         initialScript = pkgs.writeText "grant-createdb.sql" ''
                           ALTER USER horae CREATEDB;
                         '';
-                        authentication = nixpkgs.lib.mkOverride 10 ''
+                        authentication = lib.mkOverride 10 ''
                           # TYPE  DATABASE  USER    ADDRESS         METHOD
                           local   all       all                     trust
                           host    all       all     127.0.0.1/32    trust
