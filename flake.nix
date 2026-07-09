@@ -22,101 +22,60 @@
         "aarch64-darwin"
       ];
 
-      forAllSystems = nixpkgs.lib.genAttrs systems;
+      eachSystem = f: nixpkgs.lib.genAttrs systems (system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ overlays.default ];
+          };
+        in
+        f pkgs);
 
-      treefmtEval = forAllSystems (
-        system:
-        treefmt-nix.lib.evalModule nixpkgs.legacyPackages.${system} {
-          projectRootFile = "flake.nix";
-          programs.nixpkgs-fmt.enable = true;
-          programs.rustfmt.enable = true;
-          programs.taplo.enable = true;
-          programs.mdformat.enable = true;
-        }
-      );
+      overlays.default = nixpkgs.lib.composeExtensions fenix.overlays.default (import ./nixos/overlays/horae);
+
+      treefmtEval = eachSystem (pkgs:
+        treefmt-nix.lib.evalModule pkgs {
+          projectRootFile = "flake.lock";
+          programs = {
+            nixpkgs-fmt.enable = true;
+            rustfmt.enable = true;
+            taplo.enable = true;
+            mdformat.enable = true;
+          };
+        });
     in
     {
-      packages = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          toolchain = fenix.packages.${system}.stable.withComponents [
-            "rustc"
-            "cargo"
-            "rust-std"
-          ];
-          rustPlatform = pkgs.makeRustPlatform {
-            cargo = toolchain;
-            rustc = toolchain;
-          };
-        in
-        {
-          default = rustPlatform.buildRustPackage {
-            pname = "horae";
-            version = "0.1.0";
-            # TODO: Exclude extraneous files from source
-            src = ./.;
-            cargoLock.lockFile = ./Cargo.lock;
-            # TODO: Build the all programs
-            buildFeatures = [ "server" ];
-            # TODO: Add check derivations instead
-            doCheck = false;
-            # dioxus-server expects a public/ dir next to the binary for static
-            # assets. Until we integrate `dx build` into the Nix build, create
-            # an empty one so the server starts without panicking.
-            postInstall = ''
-              mkdir -p $out/bin/public
-            '';
-            meta = {
-              description = "A self-hostable time tracking server";
-              mainProgram = "horae";
-            };
-          };
-        }
-      );
+      packages = eachSystem (pkgs: {
+        inherit (pkgs) horae;
+        default = pkgs.horae;
+      });
 
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          fenixPkgs = fenix.packages.${system};
-          # TODO: Fix this combine so that we don't need to specify RUST_SRC_PATH
-          stableToolchain = fenix.packages.${system}.combine [
-            fenixPkgs.stable.rustc
-            fenixPkgs.stable.cargo
-            fenixPkgs.stable.clippy
-            fenixPkgs.stable.rust-src
-            fenixPkgs.stable.rust-analyzer
-            fenixPkgs.targets.wasm32-unknown-unknown.stable.rust-std
-          ];
-        in
+      devShells = eachSystem (pkgs:
         {
           default = pkgs.mkShell {
-            packages = [
-              stableToolchain
-              pkgs.dioxus-cli
-              pkgs.sqlx-cli
-              pkgs.postgresql
-              pkgs.wasm-pack
-              pkgs.nil
-            ];
-            RUST_SRC_PATH = "${fenixPkgs.stable.rust-src}/lib/rustlib/src/rust/library";
+            inputsFrom = builtins.attrValues self.checks.${pkgs.stdenv.buildPlatform};
+            packages = (with pkgs; [
+              dioxus-cli
+              sqlx-cli
+              postgresql
+              wasm-pack # NOTE: wasm-bindgen version must match exactly
+              nil
+            ]);
           };
         }
       );
 
-      formatter = forAllSystems (system: treefmtEval.${system}.config.build.wrapper);
+      formatter = eachSystem (pkgs: treefmtEval.${pkgs.stdenv.buildPlatform}.config.build.wrapper);
 
-      checks = forAllSystems (system:
-        let
-          testPkgs = nixpkgs.legacyPackages.${system};
-        in
+      checks = eachSystem (pkgs:
         {
-          fmt = treefmtEval.${system}.config.build.check self;
+          inherit (pkgs) hoare;
+
+          fmt = treefmtEval.${pkgs.stdenv.buildPlatform}.config.build.check self;
 
           # NixOS e2e test: golden path from boot to Harvest API query.
           # Run with: nix build .#checks.<system>.e2e
-          e2e = testPkgs.testers.nixosTest {
+          e2e = pkgs.testers.nixosTest {
             name = "horae-e2e";
             nodes.server = { pkgs, ... }: {
               imports = [ self.nixosModules.default ];
@@ -179,13 +138,6 @@
                 services.horae.enable = true;
                 services.horae.database.createLocally = true;
 
-                # Minimal bootable config
-                boot.loader.grub.device = "nodev";
-                fileSystems."/" = {
-                  device = "none";
-                  fsType = "tmpfs";
-                  options = [ "mode=0755" ];
-                };
                 system.stateVersion = "25.05";
               }
             )
@@ -194,15 +146,14 @@
       };
 
       # `nix run .#dev-vm` starts the dev NixOS VM.
-      apps = forAllSystems (system:
+      apps = eachSystem (pkgs:
         {
           dev-vm =
             let
               # Dev VM: NixOS with Postgres, port-forwarded to localhost.
               # `virtualisation.host.pkgs` makes the run script and QEMU come from
               # the host (e.g. aarch64-darwin) while the guest boots aarch64-linux.
-              hostPkgs = nixpkgs.legacyPackages.${system};
-              guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] system;
+              guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] pkgs.stdenv.hostPlatform.system;
               debugConfig = nixpkgs.lib.nixosSystem {
                 system = null;
                 specialArgs = { inherit self; };
@@ -210,7 +161,7 @@
                   "${nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
                   self.nixosModules.default
                   ({
-                    virtualisation.host.pkgs = hostPkgs;
+                    virtualisation.host.pkgs = pkgs;
                     nixpkgs.hostPlatform = guestSystem;
                   })
                   (
@@ -267,7 +218,7 @@
             {
               type = "app";
               program = "${debugConfig.config.system.build.vm}/bin/run-nixos-vm";
-              meta.description = "Start the Horae dev VM (NixOS + Postgres via QEMU)";
+              meta.description = "Starts a NixOS VM with PostgreSQL and Horae.";
             };
         });
     };
