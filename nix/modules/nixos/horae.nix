@@ -14,8 +14,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = flake.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      defaultText = lib.literalExpression "horae.packages.\${pkgs.stdenv.hostPlatform.system}.default";
+      default = (pkgs.extend flake.overlays.shared-nixpkgs).horae;
+      defaultText = lib.literalExpression "(pkgs.extend horae.overlays.shared-nixpkgs).horae";
       description = "The horae package to use.";
     };
 
