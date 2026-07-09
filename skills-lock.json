@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "ponytail": {
+      "source": "dietrichgebert/ponytail",
+      "sourceType": "github",
+      "skillPath": "skills/ponytail/SKILL.md",
+      "computedHash": "4503a9dba2dca5836469a104c90e0c32ae9cb8bb97d02806e6fa06d15ceed56a"
+    },
     "rust-async-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",
