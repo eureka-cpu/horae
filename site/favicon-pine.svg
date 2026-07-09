@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32">
+  <defs>
+    <clipPath id="fav-pine-clip">
+      <rect width="128" height="128" rx="26"/>
+    </clipPath>
+  </defs>
+  <rect width="128" height="128" rx="26" fill="#153A31"/>
+  <rect y="88" width="128" height="40" fill="#0F2920" clip-path="url(#fav-pine-clip)"/>
+  <circle cx="64" cy="65" r="30" fill="#FFFFFF"/>
+</svg>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="icon-pine-clip">
+      <rect width="128" height="128" rx="26"/>
+    </clipPath>
+  </defs>
+  <!-- Darker pine background — reads against the pine page -->
+  <rect width="128" height="128" rx="26" fill="#153A31"/>
+  <!-- Deep shadow horizon -->
+  <rect y="88" width="128" height="40" fill="#0F2920" clip-path="url(#icon-pine-clip)"/>
+  <!-- White sun — reversed variant -->
+  <circle cx="64" cy="65" r="30" fill="#FFFFFF"/>
+  <!-- White rays -->
+  <g stroke="#FFFFFF" stroke-width="3" stroke-linecap="round">
+    <line x1="64" y1="35" x2="64" y2="20"/>
+    <line x1="64" y1="35" x2="57" y2="26"/>
+    <line x1="64" y1="35" x2="71" y2="26"/>
+  </g>
+</svg>

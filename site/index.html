@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Horae — Self-hostable time tracking</title>
   <meta name="description" content="A Harvest-compatible time tracker you run on your own server. Open source, NixOS-native, no subscriptions.">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="icon" type="image/svg+xml" href="favicon-light.svg" media="(prefers-color-scheme: light)">
+  <link id="fav" rel="icon" type="image/svg+xml" href="favicon.svg">
   <link id="hljs-theme-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
   <link id="hljs-theme-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-light.min.css" disabled>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
@@ -32,6 +31,10 @@
       --radius:             11px;
       --radius-btn:         8px;
       --nav-height:         56px;
+      /* Icon variants — inline SVGs reference these */
+      --icon-bg-fill:      #1F5C4D;
+      --icon-horizon-fill: #153A31;
+      --icon-sun-fill:     #D99A3C;
     }
 
     [data-theme="light"] {
@@ -45,9 +48,26 @@
       --color-primary:        #1F5C4D;
       --color-primary-dark:   #174a3c;
       --color-accent:         #C6802A;
+      --icon-sun-fill:        #C6802A;
     }
 
     [data-theme="light"] .btn-primary { color: #FFFFFF; }
+
+    [data-theme="pine"] {
+      --color-bg:             #112b22;
+      --color-bg-secondary:   #1a3d2f;
+      --color-bg-tertiary:    #1F5C4D;
+      --color-text:           #F0EDE5;
+      --color-text-secondary: #9BBFB8;
+      --color-text-muted:     #5E9B8F;
+      --color-border:         #265544;
+      --color-primary:        #6EC8B5;
+      --color-primary-dark:   #58B49F;
+      --color-accent:         #E8B84B;
+      --icon-bg-fill:         #153A31;
+      --icon-horizon-fill:    #0F2920;
+      --icon-sun-fill:        #FFFFFF;
+    }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -351,10 +371,18 @@
     }
 
     .theme-toggle:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+    /* dark: show sun → next = light */
     .theme-toggle .icon-sun  { display: block; }
+    .theme-toggle .icon-leaf { display: none; }
     .theme-toggle .icon-moon { display: none; }
+    /* light: show leaf → next = pine */
     [data-theme="light"] .theme-toggle .icon-sun  { display: none; }
-    [data-theme="light"] .theme-toggle .icon-moon { display: block; }
+    [data-theme="light"] .theme-toggle .icon-leaf { display: block; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+    /* pine: show moon → next = dark */
+    [data-theme="pine"]  .theme-toggle .icon-sun  { display: none; }
+    [data-theme="pine"]  .theme-toggle .icon-leaf { display: none; }
+    [data-theme="pine"]  .theme-toggle .icon-moon { display: block; }
 
     /* ── Footer ───────────────────────────────────────────────── */
 
@@ -408,9 +436,9 @@
     <a href="/" class="nav-logo" aria-label="Horae home">
       <svg width="28" height="28" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs><clipPath id="nc"><rect width="128" height="128" rx="26"/></clipPath></defs>
-        <rect width="128" height="128" rx="26" fill="#1F5C4D"/>
-        <rect y="88" width="128" height="40" fill="#153A31" clip-path="url(#nc)"/>
-        <circle cx="64" cy="65" r="30" fill="#D99A3C"/>
+        <rect width="128" height="128" rx="26" style="fill: var(--icon-bg-fill)"/>
+        <rect y="88" width="128" height="40" style="fill: var(--icon-horizon-fill)" clip-path="url(#nc)"/>
+        <circle cx="64" cy="65" r="30" style="fill: var(--icon-sun-fill)"/>
       </svg>
     </a>
     <div class="nav-links">
@@ -427,13 +455,18 @@
         </svg>
         Wiki
       </a>
-      <button class="theme-toggle" aria-label="Toggle colour scheme" onclick="toggleTheme()">
-        <!-- Sun icon — shown in dark mode -->
+      <button class="theme-toggle" aria-label="Change colour theme" onclick="toggleTheme()">
+        <!-- Sun — shown in dark mode; click → light -->
         <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.3"/>
           <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M11.54 3.05l-1.41 1.41M4.46 11.54l-1.41 1.41" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
-        <!-- Moon icon — shown in light mode -->
+        <!-- Leaf — shown in light mode; click → pine -->
+        <svg class="icon-leaf" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 13c1-4 3-7 10-9C12 9 9 12 3 13z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          <path d="M3 13c2-2 4-3 6-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <!-- Moon — shown in pine mode; click → dark -->
         <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M13.5 10.5A6 6 0 0 1 5.5 2.5a6 6 0 1 0 8 8z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -446,10 +479,10 @@
     <div class="hero-wordmark">
       <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs><clipPath id="hc"><rect width="128" height="128" rx="26"/></clipPath></defs>
-        <rect width="128" height="128" rx="26" fill="#1F5C4D"/>
-        <rect y="88" width="128" height="40" fill="#153A31" clip-path="url(#hc)"/>
-        <circle cx="64" cy="65" r="30" fill="#D99A3C"/>
-        <g stroke="#D99A3C" stroke-width="3" stroke-linecap="round">
+        <rect width="128" height="128" rx="26" style="fill: var(--icon-bg-fill)"/>
+        <rect y="88" width="128" height="40" style="fill: var(--icon-horizon-fill)" clip-path="url(#hc)"/>
+        <circle cx="64" cy="65" r="30" style="fill: var(--icon-sun-fill)"/>
+        <g style="stroke: var(--icon-sun-fill)" stroke-width="3" stroke-linecap="round">
           <line x1="64" y1="35" x2="64" y2="20"/>
           <line x1="64" y1="35" x2="57" y2="26"/>
           <line x1="64" y1="35" x2="71" y2="26"/>
@@ -591,30 +624,40 @@
   </footer>
 
   <script>
-    // Theme toggle
-    function toggleTheme() {
-      const html = document.documentElement;
-      const next = html.dataset.theme === 'light' ? 'dark' : 'light';
-      html.dataset.theme = next;
-      localStorage.setItem('horae-theme', next);
-      document.getElementById('hljs-theme-dark').disabled  = (next === 'light');
-      document.getElementById('hljs-theme-light').disabled = (next === 'dark');
+    var THEMES = ['dark', 'light', 'pine'];
+
+    function applyTheme(t) {
+      document.documentElement.dataset.theme = t;
+      var isLight = t === 'light';
+      document.getElementById('hljs-theme-dark').disabled  = isLight;
+      document.getElementById('hljs-theme-light').disabled = !isLight;
+      document.getElementById('fav').href =
+        t === 'light' ? 'favicon-light.svg' :
+        t === 'pine'  ? 'favicon-pine.svg'  : 'favicon.svg';
     }
 
-    // Initial theme from localStorage or prefers-color-scheme
+    function toggleTheme() {
+      var cur = document.documentElement.dataset.theme || 'dark';
+      var next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+      applyTheme(next);
+      localStorage.setItem('horae-theme', next);
+    }
+
+    function getTimeTheme() {
+      var h = new Date().getHours();
+      if (h >= 6 && h < 18) return 'light';   // 6am–6pm: day
+      if (h >= 18 && h < 21) return 'pine';   // 6pm–9pm: dusk
+      return 'dark';                            // 9pm–6am: night
+    }
+
+    // Initialise: saved preference wins, otherwise time of day
     (function () {
-      const saved = localStorage.getItem('horae-theme');
-      const preferred = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      if (preferred === 'light') {
-        document.documentElement.dataset.theme = 'light';
-        document.getElementById('hljs-theme-dark').disabled  = true;
-        document.getElementById('hljs-theme-light').disabled = false;
-      }
+      applyTheme(localStorage.getItem('horae-theme') || getTimeTheme());
     })();
 
     // Copy-to-clipboard
     function copyCode(btn) {
-      const code = btn.closest('.code-block').querySelector('code');
+      var code = btn.closest('.code-block').querySelector('code');
       navigator.clipboard.writeText(code.innerText).then(function () {
         btn.textContent = 'Copied';
         setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
