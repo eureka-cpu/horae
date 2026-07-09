@@ -149,6 +149,7 @@ pub async fn list_time_entries(
     _user_id: Option<String>,
     project_id: Option<String>,
     date_from: Option<String>,
+    date_to: Option<String>,
     limit: Option<i64>,
 ) -> Result<Vec<TimeEntry>, ServerFnError> {
     let session_uid = session_user_id().await?;
@@ -163,6 +164,10 @@ pub async fn list_time_entries(
         Some(ref s) => Some(s.parse().map_err(|_| server_err("Invalid date_from (use YYYY-MM-DD)"))?),
         None => None,
     };
+    let date_to_filter: Option<chrono::NaiveDate> = match date_to {
+        Some(ref s) => Some(s.parse().map_err(|_| server_err("Invalid date_to (use YYYY-MM-DD)"))?),
+        None => None,
+    };
 
     let entries = sqlx::query_as::<_, TimeEntry>(
         "SELECT id, org_id, user_id, project_id, task_id, spent_date,
@@ -172,12 +177,14 @@ pub async fn list_time_entries(
          WHERE user_id = $1
            AND ($2::uuid IS NULL OR project_id = $2)
            AND ($3::date IS NULL OR spent_date >= $3)
+           AND ($4::date IS NULL OR spent_date <= $4)
          ORDER BY spent_date DESC, created_at DESC
-         LIMIT $4",
+         LIMIT $5",
     )
     .bind(session_uid)
     .bind(project_filter)
     .bind(date_filter)
+    .bind(date_to_filter)
     .bind(limit)
     .fetch_all(&state.db)
     .await
@@ -329,12 +336,28 @@ pub async fn create_time_entry(
         .parse()
         .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
 
-    let (org_id,): (uuid::Uuid,) =
-        sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
+    let (org_id, org_role): (uuid::Uuid, String) =
+        sqlx::query_as("SELECT org_id, org_role::text FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_one(&state.db)
             .await
             .map_err(server_err)?;
+
+    // Check assignment (skip for admins)
+    if org_role != "admin" {
+        let assigned: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM assignments WHERE project_id = $1 AND user_id = $2)"
+        ).bind(project_id).bind(user_id)
+        .fetch_one(&state.db).await.map_err(server_err)?;
+
+        if !assigned {
+            return Err(ServerFnError::ServerError {
+                message: "You are not assigned to this project".into(),
+                code: 403,
+                details: None,
+            });
+        }
+    }
 
     let id = uuid::Uuid::now_v7();
 
@@ -559,6 +582,26 @@ pub async fn list_tasks(project_id: Option<String>) -> Result<Vec<Task>, ServerF
     Ok(tasks)
 }
 
+/// Lists tasks linked to a specific project via the `project_tasks` join table.
+#[server]
+pub async fn list_project_tasks(project_id: String) -> Result<Vec<Task>, ServerFnError> {
+    let _user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id.parse().map_err(|_| server_err("Invalid project_id"))?;
+
+    sqlx::query_as::<_, Task>(
+        "SELECT t.id, t.org_id, t.name, t.billable_default, t.default_rate_cents, t.active
+         FROM tasks t
+         JOIN project_tasks pt ON t.id = pt.task_id
+         WHERE pt.project_id = $1 AND t.active = true
+         ORDER BY t.name"
+    )
+    .bind(project_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(server_err)
+}
+
 #[server]
 pub async fn create_task(
     name: String,
@@ -697,11 +740,39 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
             .await
             .map_err(server_err)?;
 
-    // Transition open entries to submitted, snapshotting rounded_minutes
+    // Fetch org rounding config
+    let (round_min, round_dir_str): (i16, String) = sqlx::query_as(
+        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1"
+    ).bind(org_id).fetch_one(&state.db).await.map_err(server_err)?;
+
+    let round_dir = match round_dir_str.as_str() {
+        "up" => horae_core::types::RoundDir::Up,
+        "down" => horae_core::types::RoundDir::Down,
+        _ => horae_core::types::RoundDir::Nearest,
+    };
+
+    // Apply rounding per entry if rounding is configured
+    if round_min > 0 {
+        let entries: Vec<(uuid::Uuid, i32)> = sqlx::query_as(
+            "SELECT id, minutes FROM time_entries
+             WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = 'open'"
+        ).bind(user_id).bind(ws).bind(we)
+        .fetch_all(&state.db).await.map_err(server_err)?;
+
+        for (eid, mins) in &entries {
+            let rounded = horae_core::rounding::round(*mins as u32, round_min as u32, round_dir) as i32;
+            sqlx::query("UPDATE time_entries SET rounded_minutes = $1 WHERE id = $2")
+                .bind(rounded).bind(eid)
+                .execute(&state.db).await.map_err(server_err)?;
+        }
+    }
+
+    // Transition open entries to submitted, using COALESCE so entries without
+    // explicit rounding (round_min=0) still get rounded_minutes set to minutes
     let result = sqlx::query(
         "UPDATE time_entries
          SET state = 'submitted'::entry_state,
-             rounded_minutes = minutes,
+             rounded_minutes = COALESCE(rounded_minutes, minutes),
              updated_at = now()
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3

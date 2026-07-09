@@ -2218,6 +2218,7 @@ dependencies = [
  "clap",
  "csv",
  "dioxus",
+ "gloo-timers",
  "horae-core",
  "openidconnect",
  "rust_xlsxwriter",

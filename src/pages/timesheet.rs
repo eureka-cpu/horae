@@ -41,7 +41,8 @@ pub fn Timesheet() -> Element {
     let entries = use_resource(move || {
         let ws = *week_start.read();
         async move {
-            server_fns::list_time_entries(None, None, Some(ws.to_string()), Some(200)).await
+            let we = ws + chrono::Duration::days(6);
+            server_fns::list_time_entries(None, None, Some(ws.to_string()), Some(we.to_string()), Some(200)).await
         }
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });

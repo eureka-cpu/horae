@@ -11,8 +11,9 @@ pub enum OrgRole {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectRole {
-    Manager,
-    Member,
+    Lead,
+    Freelancer,
+    Admin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -10,7 +10,7 @@ use crate::server_fns;
 #[component]
 pub fn TimeList() -> Element {
     let mut entries = use_resource(|| async move {
-        server_fns::list_time_entries(None, None, None, Some(50)).await
+        server_fns::list_time_entries(None, None, None, None, Some(50)).await
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
     let tasks = use_resource(|| async move { server_fns::list_tasks(None).await });

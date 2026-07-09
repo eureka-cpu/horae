@@ -8,22 +8,52 @@ use crate::server_fns;
 
 #[component]
 pub fn TimerWidget() -> Element {
+    // Tick signal forces periodic re-renders so the elapsed display updates
+    let mut tick = use_signal(|| 0u64);
+    let _tick_val = *tick.read(); // subscribe to tick changes
+
+    // Spawn a forever-ticking loop exactly once (use_hook runs on first render only).
+    // When no timer is running the tick still fires but the display shows 00:00:00,
+    // so the overhead is negligible.
+    use_hook(|| {
+        spawn(async move {
+            loop {
+                #[cfg(feature = "web")]
+                gloo_timers::future::TimeoutFuture::new(1_000).await;
+                #[cfg(not(feature = "web"))]
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+                tick += 1;
+            }
+        });
+    });
+
     // Fetch current running timer on mount
     let mut timer_resource = use_resource(|| async move {
         server_fns::get_current_timer().await
     });
 
-    // Fetch projects and tasks for the pickers
+    // Fetch projects for the picker
     let projects = use_resource(|| async move {
         server_fns::list_projects(None, Some(true)).await
-    });
-    let tasks = use_resource(|| async move {
-        server_fns::list_tasks(None).await
     });
 
     // Form state for project/task selection
     let mut selected_project = use_signal(String::new);
     let mut selected_task = use_signal(String::new);
+
+    // Fetch tasks filtered by selected project (via project_tasks join).
+    // Falls back to all org tasks when no project is selected.
+    let tasks = use_resource(move || {
+        let proj = selected_project.read().clone();
+        async move {
+            if proj.is_empty() {
+                server_fns::list_tasks(None).await
+            } else {
+                server_fns::list_project_tasks(proj).await
+            }
+        }
+    });
 
     // Build project name lookup
     let project_names: HashMap<Uuid, String> = projects
@@ -115,7 +145,10 @@ pub fn TimerWidget() -> Element {
                     select {
                         class: "form-input",
                         value: "{selected_project}",
-                        oninput: move |e| selected_project.set(e.value()),
+                        oninput: move |e| {
+                            selected_project.set(e.value());
+                            selected_task.set(String::new()); // reset task when project changes
+                        },
                         option { value: "", "Select project..." }
                         {projects.read().as_ref().and_then(|r| r.as_ref().ok()).map(|ps| {
                             rsx! {

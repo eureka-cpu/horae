@@ -131,9 +131,19 @@ const TIME_ENTRY_SELECT: &str = "\
     JOIN tasks t ON t.id = te.task_id \
     JOIN clients c ON c.id = p.client_id";
 
-fn time_entry_row_to_harvest(row: &TimeEntryRow) -> HarvestTimeEntry {
+fn time_entry_row_to_harvest(
+    row: &TimeEntryRow,
+    org_round_min: u32,
+    org_round_dir: horae_core::types::RoundDir,
+) -> HarvestTimeEntry {
     let hours = row.minutes as f64 / 60.0;
-    let rounded_hours = row.rounded_minutes.unwrap_or(row.minutes) as f64 / 60.0;
+    let rounded_hours = if let Some(rm) = row.rounded_minutes {
+        rm as f64 / 60.0
+    } else {
+        // Compute rounding for unlocked entries using org settings
+        let rounded = horae_core::rounding::round(row.minutes as u32, org_round_min, org_round_dir);
+        rounded as f64 / 60.0
+    };
     let is_locked = matches!(row.state.as_str(), "submitted" | "approved" | "invoiced");
     let locked_reason = match row.state.as_str() {
         "submitted" => Some("Pending Approval".to_string()),
@@ -194,6 +204,21 @@ async fn list_time_entries(
     Query(filters): Query<TimeEntryFilters>,
 ) -> ApiResult<HarvestPagination<HarvestTimeEntry>> {
     let state = crate::state::global_state().await;
+
+    // Fetch org rounding config
+    let (org_round_min, org_round_dir_str): (i16, String) = sqlx::query_as(
+        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1"
+    )
+    .bind(user.org_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?;
+    let org_round_dir = match org_round_dir_str.as_str() {
+        "up" => horae_core::types::RoundDir::Up,
+        "down" => horae_core::types::RoundDir::Down,
+        _ => horae_core::types::RoundDir::Nearest,
+    };
+
     let page = filters.page.unwrap_or(1).max(1);
     let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
@@ -298,7 +323,7 @@ async fn list_time_entries(
 
     let rows: Vec<TimeEntryRow> = data_query.fetch_all(&state.db).await.map_err(internal)?;
 
-    let entries: Vec<HarvestTimeEntry> = rows.iter().map(time_entry_row_to_harvest).collect();
+    let entries: Vec<HarvestTimeEntry> = rows.iter().map(|r| time_entry_row_to_harvest(r, org_round_min as u32, org_round_dir)).collect();
 
     Ok(Json(HarvestPagination::new(
         "time_entries",
@@ -313,6 +338,20 @@ async fn list_time_entries(
 async fn get_time_entry(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<HarvestTimeEntry> {
     let state = crate::state::global_state().await;
 
+    // Fetch org rounding config
+    let (org_round_min, org_round_dir_str): (i16, String) = sqlx::query_as(
+        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1"
+    )
+    .bind(user.org_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?;
+    let org_round_dir = match org_round_dir_str.as_str() {
+        "up" => horae_core::types::RoundDir::Up,
+        "down" => horae_core::types::RoundDir::Down,
+        _ => horae_core::types::RoundDir::Nearest,
+    };
+
     let sql = format!("{TIME_ENTRY_SELECT} WHERE te.id = $1 AND te.org_id = $2");
     let row: TimeEntryRow = sqlx::query_as(&sql)
         .bind(id)
@@ -322,7 +361,7 @@ async fn get_time_entry(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<Harve
         .map_err(internal)?
         .ok_or_else(not_found)?;
 
-    Ok(Json(time_entry_row_to_harvest(&row)))
+    Ok(Json(time_entry_row_to_harvest(&row, org_round_min as u32, org_round_dir)))
 }
 
 // ── Projects ────────────────────────────────────────────────────────────────
