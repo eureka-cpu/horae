@@ -75,12 +75,11 @@ pub async fn login_page() -> impl IntoResponse {
 pub async fn dev_login_post(session: Session) -> impl IntoResponse {
     let state = crate::state::global_state().await;
 
-    let user_id: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM users WHERE org_role = 'admin' AND active = true LIMIT 1",
-    )
-    .fetch_optional(&state.db)
-    .await
-    .expect("DB query failed in dev_login_post");
+    let user_id: Option<(Uuid,)> =
+        sqlx::query_as("SELECT id FROM users WHERE org_role = 'admin' AND active = true LIMIT 1")
+            .fetch_optional(&state.db)
+            .await
+            .expect("DB query failed in dev_login_post");
 
     match user_id {
         Some((id,)) => {

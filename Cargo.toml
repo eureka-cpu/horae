@@ -43,11 +43,25 @@ tracing = "0.1"
 # server-only
 tokio = { version = "1", features = ["full"], optional = true }
 axum = { version = "0.8", features = ["macros", "multipart"], optional = true }
-tower-http = { version = "0.6", features = ["fs", "compression-gzip", "trace"], optional = true }
-sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "migrate"], optional = true }
+tower-http = { version = "0.6", features = [
+  "fs",
+  "compression-gzip",
+  "trace",
+], optional = true }
+sqlx = { version = "0.8", features = [
+  "runtime-tokio",
+  "postgres",
+  "uuid",
+  "chrono",
+  "migrate",
+], optional = true }
 tower-sessions = { version = "0.14", optional = true }
-tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"], optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+tower-sessions-sqlx-store = { version = "0.15", features = [
+  "postgres",
+], optional = true }
+tracing-subscriber = { version = "0.3", features = [
+  "env-filter",
+], optional = true }
 openidconnect = { version = "3", optional = true }
 csv = { version = "1", optional = true }
 rust_xlsxwriter = { version = "0.80", optional = true }

@@ -1,5 +1,5 @@
 use axum::extract::FromRequestParts;
-use axum::http::{request::Parts, StatusCode};
+use axum::http::{StatusCode, request::Parts};
 use uuid::Uuid;
 
 /// Extractor that authenticates a Harvest API request.

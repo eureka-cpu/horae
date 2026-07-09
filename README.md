@@ -4,7 +4,7 @@ Self-hostable time tracking — like Harvest or Kimai, but fully yours.
 
 Built with Rust, [Dioxus](https://dioxuslabs.com/) (fullstack SSR + WASM), PostgreSQL, and Axum.
 
----
+______________________________________________________________________
 
 ## Quick start (dev)
 
@@ -45,7 +45,7 @@ Open **http://localhost:8080/auth/login** and click **"Sign in as Admin"**.
 
 The first build compiles both the server binary and WASM bundle (~30s). Subsequent hot-reloads are fast.
 
----
+______________________________________________________________________
 
 ## Using without the dev VM
 
@@ -58,7 +58,7 @@ DATABASE_URL=postgres://localhost/horae cargo run --features server -- seed
 DEV_LOGIN=1 DATABASE_URL=postgres://localhost/horae dx serve
 ```
 
----
+______________________________________________________________________
 
 ## Environment variables
 
@@ -74,7 +74,7 @@ DEV_LOGIN=1 DATABASE_URL=postgres://localhost/horae dx serve
 | `OIDC_CLIENT_ID` | _(unset)_ | OIDC client ID |
 | `OIDC_CLIENT_SECRET` | _(unset)_ | OIDC client secret |
 
----
+______________________________________________________________________
 
 ## CLI commands
 
@@ -87,7 +87,7 @@ horae user list
 horae user create --email admin@example.com --name "Admin" --role admin
 ```
 
----
+______________________________________________________________________
 
 ## Pages
 
@@ -134,7 +134,7 @@ GET /api/reports/export/csv?from=YYYY-MM-DD&to=YYYY-MM-DD
 GET /api/reports/export/xlsx?from=YYYY-MM-DD&to=YYYY-MM-DD
 ```
 
----
+______________________________________________________________________
 
 ## NixOS deployment
 
@@ -153,7 +153,7 @@ GET /api/reports/export/xlsx?from=YYYY-MM-DD&to=YYYY-MM-DD
 }
 ```
 
----
+______________________________________________________________________
 
 ## Project layout
 

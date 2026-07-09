@@ -4,13 +4,14 @@
 
 Horae is a new self-hostable time tracking web application (similar to Harvest, Kimai, Invoice Ninja) written entirely in Rust. The project is a blank slate — only a "Hello, world!" `main.rs` and a stub `flake.nix` exist. The frontend is Dioxus (Rust → WASM) with subsecond hot-patching via `dx serve --hotpatch` for fast UI iteration. Axum is the HTTP server (Dioxus fullstack uses it internally). Clap handles the CLI.
 
----
+______________________________________________________________________
 
 ## Phase 1: Nix Setup
 
 ### `flake.nix`
 
 Add inputs:
+
 ```
 treefmt-nix.url = "github:numtide/treefmt-nix"
   inputs.nixpkgs.follows = "nixpkgs"
@@ -20,6 +21,7 @@ fenix.url = "github:nix-community/fenix"
 ```
 
 Outputs to produce:
+
 - `packages.${system}.default` — Horae server binary via `rustPlatform.buildRustPackage` with `--features server` using fenix toolchain
 - `devShells.${system}.default` — fenix toolchain + dioxus-cli + sqlx-cli + wasm-pack + nil (Nix LSP)
 - `formatter.${system}` — treefmt with nixpkgs-fmt, rustfmt, taplo, mdformat
@@ -47,6 +49,7 @@ Options under `services.horae`:
 | `openFirewall` | bool | false |
 
 `systemd.services.horae` config:
+
 - `ExecStartPre = horae migrate`
 - `ExecStart = horae serve --host ... --port ...`
 - `DynamicUser = true`, `StateDirectory = "horae"`, standard hardening flags
@@ -55,7 +58,7 @@ Options under `services.horae`:
 
 Minimal x86_64-linux VM with `services.horae.enable = true` and `createLocally = true` for `nix run .#vm` dev use.
 
----
+______________________________________________________________________
 
 ## Phase 2: Rust Skeleton
 
@@ -144,7 +147,7 @@ fn main() {
 
 The `serve` subcommand calls `dioxus::launch` (or `dioxus::serve` for custom axum router extensions) with the root `App` component.
 
----
+______________________________________________________________________
 
 ## Phase 3: Data Model & API
 
@@ -202,7 +205,7 @@ All data fetching and mutations use `#[server]` macros — Dioxus automatically 
 
 No manual axum route wiring needed for data endpoints — server functions handle it.
 
----
+______________________________________________________________________
 
 ## Plugin System
 
@@ -222,6 +225,7 @@ src/plugin/
 ### Plugin interface
 
 Each plugin declares in a `plugin.toml` sidecar (or embedded section) which events it handles:
+
 ```toml
 [plugin]
 name = "slack-notifier"
@@ -234,6 +238,7 @@ Horae calls the plugin's exported function matching each hook name, passing a JS
 ### Host functions exposed to plugins
 
 Via extism's `host_fn!` macro:
+
 - `horae_log(level, message)` — structured logging
 - `horae_db_query(sql, params_json)` → JSON rows (read-only)
 - `horae_http_post(url, body_json)` → response (for webhooks, outbound integrations)
@@ -257,21 +262,22 @@ WASM plugins cannot render Dioxus components directly. Instead, plugins can retu
 
 Plugins are dropped into `{dataDir}/plugins/` alongside a `plugin.toml`. A future admin UI page will list loaded plugins and allow enable/disable without restart (hot-reload via `extism::Plugin` re-instantiation).
 
----
+______________________________________________________________________
 
 ## Design Language (`DESIGN.md` + `CLAUDE.md` symlink)
 
 `DESIGN.md` covers:
+
 1. Color palette via CSS custom properties (Gitea-inspired teal/green primary, neutral grays)
-2. Typography: system font stack only
-3. Component inventory: nav bar, sidebar, data tables, forms, status badges, timer widget
-4. Interaction principles: Dioxus reactivity for all UI updates, no JS frameworks
-5. Component conventions: one component per file, `snake_case` props
-6. Accessibility: keyboard nav, ARIA labels, WCAG AA contrast
+1. Typography: system font stack only
+1. Component inventory: nav bar, sidebar, data tables, forms, status badges, timer widget
+1. Interaction principles: Dioxus reactivity for all UI updates, no JS frameworks
+1. Component conventions: one component per file, `snake_case` props
+1. Accessibility: keyboard nav, ARIA labels, WCAG AA contrast
 
 `CLAUDE.md` is a symlink to `DESIGN.md` so it's picked up as project instructions.
 
----
+______________________________________________________________________
 
 ## Development Workflow
 
@@ -280,7 +286,7 @@ Plugins are dropped into `{dataDir}/plugins/` alongside a `plugin.toml`. A futur
 - **DB migrations**: `cargo run --features server -- migrate` (or `sqlx migrate run` directly)
 - **Production build**: `dx build --release` then `nix build`
 
----
+______________________________________________________________________
 
 ## Phased Delivery
 
@@ -293,7 +299,7 @@ Plugins are dropped into `{dataDir}/plugins/` alongside a `plugin.toml`. A futur
 | 3b | Clients, projects, invoices | Full CRUD, invoice detail |
 | 3c | Polish | Invoice PDF, pagination, CSV export, admin UI |
 
----
+______________________________________________________________________
 
 ## Files to Create / Modify
 
@@ -314,8 +320,8 @@ Plugins are dropped into `{dataDir}/plugins/` alongside a `plugin.toml`. A futur
 ## Verification
 
 1. `nix flake check` — formatter + build checks pass
-2. `dx serve` — browser shows placeholder app with hot reload working
-3. `dx serve --hotpatch` — UI changes reflect without restart
-4. `cargo test --features server` — unit tests on model/server functions pass
-5. Manual: register user, start timer, stop timer, create invoice
-6. `nix build` — Nix package builds cleanly with `--features server`
+1. `dx serve` — browser shows placeholder app with hot reload working
+1. `dx serve --hotpatch` — UI changes reflect without restart
+1. `cargo test --features server` — unit tests on model/server functions pass
+1. Manual: register user, start timer, stop timer, create invoice
+1. `nix build` — Nix package builds cleanly with `--features server`

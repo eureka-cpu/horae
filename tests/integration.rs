@@ -48,14 +48,12 @@ async fn seed_project_with_assignment(
     let task_id = Uuid::now_v7();
     let assignment_id = Uuid::now_v7();
 
-    sqlx::query(
-        "INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')",
-    )
-    .bind(client_id)
-    .bind(org_id)
-    .execute(pool)
-    .await
-    .unwrap();
+    sqlx::query("INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')")
+        .bind(client_id)
+        .bind(org_id)
+        .execute(pool)
+        .await
+        .unwrap();
 
     sqlx::query(
         "INSERT INTO projects (id, org_id, client_id, name, currency) \
@@ -102,22 +100,17 @@ async fn seed_project_with_assignment(
 }
 
 /// Same as `seed_project_with_assignment` but does NOT create an assignment.
-async fn seed_project_without_assignment(
-    pool: &PgPool,
-    org_id: Uuid,
-) -> (Uuid, Uuid, Uuid) {
+async fn seed_project_without_assignment(pool: &PgPool, org_id: Uuid) -> (Uuid, Uuid, Uuid) {
     let client_id = Uuid::now_v7();
     let project_id = Uuid::now_v7();
     let task_id = Uuid::now_v7();
 
-    sqlx::query(
-        "INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')",
-    )
-    .bind(client_id)
-    .bind(org_id)
-    .execute(pool)
-    .await
-    .unwrap();
+    sqlx::query("INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')")
+        .bind(client_id)
+        .bind(org_id)
+        .execute(pool)
+        .await
+        .unwrap();
 
     sqlx::query(
         "INSERT INTO projects (id, org_id, client_id, name, currency) \
@@ -207,13 +200,12 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
     .unwrap();
 
     // Verify minutes >= 5 and no longer running
-    let (minutes, stopped): (i32, bool) = sqlx::query_as(
-        "SELECT minutes, is_running FROM time_entries WHERE id = $1",
-    )
-    .bind(entry_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let (minutes, stopped): (i32, bool) =
+        sqlx::query_as("SELECT minutes, is_running FROM time_entries WHERE id = $1")
+            .bind(entry_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert!(!stopped);
     assert!(minutes >= 5, "Expected >= 5 minutes, got {minutes}");
 }
@@ -326,12 +318,11 @@ async fn submitted_entries_cannot_be_updated(pool: PgPool) {
     );
 
     // Confirm minutes unchanged
-    let (minutes,): (i32,) =
-        sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
-            .bind(entry_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let (minutes,): (i32,) = sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
+        .bind(entry_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(minutes, 30);
 }
 
@@ -379,13 +370,12 @@ async fn rounding_applied_on_submit(pool: PgPool) {
 
     // Simulate the submit path: read org rounding config, compute rounded value,
     // persist it together with the state transition.
-    let (round_minutes, round_dir_str): (i16, String) = sqlx::query_as(
-        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let (round_minutes, round_dir_str): (i16, String) =
+        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
+            .bind(org_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
 
     let dir = match round_dir_str.as_str() {
         "up" => RoundDir::Up,
@@ -393,12 +383,11 @@ async fn rounding_applied_on_submit(pool: PgPool) {
         _ => RoundDir::Nearest,
     };
 
-    let (raw_minutes,): (i32,) =
-        sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
-            .bind(entry_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let (raw_minutes,): (i32,) = sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
+        .bind(entry_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
     let rounded = round(raw_minutes as u32, round_minutes as u32, dir);
 
@@ -418,13 +407,12 @@ async fn rounding_applied_on_submit(pool: PgPool) {
     .unwrap();
 
     // Verify stored values
-    let (db_rounded, state): (Option<i32>, String) = sqlx::query_as(
-        "SELECT rounded_minutes, state::text FROM time_entries WHERE id = $1",
-    )
-    .bind(entry_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let (db_rounded, state): (Option<i32>, String) =
+        sqlx::query_as("SELECT rounded_minutes, state::text FROM time_entries WHERE id = $1")
+            .bind(entry_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
 
     assert_eq!(db_rounded, Some(15));
     assert_eq!(state, "submitted");
@@ -547,13 +535,12 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
             .unwrap();
     assert_eq!(entry_state, "approved");
 
-    let (approval_state, approver): (String, Option<Uuid>) = sqlx::query_as(
-        "SELECT state::text, approved_by FROM approvals WHERE id = $1",
-    )
-    .bind(approval_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let (approval_state, approver): (String, Option<Uuid>) =
+        sqlx::query_as("SELECT state::text, approved_by FROM approvals WHERE id = $1")
+            .bind(approval_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(approval_state, "approved");
     assert_eq!(approver, Some(manager_id));
 
@@ -634,12 +621,11 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
     assert_eq!(entry_b_state, "open");
 
     // Verify approval row deleted
-    let approval_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM approvals WHERE id = $1)",
-    )
-    .bind(approval2_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let approval_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM approvals WHERE id = $1)")
+            .bind(approval2_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert!(!approval_exists);
 }

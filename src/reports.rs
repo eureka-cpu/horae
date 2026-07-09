@@ -13,10 +13,7 @@ pub struct ExportParams {
     pub to: String,
 }
 
-async fn fetch_entries(
-    from: &str,
-    to: &str,
-) -> Vec<crate::models::DetailedReportRow> {
+async fn fetch_entries(from: &str, to: &str) -> Vec<crate::models::DetailedReportRow> {
     let state = crate::state::global_state().await;
     sqlx::query_as::<_, crate::models::DetailedReportRow>(
         "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
@@ -114,11 +111,7 @@ pub async fn export_xlsx(Query(params): Query<ExportParams>) -> impl IntoRespons
             .write_number(r, 4, e.minutes as f64 / 60.0)
             .unwrap();
         worksheet
-            .write_number(
-                r,
-                5,
-                e.rounded_minutes.unwrap_or(e.minutes) as f64 / 60.0,
-            )
+            .write_number(r, 5, e.rounded_minutes.unwrap_or(e.minutes) as f64 / 60.0)
             .unwrap();
         worksheet
             .write_string(r, 6, if e.billable { "Yes" } else { "No" })

@@ -15,7 +15,8 @@ pub fn Dashboard() -> Element {
         let today = chrono::Utc::now().date_naive();
         let weekday = today.weekday().num_days_from_monday();
         let week_start = today - chrono::Duration::days(weekday as i64);
-        server_fns::list_time_entries(None, None, Some(week_start.to_string()), None, Some(200)).await
+        server_fns::list_time_entries(None, None, Some(week_start.to_string()), None, Some(200))
+            .await
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
 

@@ -30,8 +30,7 @@ pub fn compute_totals(entries: &[EntryInput], rounding: &OrgRounding) -> Totals 
     let mut by_project: std::collections::HashMap<Uuid, u32> = std::collections::HashMap::new();
 
     for e in entries {
-        let rounded =
-            rounding::round(e.minutes, rounding.increment_minutes, rounding.dir);
+        let rounded = rounding::round(e.minutes, rounding.increment_minutes, rounding.dir);
         total += rounded;
         if e.billable {
             billable += rounded;

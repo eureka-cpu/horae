@@ -7,7 +7,7 @@
 mod auth;
 mod types;
 
-use axum::{extract::Path, extract::Query, routing::get, Json, Router};
+use axum::{Json, Router, extract::Path, extract::Query, routing::get};
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -45,10 +45,7 @@ fn internal(e: impl std::fmt::Display) -> (axum::http::StatusCode, String) {
 }
 
 fn not_found() -> (axum::http::StatusCode, String) {
-    (
-        axum::http::StatusCode::NOT_FOUND,
-        "Not found".to_string(),
-    )
+    (axum::http::StatusCode::NOT_FOUND, "Not found".to_string())
 }
 
 // ── /users/me ───────────────────────────────────────────────────────────────
@@ -172,9 +169,7 @@ fn time_entry_row_to_harvest(
         timer_started_at: row.started_at.map(|t| t.to_rfc3339()),
         billable: row.billable,
         budgeted: row.budget_kind != "none",
-        billable_rate: row
-            .user_billable_rate_cents
-            .map(|c| c as f64 / 100.0),
+        billable_rate: row.user_billable_rate_cents.map(|c| c as f64 / 100.0),
         cost_rate: row.user_cost_rate_cents.map(|c| c as f64 / 100.0),
         created_at: row.created_at.to_rfc3339(),
         updated_at: row.updated_at.to_rfc3339(),
@@ -206,13 +201,12 @@ async fn list_time_entries(
     let state = crate::state::global_state().await;
 
     // Fetch org rounding config
-    let (org_round_min, org_round_dir_str): (i16, String) = sqlx::query_as(
-        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1"
-    )
-    .bind(user.org_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(internal)?;
+    let (org_round_min, org_round_dir_str): (i16, String) =
+        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
+            .bind(user.org_id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(internal)?;
     let org_round_dir = match org_round_dir_str.as_str() {
         "up" => horae_core::types::RoundDir::Up,
         "down" => horae_core::types::RoundDir::Down,
@@ -323,7 +317,10 @@ async fn list_time_entries(
 
     let rows: Vec<TimeEntryRow> = data_query.fetch_all(&state.db).await.map_err(internal)?;
 
-    let entries: Vec<HarvestTimeEntry> = rows.iter().map(|r| time_entry_row_to_harvest(r, org_round_min as u32, org_round_dir)).collect();
+    let entries: Vec<HarvestTimeEntry> = rows
+        .iter()
+        .map(|r| time_entry_row_to_harvest(r, org_round_min as u32, org_round_dir))
+        .collect();
 
     Ok(Json(HarvestPagination::new(
         "time_entries",
@@ -339,13 +336,12 @@ async fn get_time_entry(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<Harve
     let state = crate::state::global_state().await;
 
     // Fetch org rounding config
-    let (org_round_min, org_round_dir_str): (i16, String) = sqlx::query_as(
-        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1"
-    )
-    .bind(user.org_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(internal)?;
+    let (org_round_min, org_round_dir_str): (i16, String) =
+        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
+            .bind(user.org_id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(internal)?;
     let org_round_dir = match org_round_dir_str.as_str() {
         "up" => horae_core::types::RoundDir::Up,
         "down" => horae_core::types::RoundDir::Down,
@@ -361,7 +357,11 @@ async fn get_time_entry(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<Harve
         .map_err(internal)?
         .ok_or_else(not_found)?;
 
-    Ok(Json(time_entry_row_to_harvest(&row, org_round_min as u32, org_round_dir)))
+    Ok(Json(time_entry_row_to_harvest(
+        &row,
+        org_round_min as u32,
+        org_round_dir,
+    )))
 }
 
 // ── Projects ────────────────────────────────────────────────────────────────

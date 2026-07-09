@@ -1,9 +1,8 @@
-{
-  config,
-  lib,
-  pkgs,
-  self,
-  ...
+{ config
+, lib
+, pkgs
+, self
+, ...
 }:
 
 let
@@ -106,7 +105,7 @@ in
 
       serviceConfig =
         {
-          ExecStartPre = "${cfg.package}/bin/horae migrate";
+          ExecStartPre = "${cfg.package}/bin/horae migrate run";
           ExecStart = "${cfg.package}/bin/horae serve --host ${cfg.host} --port ${toString cfg.port}";
           DynamicUser = true;
           StateDirectory = "horae";

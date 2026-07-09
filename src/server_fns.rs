@@ -15,8 +15,7 @@ async fn session_user_id() -> Result<uuid::Uuid, ServerFnError> {
     // injected by the SessionManagerLayer wrapping the server.
     // Session implements FromRequestParts for any S, so M is inferred as the
     // axum via::Parts marker type.
-    let session: Session =
-        dioxus_fullstack::FullstackContext::extract::<Session, _>().await?;
+    let session: Session = dioxus_fullstack::FullstackContext::extract::<Session, _>().await?;
 
     crate::auth::session::get_session_user_id(&session)
         .await
@@ -111,8 +110,7 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
 pub async fn logout() -> Result<(), ServerFnError> {
     use tower_sessions::Session;
 
-    let session: Session =
-        dioxus_fullstack::FullstackContext::extract::<Session, _>().await?;
+    let session: Session = dioxus_fullstack::FullstackContext::extract::<Session, _>().await?;
 
     crate::auth::session::clear_session(&session)
         .await
@@ -161,11 +159,17 @@ pub async fn list_time_entries(
         None => None,
     };
     let date_filter: Option<chrono::NaiveDate> = match date_from {
-        Some(ref s) => Some(s.parse().map_err(|_| server_err("Invalid date_from (use YYYY-MM-DD)"))?),
+        Some(ref s) => Some(
+            s.parse()
+                .map_err(|_| server_err("Invalid date_from (use YYYY-MM-DD)"))?,
+        ),
         None => None,
     };
     let date_to_filter: Option<chrono::NaiveDate> = match date_to {
-        Some(ref s) => Some(s.parse().map_err(|_| server_err("Invalid date_to (use YYYY-MM-DD)"))?),
+        Some(ref s) => Some(
+            s.parse()
+                .map_err(|_| server_err("Invalid date_to (use YYYY-MM-DD)"))?,
+        ),
         None => None,
     };
 
@@ -206,9 +210,7 @@ pub async fn start_timer(
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
-    let task_id: uuid::Uuid = task_id
-        .parse()
-        .map_err(|_| server_err("Invalid task_id"))?;
+    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
 
     // Get user's org_id
     let user = sqlx::query_as::<_, User>(
@@ -329,9 +331,7 @@ pub async fn create_time_entry(
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
-    let task_id: uuid::Uuid = task_id
-        .parse()
-        .map_err(|_| server_err("Invalid task_id"))?;
+    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
     let spent_date: chrono::NaiveDate = spent_date
         .parse()
         .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
@@ -346,9 +346,13 @@ pub async fn create_time_entry(
     // Check assignment (skip for admins)
     if org_role != "admin" {
         let assigned: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM assignments WHERE project_id = $1 AND user_id = $2)"
-        ).bind(project_id).bind(user_id)
-        .fetch_one(&state.db).await.map_err(server_err)?;
+            "SELECT EXISTS(SELECT 1 FROM assignments WHERE project_id = $1 AND user_id = $2)",
+        )
+        .bind(project_id)
+        .bind(user_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(server_err)?;
 
         if !assigned {
             return Err(ServerFnError::ServerError {
@@ -428,14 +432,13 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
         .parse()
         .map_err(|_| server_err("Invalid entry_id"))?;
 
-    let result = sqlx::query(
-        "DELETE FROM time_entries WHERE id = $1 AND user_id = $2 AND state = 'open'",
-    )
-    .bind(entry_id)
-    .bind(user_id)
-    .execute(&state.db)
-    .await
-    .map_err(server_err)?;
+    let result =
+        sqlx::query("DELETE FROM time_entries WHERE id = $1 AND user_id = $2 AND state = 'open'")
+            .bind(entry_id)
+            .bind(user_id)
+            .execute(&state.db)
+            .await
+            .map_err(server_err)?;
 
     if result.rows_affected() == 0 {
         return Err(ServerFnError::ServerError {
@@ -587,14 +590,16 @@ pub async fn list_tasks(project_id: Option<String>) -> Result<Vec<Task>, ServerF
 pub async fn list_project_tasks(project_id: String) -> Result<Vec<Task>, ServerFnError> {
     let _user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id.parse().map_err(|_| server_err("Invalid project_id"))?;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
 
     sqlx::query_as::<_, Task>(
         "SELECT t.id, t.org_id, t.name, t.billable_default, t.default_rate_cents, t.active
          FROM tasks t
          JOIN project_tasks pt ON t.id = pt.task_id
          WHERE pt.project_id = $1 AND t.active = true
-         ORDER BY t.name"
+         ORDER BY t.name",
     )
     .bind(project_id)
     .fetch_all(&state.db)
@@ -603,10 +608,7 @@ pub async fn list_project_tasks(project_id: String) -> Result<Vec<Task>, ServerF
 }
 
 #[server]
-pub async fn create_task(
-    name: String,
-    billable_default: bool,
-) -> Result<Task, ServerFnError> {
+pub async fn create_task(name: String, billable_default: bool) -> Result<Task, ServerFnError> {
     let admin = require_admin().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
@@ -655,9 +657,7 @@ pub async fn create_assignment(
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
-    let user_id: uuid::Uuid = user_id
-        .parse()
-        .map_err(|_| server_err("Invalid user_id"))?;
+    let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
     sqlx::query_as::<_, Assignment>(
         "INSERT INTO assignments (id, project_id, user_id, role)
          VALUES ($1, $2, $3, $4::project_role)
@@ -733,17 +733,19 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     let we = ws + chrono::Duration::days(6);
 
     // Get user's org_id
-    let (org_id,): (uuid::Uuid,) =
-        sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
-            .bind(user_id)
+    let (org_id,): (uuid::Uuid,) = sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(server_err)?;
+
+    // Fetch org rounding config
+    let (round_min, round_dir_str): (i16, String) =
+        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
+            .bind(org_id)
             .fetch_one(&state.db)
             .await
             .map_err(server_err)?;
-
-    // Fetch org rounding config
-    let (round_min, round_dir_str): (i16, String) = sqlx::query_as(
-        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1"
-    ).bind(org_id).fetch_one(&state.db).await.map_err(server_err)?;
 
     let round_dir = match round_dir_str.as_str() {
         "up" => horae_core::types::RoundDir::Up,
@@ -755,15 +757,24 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     if round_min > 0 {
         let entries: Vec<(uuid::Uuid, i32)> = sqlx::query_as(
             "SELECT id, minutes FROM time_entries
-             WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = 'open'"
-        ).bind(user_id).bind(ws).bind(we)
-        .fetch_all(&state.db).await.map_err(server_err)?;
+             WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = 'open'",
+        )
+        .bind(user_id)
+        .bind(ws)
+        .bind(we)
+        .fetch_all(&state.db)
+        .await
+        .map_err(server_err)?;
 
         for (eid, mins) in &entries {
-            let rounded = horae_core::rounding::round(*mins as u32, round_min as u32, round_dir) as i32;
+            let rounded =
+                horae_core::rounding::round(*mins as u32, round_min as u32, round_dir) as i32;
             sqlx::query("UPDATE time_entries SET rounded_minutes = $1 WHERE id = $2")
-                .bind(rounded).bind(eid)
-                .execute(&state.db).await.map_err(server_err)?;
+                .bind(rounded)
+                .bind(eid)
+                .execute(&state.db)
+                .await
+                .map_err(server_err)?;
         }
     }
 

@@ -126,9 +126,7 @@ fn main() -> anyhow::Result<()> {
                     .serve_dioxus_application(ServeConfig::new(), app::App)
                     .route(
                         "/health",
-                        get(|| async {
-                            axum::Json(serde_json::json!({"status": "ok"}))
-                        }),
+                        get(|| async { axum::Json(serde_json::json!({"status": "ok"})) }),
                     )
                     .route("/api/reports/export/csv", get(reports::export_csv))
                     .route("/api/reports/export/xlsx", get(reports::export_xlsx))

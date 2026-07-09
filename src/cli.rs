@@ -11,7 +11,8 @@ impl Cli {
     /// Returns the resolved command, defaulting to `serve` when none is given.
     /// This lets `dx serve` launch the binary without arguments.
     pub fn command(self) -> Commands {
-        self.command.unwrap_or_else(|| Commands::Serve(ServeArgs::default()))
+        self.command
+            .unwrap_or_else(|| Commands::Serve(ServeArgs::default()))
     }
 }
 

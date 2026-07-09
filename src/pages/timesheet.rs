@@ -42,7 +42,14 @@ pub fn Timesheet() -> Element {
         let ws = *week_start.read();
         async move {
             let we = ws + chrono::Duration::days(6);
-            server_fns::list_time_entries(None, None, Some(ws.to_string()), Some(we.to_string()), Some(200)).await
+            server_fns::list_time_entries(
+                None,
+                None,
+                Some(ws.to_string()),
+                Some(we.to_string()),
+                Some(200),
+            )
+            .await
         }
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
@@ -64,11 +71,7 @@ pub fn Timesheet() -> Element {
 
     let ws = *week_start.read();
     let week_end = ws + Duration::days(6);
-    let week_label = format!(
-        "{} - {}",
-        ws.format("%b %d"),
-        week_end.format("%b %d, %Y")
-    );
+    let week_label = format!("{} - {}", ws.format("%b %d"), week_end.format("%b %d, %Y"));
 
     // Filter entries to this week
     let week_entries: Vec<TimeEntry> = entries
@@ -93,7 +96,10 @@ pub fn Timesheet() -> Element {
     }
 
     // Daily totals
-    let daily_totals: Vec<i32> = by_day.iter().map(|d| d.iter().map(|e| e.minutes).sum()).collect();
+    let daily_totals: Vec<i32> = by_day
+        .iter()
+        .map(|d| d.iter().map(|e| e.minutes).sum())
+        .collect();
     let week_total: i32 = daily_totals.iter().sum();
 
     // Check if any entries are non-open (already submitted/approved)

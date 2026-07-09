@@ -5,7 +5,7 @@ pub mod clients;
 pub mod dashboard;
 pub mod invoices;
 pub mod projects;
+pub mod reports;
 pub mod settings;
 pub mod time;
-pub mod reports;
 pub mod timesheet;

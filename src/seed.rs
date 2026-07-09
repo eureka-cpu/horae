@@ -9,25 +9,25 @@ use uuid::Uuid;
 // ── Fixed UUIDs for idempotent seeding ───────────────────────────────────────
 
 #[allow(clippy::unusual_byte_groupings)]
-const ORG_ID:          Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000001);
+const ORG_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000001);
 #[allow(clippy::unusual_byte_groupings)]
-const ADMIN_ID:        Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000002);
+const ADMIN_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000002);
 #[allow(clippy::unusual_byte_groupings)]
-const CLIENT_ACME_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000003);
+const CLIENT_ACME_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000003);
 #[allow(clippy::unusual_byte_groupings)]
-const CLIENT_TECH_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000004);
+const CLIENT_TECH_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000004);
 #[allow(clippy::unusual_byte_groupings)]
-const PROJ_ACME_ID:    Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000005);
+const PROJ_ACME_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000005);
 #[allow(clippy::unusual_byte_groupings)]
-const PROJ_TECH_ID:    Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000006);
+const PROJ_TECH_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000006);
 #[allow(clippy::unusual_byte_groupings)]
-const TASK_DEV_ID:     Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000007);
+const TASK_DEV_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000007);
 #[allow(clippy::unusual_byte_groupings)]
-const TASK_DESIGN_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000008);
+const TASK_DESIGN_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000008);
 #[allow(clippy::unusual_byte_groupings)]
 const TASK_MEETING_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_000000000009);
 #[allow(clippy::unusual_byte_groupings)]
-const TASK_REVIEW_ID:  Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_00000000000a);
+const TASK_REVIEW_ID: Uuid = Uuid::from_u128(0x0195_0000_0000_7000_8000_00000000000a);
 
 pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
     tracing::info!("Seeding demo data…");
@@ -100,10 +100,10 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
 
     // Tasks (org-level catalog)
     for (id, name, billable, rate_cents) in [
-        (TASK_DEV_ID,     "Development", true,  12000i64),
-        (TASK_DESIGN_ID,  "Design",      true,  10000i64),
-        (TASK_MEETING_ID, "Meetings",    false,  8000i64),
-        (TASK_REVIEW_ID,  "Code Review", true,  11000i64),
+        (TASK_DEV_ID, "Development", true, 12000i64),
+        (TASK_DESIGN_ID, "Design", true, 10000i64),
+        (TASK_MEETING_ID, "Meetings", false, 8000i64),
+        (TASK_REVIEW_ID, "Code Review", true, 11000i64),
     ] {
         sqlx::query(
             "INSERT INTO tasks (id, org_id, name, billable_default, default_rate_cents)
@@ -121,11 +121,11 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
 
     // Enable tasks on each project
     for (proj_id, task_id, billable) in [
-        (PROJ_ACME_ID, TASK_DEV_ID,     true),
-        (PROJ_ACME_ID, TASK_DESIGN_ID,  true),
+        (PROJ_ACME_ID, TASK_DEV_ID, true),
+        (PROJ_ACME_ID, TASK_DESIGN_ID, true),
         (PROJ_ACME_ID, TASK_MEETING_ID, false),
-        (PROJ_TECH_ID, TASK_DEV_ID,     true),
-        (PROJ_TECH_ID, TASK_REVIEW_ID,  true),
+        (PROJ_TECH_ID, TASK_DEV_ID, true),
+        (PROJ_TECH_ID, TASK_REVIEW_ID, true),
         (PROJ_TECH_ID, TASK_MEETING_ID, false),
     ] {
         sqlx::query(
@@ -159,20 +159,90 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
 
     let entries: &[(NaiveDate, Uuid, Uuid, i32, &str, bool)] = &[
         // Mon
-        (monday,            PROJ_ACME_ID, TASK_DEV_ID,     150, "Set up project scaffolding", true),
-        (monday,            PROJ_ACME_ID, TASK_MEETING_ID,  60, "Kickoff call with client",   false),
+        (
+            monday,
+            PROJ_ACME_ID,
+            TASK_DEV_ID,
+            150,
+            "Set up project scaffolding",
+            true,
+        ),
+        (
+            monday,
+            PROJ_ACME_ID,
+            TASK_MEETING_ID,
+            60,
+            "Kickoff call with client",
+            false,
+        ),
         // Tue
-        (monday + days(1),  PROJ_ACME_ID, TASK_DESIGN_ID,  210, "Homepage wireframes",         true),
-        (monday + days(1),  PROJ_TECH_ID, TASK_MEETING_ID,  45, "Sprint planning",             false),
+        (
+            monday + days(1),
+            PROJ_ACME_ID,
+            TASK_DESIGN_ID,
+            210,
+            "Homepage wireframes",
+            true,
+        ),
+        (
+            monday + days(1),
+            PROJ_TECH_ID,
+            TASK_MEETING_ID,
+            45,
+            "Sprint planning",
+            false,
+        ),
         // Wed
-        (monday + days(2),  PROJ_TECH_ID, TASK_DEV_ID,     300, "Auth middleware",             true),
-        (monday + days(2),  PROJ_TECH_ID, TASK_REVIEW_ID,   90, "Review PR #12",              true),
+        (
+            monday + days(2),
+            PROJ_TECH_ID,
+            TASK_DEV_ID,
+            300,
+            "Auth middleware",
+            true,
+        ),
+        (
+            monday + days(2),
+            PROJ_TECH_ID,
+            TASK_REVIEW_ID,
+            90,
+            "Review PR #12",
+            true,
+        ),
         // Thu
-        (monday + days(3),  PROJ_ACME_ID, TASK_DEV_ID,     240, "CMS integration",            true),
-        (monday + days(3),  PROJ_TECH_ID, TASK_DEV_ID,     180, "Webhook endpoint",           true),
+        (
+            monday + days(3),
+            PROJ_ACME_ID,
+            TASK_DEV_ID,
+            240,
+            "CMS integration",
+            true,
+        ),
+        (
+            monday + days(3),
+            PROJ_TECH_ID,
+            TASK_DEV_ID,
+            180,
+            "Webhook endpoint",
+            true,
+        ),
         // Fri
-        (monday + days(4),  PROJ_ACME_ID, TASK_DESIGN_ID,  120, "Component library",         true),
-        (monday + days(4),  PROJ_TECH_ID, TASK_REVIEW_ID,   60, "Review & merge",             true),
+        (
+            monday + days(4),
+            PROJ_ACME_ID,
+            TASK_DESIGN_ID,
+            120,
+            "Component library",
+            true,
+        ),
+        (
+            monday + days(4),
+            PROJ_TECH_ID,
+            TASK_REVIEW_ID,
+            60,
+            "Review & merge",
+            true,
+        ),
     ];
 
     for (date, project_id, task_id, minutes, notes, billable) in entries {
@@ -210,16 +280,14 @@ fn days(n: i64) -> chrono::Duration {
 
 /// Verify that the seed data looks reasonable (called after seeding).
 pub async fn verify(pool: &PgPool) -> anyhow::Result<()> {
-    let (entry_count,): (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM time_entries")
-            .fetch_one(pool)
-            .await?;
+    let (entry_count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM time_entries")
+        .fetch_one(pool)
+        .await?;
     tracing::info!("time_entries: {entry_count} rows");
 
-    let (client_count,): (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM clients")
-            .fetch_one(pool)
-            .await?;
+    let (client_count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM clients")
+        .fetch_one(pool)
+        .await?;
     tracing::info!("clients: {client_count} rows");
 
     Ok(())

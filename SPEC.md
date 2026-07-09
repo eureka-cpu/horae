@@ -9,7 +9,7 @@ mid-build.
 **How to build with this:** implement milestones M0→M9 in order. Each milestone lists deliverables
 and a **Done-when** checklist. Write tests as you go; a milestone isn't done until its tests pass.
 
----
+______________________________________________________________________
 
 ## 0. Pinned decisions (⚙️ Phase-1 defaults)
 
@@ -29,7 +29,7 @@ and a **Done-when** checklist. Write tests as you go; a milestone isn't done unt
 - **Single org:** one `organizations` row; everything is scoped to it but keep `org_id` FKs so
   multi-org is a later flip.
 
----
+______________________________________________________________________
 
 ## 1. Repo / workspace layout
 
@@ -54,7 +54,7 @@ harvestclone/
 if needed. Everything correctness-critical (rounding, totals, state transitions, duration parsing)
 lives here and is unit-tested in isolation.
 
----
+______________________________________________________________________
 
 ## 2. Database schema (migration `0001_init.sql`)
 
@@ -197,7 +197,7 @@ CREATE TABLE audit_log (
 );
 ```
 
----
+______________________________________________________________________
 
 ## 3. Core domain logic (`core` crate)
 
@@ -219,7 +219,7 @@ Modules & the functions an agent must implement + unit-test:
 
 No DB, no HTTP here. This crate should reach high line coverage.
 
----
+______________________________________________________________________
 
 ## 4. API surface (`server` crate)
 
@@ -227,15 +227,18 @@ All under `/api`, JSON, cookie-authenticated. `org_id` derived from the session 
 problem+json on error. Write endpoints check the permission matrix (§6).
 
 **Auth**
+
 - `GET  /auth/login` → redirect to OIDC (or dev login if `DEV_LOGIN=1`)
 - `GET  /auth/callback` → exchange code, upsert user by `oidc_subject`, set session cookie
 - `POST /auth/logout`
 - `GET  /api/me` → `{ user, org, role }`
 
 **Clients** (read: any; write: admin)
+
 - `GET /api/clients` · `POST /api/clients` · `GET/PATCH /api/clients/:id`
 
 **Projects / tasks / assignments** (read: assigned members + admin/manager; write: admin)
+
 - `GET /api/projects` (list w/ budget + spent + remaining) · `POST /api/projects`
 - `GET/PATCH /api/projects/:id`
 - `GET /api/projects/:id/tasks` · `PUT /api/projects/:id/tasks` (set enabled + overrides)
@@ -243,6 +246,7 @@ problem+json on error. Write endpoints check the permission matrix (§6).
 - `GET /api/tasks` · `POST /api/tasks`
 
 **Time entries** (owner or admin)
+
 - `GET  /api/time-entries?from=&to=&user_id=` → entries + computed rounded + totals
 - `POST /api/time-entries` (manual entry) — body: project_id, task_id, spent_date, minutes, notes
 - `PATCH /api/time-entries/:id` (only if `open`)
@@ -252,6 +256,7 @@ problem+json on error. Write endpoints check the permission matrix (§6).
 - `GET  /api/timers/current`
 
 **Approvals**
+
 - `POST /api/approvals/submit` (user_id defaults to self, period_start) → sets entries in period to
   `submitted`, persists `rounded_minutes`, creates approvals row, locks the period
 - `POST /api/approvals/:id/approve` (manager/admin) → entries → `approved`
@@ -259,6 +264,7 @@ problem+json on error. Write endpoints check the permission matrix (§6).
 - `GET  /api/approvals?status=&period=&group=person`
 
 **Reports**
+
 - `GET /api/reports/time?from=&to=&group=client|project|task|person` → grouped totals
 - `GET /api/reports/detailed?from=&to=&filters…` → row model
 - `GET /api/reports/detailed/export?format=csv|xlsx|pdf&…` → file download; PDF is the per-
@@ -277,14 +283,19 @@ change. Follow the official shapes exactly — see
 - **Auth:** accept `Authorization: Bearer <token>` **and** `Harvest-Account-Id: <org>` headers
   (plus `User-Agent`). Issue per-user API tokens (new `api_tokens` table: id, user_id, token_hash,
   name, created_at, last_used_at). Token scope = that user unless they're admin/manager.
+
 - **Pagination envelope** (match Harvest exactly):
+
   ```json
   { "time_entries": [ … ], "per_page": 100, "total_pages": 1, "total_entries": 3,
     "page": 1, "next_page": null, "previous_page": null,
     "links": { "first": "…", "next": null, "previous": null, "last": "…" } }
   ```
+
   The array key is the resource name (`time_entries`, `projects`, `clients`, `tasks`, `users`).
+
 - **Endpoints (read-only for MVP):**
+
   - `GET /v2/users/me`
   - `GET /v2/time_entries` — filters `user_id`, `client_id`, `project_id`, `task_id`, `from`,
     `to`, `is_billed`, `is_running`, `updated_since`; paginated.
@@ -293,6 +304,7 @@ change. Follow the official shapes exactly — see
   - `GET /v2/clients`, `GET /v2/clients/:id`
   - `GET /v2/tasks`, `GET /v2/tasks/:id`
   - `GET /v2/users`
+
 - **Field mapping** — emit Harvest's field names, backed by our model:
 
   | Harvest field | Source |
@@ -314,7 +326,7 @@ change. Follow the official shapes exactly — see
 > This `/v2` surface and the internal `/api` surface (§4) share the same handlers/DTO-mapping
 > layer where possible — `/v2` is a Harvest-shaped view over the same data.
 
----
+______________________________________________________________________
 
 ## 5. Web UI (`web` crate) — routes & behavior
 
@@ -339,7 +351,7 @@ Dioxus SPA calling `/api`. Routes:
 State: fetch-on-navigate; optimistic updates for entry edits with rollback on error. No
 localStorage requirement.
 
----
+______________________________________________________________________
 
 ## 6. Permissions matrix
 
@@ -355,7 +367,7 @@ localStorage requirement.
 
 Enforce server-side on every write; the UI hides controls but is not the gate.
 
----
+______________________________________________________________________
 
 ## 7. Rounding (concrete, Phase-1)
 
@@ -378,7 +390,7 @@ Applied per **entry**. When a week is submitted, each entry's `rounded_minutes` 
 report responses, CSV/XLSX, and the PDF all call this same function (or read the persisted value
 once locked). Exports print the rule, e.g. "Rounded to nearest 15 min."
 
----
+______________________________________________________________________
 
 ## 8. Seed & migration
 
@@ -386,7 +398,7 @@ once locked). Exports print the rule, e.g. "Rounded to nearest 15 min."
   of tasks, and sample time entries across a week — enough to see day/week/calendar and reports.
 - Harvest import is **out of scope for Phase 1** (Phase 2). Do not build it yet.
 
----
+______________________________________________________________________
 
 ## 9. Testing
 
@@ -398,7 +410,7 @@ once locked). Exports print the rule, e.g. "Rounded to nearest 15 min."
   see week total → submit → verify locked → export PDF (assert PDF magic bytes + rounded value).
 - CI: `cargo test` + `cargo clippy -D warnings` + fmt + the e2e job.
 
----
+______________________________________________________________________
 
 ## 10. Milestones (build in order)
 
@@ -440,7 +452,7 @@ script mimicking `harvest-exporter`) can authenticate and page through `/v2/time
 **M9 — Package & harden.** Dockerfiles, README (self-host guide), e2e golden path, clippy clean.
 *Done-when:* a fresh `docker compose up` gives a working app and the e2e path passes.
 
----
+______________________________________________________________________
 
 ## 11. Out of scope for this spec (later phases)
 

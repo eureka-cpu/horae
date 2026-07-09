@@ -87,24 +87,31 @@ Three typefaces loaded from Google Fonts:
 ## Component Inventory
 
 ### Navigation (`src/components/nav.rs`)
+
 Warm dark bar (`--color-bg-secondary`), Newsreader brand text in pine-300, secondary nav links that lighten on hover.
 
 ### Sidebar (`src/components/sidebar.rs`)
+
 Fixed left sidebar. Links default to `--color-text-secondary`; hover darkens background to `--color-bg-tertiary`; active uses pine tint background + `--color-primary-light` text. Section labels: all-caps, 0.14em letter-spacing, muted warm gray.
 
 ### Timer Widget (`src/components/timer_widget.rs`)
+
 `HH:MM:SS` in IBM Plex Mono (`--font-family-mono`), pine-300 when stopped, green (`--color-success`) when running.
 
 ### Data Tables (`src/components/table.rs`)
+
 Wrapped in `.table-container` (border + 11px radius). Headers: uppercase, 0.06em letter-spacing, tertiary warm surface. Row hover on `--color-bg-tertiary`. Last row has no bottom border.
 
 ### Forms (`src/components/form.rs`)
+
 Inputs on `--color-bg` (void — darkest) with warm border `#3d382e`. Focus ring: `--color-primary` border + 18% pine glow. Instrument Sans for all form text.
 
 ### Status Badges (`src/components/badge.rs`)
+
 Pill shape (9999px radius). Each semantic badge includes a 7px colored dot (via `::before`) + tinted background + warm border. Neutral badge uses tertiary surface + border.
 
 ### Buttons (`src/components/`)
+
 - **Primary**: pine-300 fill, dark green text `#0d211b`
 - **Secondary**: tertiary surface, warm border
 - **Accent**: brass fill `#D99A3C`, dark text — use for "Send invoice" and billing actions

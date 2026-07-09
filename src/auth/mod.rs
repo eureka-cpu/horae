@@ -2,7 +2,10 @@ pub mod dev;
 pub mod oidc;
 pub mod session;
 
-use axum::{routing::{get, post}, Router};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use sqlx::PgPool;
 use tower_sessions::{Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
@@ -17,7 +20,9 @@ pub fn router() -> Router {
 
 /// Create and migrate the Postgres-backed session store, then return a
 /// `SessionManagerLayer` ready to be applied to the Axum router.
-pub async fn make_session_layer(pool: PgPool) -> anyhow::Result<SessionManagerLayer<PostgresStore>> {
+pub async fn make_session_layer(
+    pool: PgPool,
+) -> anyhow::Result<SessionManagerLayer<PostgresStore>> {
     let store = PostgresStore::new(pool);
     store.migrate().await?;
 
