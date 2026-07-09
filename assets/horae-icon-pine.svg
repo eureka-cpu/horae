@@ -6,15 +6,15 @@
   </defs>
   <!-- Reversed · on pine: dark pine bg reads against the pine page -->
   <rect width="128" height="128" rx="26" fill="#0F3D33"/>
-  <!-- Horizon: waterline (#072a22) then deep band (#0a352b) -->
-  <rect y="88" width="128" height="3"  fill="#072a22" clip-path="url(#icon-pine-clip)"/>
-  <rect y="91" width="128" height="37" fill="#0a352b" clip-path="url(#icon-pine-clip)"/>
-  <!-- 5 rays — warm gold even on reversed variant; circle covers their base -->
+  <!-- 5 rays — warm gold even on reversed variant -->
   <line x1="64" y1="40" x2="64" y2="15" stroke="#E7C079" stroke-width="3" stroke-linecap="round"/>
   <line x1="64" y1="40" x2="50" y2="23" stroke="#E4B061" stroke-width="3" stroke-linecap="round"/>
   <line x1="64" y1="40" x2="78" y2="23" stroke="#E4B061" stroke-width="3" stroke-linecap="round"/>
   <line x1="64" y1="40" x2="45" y2="34" stroke="#CF9A4D" stroke-width="3" stroke-linecap="round"/>
   <line x1="64" y1="40" x2="83" y2="34" stroke="#CF9A4D" stroke-width="3" stroke-linecap="round"/>
-  <!-- Sun disc — warm cream (#EFEAE0) per design spec, not pure white -->
+  <!-- Sun disc — warm cream (#EFEAE0) per design spec -->
   <circle cx="64" cy="65" r="30" fill="#EFEAE0"/>
+  <!-- Horizon: waterline (#072a22) then deep band (#0a352b) -->
+  <rect y="88" width="128" height="3"  fill="#072a22" clip-path="url(#icon-pine-clip)"/>
+  <rect y="91" width="128" height="37" fill="#0a352b" clip-path="url(#icon-pine-clip)"/>
 </svg>

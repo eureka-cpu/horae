@@ -6,11 +6,8 @@
   </defs>
   <!-- Pine background -->
   <rect width="128" height="128" rx="26" fill="#1F5C4D"/>
-  <!-- Horizon: thin waterline (#0F3D33) then deeper band (#164034) -->
-  <rect y="88" width="128" height="3"  fill="#0F3D33" clip-path="url(#icon-clip)"/>
-  <rect y="91" width="128" height="37" fill="#164034" clip-path="url(#icon-clip)"/>
-  <!-- 5 rays — all originate inside the sun disc at y=40; circle covers their base.
-       Centre: #E7C079  ·  flanking ±38°: #E4B061  ·  outer ±72°: #CF9A4D            -->
+  <!-- 5 rays — originate inside sun disc; disc then horizon cover their bases.
+       Centre: #E7C079  ·  flanking ±38°: #E4B061  ·  outer ±72°: #CF9A4D   -->
   <line x1="64" y1="40" x2="64" y2="15" stroke="#E7C079" stroke-width="3" stroke-linecap="round"/>
   <line x1="64" y1="40" x2="50" y2="23" stroke="#E4B061" stroke-width="3" stroke-linecap="round"/>
   <line x1="64" y1="40" x2="78" y2="23" stroke="#E4B061" stroke-width="3" stroke-linecap="round"/>
@@ -18,4 +15,7 @@
   <line x1="64" y1="40" x2="83" y2="34" stroke="#CF9A4D" stroke-width="3" stroke-linecap="round"/>
   <!-- Rising sun disc — covers ray bases -->
   <circle cx="64" cy="65" r="30" fill="#D99A3C"/>
+  <!-- Horizon covers bottom of disc: thin waterline then deeper band -->
+  <rect y="88" width="128" height="3"  fill="#0F3D33" clip-path="url(#icon-clip)"/>
+  <rect y="91" width="128" height="37" fill="#164034" clip-path="url(#icon-clip)"/>
 </svg>
