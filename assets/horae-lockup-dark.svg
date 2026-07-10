@@ -29,5 +29,5 @@
         fill="#EFEAE0">Horae</text>
 
   <!-- Dot: 10px circle, cy=65 (horizon-aligned per margin-bottom calc), margin-left 6.4px -->
-  <circle cx="340" cy="65" r="5" fill="#D99A3C"/>
+  <circle cx="346" cy="65" r="5" fill="#D99A3C"/>
 </svg>
