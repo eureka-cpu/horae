@@ -149,13 +149,16 @@ An operator drops a sandboxed plugin into the deployment to react to business ev
 **Correctness**
 
 - **FR-023**: All time and monetary totals MUST be computed exactly, with no rounding drift, so that any total equals the sum of its parts across any grouping or period.
+- **FR-024**: When billing a time entry, the system MUST resolve the applicable rate deterministically, in this order: (1) the task's rate on that project, if set; (2) the user's per-project assignment rate override, if set; (3) the project's rate; (4) the user's default billable rate. The resolved rate × the entry's billable minutes MUST determine the line amount.
 
 ### Key Entities *(include if feature involves data)*
 
+- **Organization**: The single tenant that owns all data (one per deployment); holds defaults such as currency and week start.
 - **User**: A person who signs in; has a display name, a role (administrator/manager/member), and an active/inactive status; owns time entries.
 - **Client**: An organization being billed; has a name and a currency; owns projects.
 - **Project**: A body of work for a client; has a name/code, a billing method, an optional budget, and a rate; owns tasks and time entries.
 - **Task**: A unit of work within a project; has an optional rate and a billable flag.
+- **Assignment**: Links a user to a project (with an optional per-project rate override), governing which projects a member may log time against.
 - **Time Entry**: A recorded interval or manual duration of work by a user against a project and task; has a start/end (or duration), notes, a billable flag, and an invoiced/not-invoiced state.
 - **Invoice**: A bill to a client derived from billable time; has an invoice number, a status (draft/sent/paid/void), issue and due dates, a total, and the set of time entries it covers.
 - **Plugin**: An installed, sandboxed extension; declares the events it subscribes to and may provide dashboard widgets; has its own configuration.
@@ -179,8 +182,9 @@ An operator drops a sandboxed plugin into the deployment to react to business ev
 - **Single organization per deployment**: One tenant per install; multi-organization/multi-tenant support is out of scope for this specification (data is modeled so it could be added later).
 - **Self-hosted**: The operator runs the application themselves and provisions the initial administrator account; there is no hosted sign-up flow.
 - **Credential-based, role-based access**: Users authenticate with credentials and are authorized by role; the exact authentication mechanism (for example, a local password vs. an external identity provider, plus a local development bypass) is an implementation choice left to the plan phase.
-- **No separate timesheet approval workflow in v1**: Billable, un-invoiced time is directly invoiceable; a formal submit/approve step before billing is out of scope for this specification and may be added later.
+- **No separate timesheet approval workflow in v1**: Billable, un-invoiced time is directly invoiceable. Any approval/submission surface already present in the codebase is out of scope for this feature and is neither required nor removed by it; a formal approve step may be specified later.
 - **Currency is per client**: Each client has a single currency and its invoices use it; multi-currency invoices and currency conversion are out of scope. Monetary values are handled as exact minor units and durations as exact units to guarantee SC-002/SC-007.
+- **Rate resolution**: Billing rates cascade task → assignment override → project → user default (FR-024); a non-billable task or project yields no billable amount regardless of rate.
 - **Plugins are operator-trusted but sandboxed**: The operator chooses which plugins to install; the system still confines each to its granted capabilities. Plugins are portable modules and may be authored in any language that targets the supported sandbox format.
 - **Standard export formats**: Reports export to a common spreadsheet/CSV format and invoices to a common document format; specific format choices are deferred to the plan phase.
 - **Web application on modern browsers**: The interface targets current desktop browsers; native mobile apps are out of scope for v1.

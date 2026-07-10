@@ -75,6 +75,7 @@ ______________________________________________________________________
 - [ ] T024 [US3] Add invoices schema in `migrations/` (new migration): `invoices` (+ status `draft|sent|paid|void`, number, issue/due dates, currency, total_cents) and invoice line items referencing time (data-model.md). *(invoices table does not exist yet)*
 - [ ] T025 [P] [US3] `Invoice` (+ line item) model in `src/models/invoice.rs`.
 - [ ] T026 [US3] `generate_invoice(client_id, period)` server function in `src/server_fns.rs`: select billable, un-invoiced entries; build lines and an exact total via `crates/core`; mark entries `invoiced` (FR-012/FR-013/FR-023).
+- [ ] T026a [US3] Implement FR-024 rate resolution (task → assignment override → project → user default) in the invoice-line computation in `crates/core` and `src/server_fns.rs`.
 - [ ] T027 [US3] `list_invoices` (replace the current empty stub) and `get_invoice` in `src/server_fns.rs` (contracts note the stub).
 - [ ] T028 [US3] `update_invoice_status` in `src/server_fns.rs` enforcing the invoice state machine, including `void` returning entries to un-invoiced (data-model.md state machine, FR-014).
 - [ ] T029 [US3] Prevent double-billing and editing invoiced time at the query/mutation layer (`src/server_fns.rs`) (FR-013/FR-015).

@@ -34,14 +34,15 @@ Much of P1–P4 already exists in the codebase; the plan covers completing those
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-`.specify/memory/constitution.md` is still the unratified template (placeholders), so there are no formally ratified gates. In its place, the project's **pinned decisions in `SPEC.md` §0** act as de-facto principles, and this plan is checked against them:
+Checked against the ratified project constitution (`.specify/memory/constitution.md`, **v1.0.0**):
 
-- **Exactness (non-negotiable)**: integer minutes for time, integer minor units for money — no floats. ✅ Honored via `horae-core`.
-- **Domain purity**: correctness-critical logic isolated in `horae-core` with no I/O deps. ✅ Preserved.
-- **Postgres-only, UUID v7, single-org with `org_id` FKs kept for later multi-org.** ✅ Matches existing schema.
-- **All data mutations via `#[server]` functions (no ad-hoc fetches).** ✅ Matches existing architecture.
+- **I. Exactness (non-negotiable)**: integer minutes for time, integer minor units + ISO currency for money — no floats. ✅ Enforced via `horae-core`.
+- **II. Domain purity**: correctness-critical logic isolated in `horae-core` with no I/O deps. ✅ Preserved.
+- **III. Single datastore**: PostgreSQL only, UUID v7 keys, `org_id` FKs kept for later multi-org. ✅ Matches the schema.
+- **IV. Mutations through server functions**: all writes via `#[server]` functions; the Harvest API stays read-only. ✅ Matches the architecture.
+- **V. Reproducible builds & formatting gate**: Nix dev shell + `nix fmt`/`nix flake check` green. ✅ In place.
 
-No violations to justify. **Recommendation**: ratify a real constitution (`/speckit-constitution`) so these become enforced gates rather than conventions — tracked as a follow-up, not a blocker.
+No violations to justify (Complexity Tracking empty).
 
 ## Project Structure
 
