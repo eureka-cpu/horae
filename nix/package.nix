@@ -23,7 +23,6 @@ let
   };
 in
 rustPlatform.buildRustPackage (finalAttrs: {
-  # TODO: Get metadata from Cargo.toml
   pname = "horae";
   version = "0.1.0";
   src = lib.cleanSourceWith {
@@ -31,19 +30,41 @@ rustPlatform.buildRustPackage (finalAttrs: {
     filter = path: _type: !(lib.hasSuffix ".nix" path) && !(lib.hasSuffix ".md" path);
   };
   cargoLock.lockFile = finalAttrs.src + "/Cargo.lock";
-  # TODO: Build the all programs
-  buildFeatures = [ "server" ];
-  # The workspace root is virtual, so select the app crate explicitly
-  # (`cargo build --features` is not allowed at a virtual-workspace root).
-  cargoBuildFlags = [ "-p" "horae" ];
-  # TODO: Add check derivations instead
   doCheck = false;
-  # dioxus-server expects a public/ dir next to the binary for static
-  # assets. Until we integrate `dx build` into the Nix build, create
-  # an empty one so the server starts without panicking.
-  postInstall = ''
-    mkdir -p $out/bin/public
+
+  nativeBuildInputs = with buildPkgs; [
+    dioxus-cli
+    wasm-bindgen-cli_0_2_126 # Must match the version of wasm-bindgen in Cargo.toml
+    wasm-pack
+    binaryen
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    buildPkgs.darwin.sigtool
+  ];
+
+  # Use dx build — the same command as development — to compile both the
+  # server binary and the WASM client bundle in one step.  cargoSetupHook
+  # (from buildRustPackage) runs before this and populates $CARGO_HOME with
+  # the vendored deps, so the cargo invocations inside dx work offline.
+  # dx must run from crates/horae/ where Dioxus.toml lives.
+  buildPhase = ''
+    runHook preBuild
+    export HOME=$(mktemp -d)
+    (cd crates/horae && dx build --release)
+    runHook postBuild
   '';
+
+  installPhase = ''
+    runHook preInstall
+    mkdir -p $out/bin
+    # dx build puts fullstack output under target/dx/{app}/{profile}/web/:
+    #   server  — the server binary
+    #   public/ — content-addressed WASM, JS, CSS assets + index.html
+    local dxdir=target/dx/horae/release/web
+    cp "$dxdir/server" $out/bin/horae
+    cp -r "$dxdir/public" $out/bin/public
+    runHook postInstall
+  '';
+
   meta = {
     description = "A self-hostable time tracking server";
     mainProgram = "horae";
