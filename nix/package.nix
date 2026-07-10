@@ -33,6 +33,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
   cargoLock.lockFile = finalAttrs.src + "/Cargo.lock";
   # TODO: Build the all programs
   buildFeatures = [ "server" ];
+  # The workspace root is virtual, so select the app crate explicitly
+  # (`cargo build --features` is not allowed at a virtual-workspace root).
+  cargoBuildFlags = [ "-p" "horae" ];
   # TODO: Add check derivations instead
   doCheck = false;
   # dioxus-server expects a public/ dir next to the binary for static

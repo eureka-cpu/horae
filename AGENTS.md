@@ -17,12 +17,12 @@ nix run .#postgres     # boot a NixOS VM running PostgreSQL (forwards host :5432
 
 ### Build & run
 
-The crate is **feature-gated** — `src/main.rs` has three `cfg`-selected `main()`s, and default features are empty. Always pick a feature or use `dx`:
+The app crate lives at `crates/horae/` (the repo root is a virtual workspace). It is **feature-gated** — `crates/horae/src/main.rs` has three `cfg`-selected `main()`s, and default features are empty. Always pick a feature or use `dx`, and select the crate with `-p horae`:
 
 ```sh
-cargo build --features server                   # server binary + CLI
-DEV_LOGIN=1 DATABASE_URL=… dx serve             # dev server with hot reload on :8080
-cargo run --features server -- <subcommand>     # run the server binary directly
+cargo build -p horae --features server          # server binary + CLI
+cd crates/horae && DEV_LOGIN=1 DATABASE_URL=… dx serve   # dev server (dx runs where Dioxus.toml is), hot reload on :8080
+cargo run -p horae --features server -- <subcommand>     # run the server binary directly
 ```
 
 CLI subcommands: `serve`, `migrate run`, `migrate reset --confirm`, `seed`, `user list`, `user create --email … --name … --role …`.
@@ -33,17 +33,17 @@ First run: `… -- migrate run`, then `… -- seed`, then `dx serve`; open http:
 
 ```sh
 cargo test -p horae-core                        # pure domain unit tests (no DB, no features)
-DATABASE_URL=… cargo test --features server     # integration tests (need Postgres with CREATEDB)
-DATABASE_URL=… cargo test --features server <name>   # a single test
-cargo clippy --features server
+DATABASE_URL=… cargo test -p horae --features server     # integration tests (need Postgres with CREATEDB)
+DATABASE_URL=… cargo test -p horae --features server <name>   # a single test
+cargo clippy -p horae --features server
 nix fmt                                         # treefmt: rustfmt, taplo, nixpkgs-fmt, mdformat
 ```
 
-Integration tests (`tests/integration.rs`) use `#[sqlx::test]` — each spins up a throwaway database, so the DB role needs `CREATEDB` — and are marked `#[serial]`. `nix build` builds the package; `nix flake check` runs the formatting check plus a full NixOS e2e test.
+Integration tests (`crates/horae/tests/integration.rs`) use `#[sqlx::test]` — each spins up a throwaway database, so the DB role needs `CREATEDB` — and are marked `#[serial]`. `nix build` builds the package; `nix flake check` runs the formatting check plus a full NixOS e2e test.
 
 ## Architecture
 
-**One crate, two build targets, feature-gated.** `src/main.rs` defines three `main()`s behind `cfg`: `server` (Axum + Tokio + the CLI), `web` (`dioxus::launch`, compiled to WASM), and a stub that errors if neither feature is set. Server-only modules (`auth`, `cli`, `config`, `db`, `harvest`, `reports`, `seed`, `state`) are `#[cfg(feature = "server")]`; the shared UI modules (`app`, `route`, `pages`, `components`, `server_fns`, `models`, `error`) compile for both targets. This is why a bare `cargo build`/`test` (empty default features) won't do what you expect.
+**One app crate (`crates/horae/`), two build targets, feature-gated.** `crates/horae/src/main.rs` defines three `main()`s behind `cfg`: `server` (Axum + Tokio + the CLI), `web` (`dioxus::launch`, compiled to WASM), and a stub that errors if neither feature is set. Server-only modules (`auth`, `cli`, `config`, `db`, `harvest`, `reports`, `seed`, `state`) are `#[cfg(feature = "server")]`; the shared UI modules (`app`, `route`, `pages`, `components`, `server_fns`, `models`, `error`) compile for both targets. This is why a bare `cargo build`/`test` (empty default features) won't do what you expect.
 
 **The `core` crate (`horae-core`) is pure domain logic** — duration parsing, rounding, money, totals, the entry state machine — with no I/O dependencies (only serde/uuid/chrono/thiserror). Correctness-critical code belongs here and is unit-tested in isolation; SPEC.md §1 forbids sqlx/axum/dioxus deps in `core`.
 
@@ -60,7 +60,7 @@ Integration tests (`tests/integration.rs`) use `#[sqlx::test]` — each spins up
 
 - Durations are stored as **integer minutes**; money as **integer minor units (cents) + ISO currency code** — never floats.
 - Primary keys are **UUID v7** (time-ordered).
-- **PostgreSQL only** (no SQLite). Migrations live in `migrations/` and apply via `sqlx` / `migrate run`.
+- **PostgreSQL only** (no SQLite). Migrations live in `crates/horae/migrations/` and apply via `sqlx` / `migrate run`.
 - Single organization for now, but every table keeps an `org_id` FK so multi-org is a later flip.
 
-`SPEC.md` is the authoritative Phase-1 build spec (schema, milestones, API contract). `DESIGN.md` is the design system (Invoicer aesthetic; tokens in `assets/css/horae.css`; components are one-per-file `#[component]` functions using `use_signal`/`use_resource`, with no global mutable UI state).
+`SPEC.md` is the authoritative Phase-1 build spec (schema, milestones, API contract). `DESIGN.md` is the design system (Invoicer aesthetic; tokens in `crates/horae/assets/css/horae.css`; components are one-per-file `#[component]` functions using `use_signal`/`use_resource`, with no global mutable UI state).
