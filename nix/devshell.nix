@@ -9,4 +9,8 @@ pkgs.mkShell {
     wasm-pack # NOTE: wasm-bindgen version must match exactly
     nil
   ];
+  shellHook = ''
+    # Use the port forwarded and postgres user created by the VM
+    export DATABASE_URL=postgres://horae@127.0.0.1:5432/horae
+  '';
 }

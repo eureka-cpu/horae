@@ -10,7 +10,7 @@ Work inside the Nix dev shell; a running PostgreSQL is required for anything tou
 
 ```sh
 nix develop            # dev shell: rust toolchain, dx (dioxus-cli), sqlx-cli, postgres, wasm-pack
-nix run .#qemu-vm      # boot a NixOS VM running PostgreSQL (forwards host :3000, :5432, :2222)
+nix run .#postgres     # boot a NixOS VM running PostgreSQL (forwards host :5432, :2222)
 ```
 
 `DATABASE_URL` defaults to `postgres://localhost/horae`.
