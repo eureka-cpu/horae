@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96">
+  <defs>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500&amp;display=swap');</style>
+    <clipPath id="pn-clip"><rect width="128" height="128" rx="30"/></clipPath>
+    <filter id="pn-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+  </defs>
+
+  <!-- Icon: reversed · on pine (dark pine bg, warm cream sun) -->
+  <svg x="0" y="0" width="96" height="96" viewBox="0 0 128 128">
+    <rect width="128" height="128" rx="30" fill="#0F3D33"/>
+    <line x1="64" y1="70" x2="64" y2="24" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="64" y1="70" x2="57" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="64" y1="70" x2="71" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="64" cy="70" r="33" fill="#EFEAE0" opacity="0.35" filter="url(#pn-glow)"/>
+    <circle cx="64" cy="70" r="29" fill="#EFEAE0"/>
+    <rect y="85" width="128" height="2"  fill="#072a22" clip-path="url(#pn-clip)"/>
+    <rect y="87" width="128" height="41" fill="#0a352b" clip-path="url(#pn-clip)"/>
+  </svg>
+
+  <text x="116" y="75"
+        font-family="'Newsreader', Georgia, serif"
+        font-size="80"
+        font-weight="500"
+        letter-spacing="-1.6"
+        fill="#F0EDE5">Horae</text>
+
+  <circle cx="340" cy="65" r="5" fill="#E8B84B"/>
+</svg>
