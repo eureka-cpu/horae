@@ -20,7 +20,7 @@ pub fn TimerWidget() -> Element {
             loop {
                 #[cfg(feature = "web")]
                 gloo_timers::future::TimeoutFuture::new(1_000).await;
-                #[cfg(not(feature = "web"))]
+                #[cfg(feature = "server")]
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
                 tick += 1;
@@ -45,7 +45,7 @@ pub fn TimerWidget() -> Element {
         let proj = selected_project.read().clone();
         async move {
             if proj.is_empty() {
-                server_fns::list_tasks(None).await
+                server_fns::list_tasks().await
             } else {
                 server_fns::list_project_tasks(proj).await
             }

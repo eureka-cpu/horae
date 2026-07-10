@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use horae_core::types::ProjectRole;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -8,8 +9,7 @@ pub struct Assignment {
     pub id: Uuid,
     pub project_id: Uuid,
     pub user_id: Uuid,
-    /// "lead" | "freelancer" | "admin"
-    pub role: String,
+    pub role: ProjectRole,
     pub rate_cents: Option<i64>,
     pub created_at: DateTime<Utc>,
 }

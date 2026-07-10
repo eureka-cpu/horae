@@ -53,7 +53,7 @@ pub fn Timesheet() -> Element {
         }
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
-    let tasks = use_resource(|| async move { server_fns::list_tasks(None).await });
+    let tasks = use_resource(|| async move { server_fns::list_tasks().await });
 
     let project_names: HashMap<Uuid, String> = projects
         .read()
@@ -103,8 +103,12 @@ pub fn Timesheet() -> Element {
     let week_total: i32 = daily_totals.iter().sum();
 
     // Check if any entries are non-open (already submitted/approved)
-    let has_non_open = week_entries.iter().any(|e| e.state != "open");
-    let has_open = week_entries.iter().any(|e| e.state == "open");
+    let has_non_open = week_entries
+        .iter()
+        .any(|e| e.state != horae_core::types::EntryState::Open);
+    let has_open = week_entries
+        .iter()
+        .any(|e| e.state == horae_core::types::EntryState::Open);
     let all_submitted_or_approved = !week_entries.is_empty() && !has_open;
 
     let submit_status = use_signal(|| None::<String>);

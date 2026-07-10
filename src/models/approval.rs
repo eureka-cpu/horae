@@ -1,4 +1,5 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use horae_core::types::EntryState;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -10,8 +11,7 @@ pub struct Approval {
     pub user_id: Uuid,
     pub period_start: NaiveDate,
     pub period_end: NaiveDate,
-    /// "submitted" | "approved"
-    pub state: String,
+    pub state: EntryState,
     pub submitted_at: DateTime<Utc>,
     pub approved_by: Option<Uuid>,
     pub approved_at: Option<DateTime<Utc>>,

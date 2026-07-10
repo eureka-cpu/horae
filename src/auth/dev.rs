@@ -3,6 +3,7 @@
 /// GET  /auth/login      → HTML page with a one-click "Sign in as Admin" button.
 /// POST /auth/dev-login  → sets session to the seeded admin user, redirects to /.
 /// POST /auth/logout     → flushes the session, redirects to /auth/login.
+use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect};
 use tower_sessions::Session;
 use uuid::Uuid;
@@ -72,30 +73,27 @@ pub async fn login_page() -> impl IntoResponse {
 }
 
 /// `POST /auth/dev-login` — look up the first admin user and log them in.
-pub async fn dev_login_post(session: Session) -> impl IntoResponse {
+pub async fn dev_login_post(
+    session: Session,
+) -> Result<impl IntoResponse, (StatusCode, &'static str)> {
     let state = crate::state::global_state().await;
 
     let user_id: Option<(Uuid,)> =
         sqlx::query_as("SELECT id FROM users WHERE org_role = 'admin' AND active = true LIMIT 1")
             .fetch_optional(&state.db)
             .await
-            .expect("DB query failed in dev_login_post");
+            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "DB query failed"))?;
 
-    match user_id {
-        Some((id,)) => {
-            set_session_user_id(&session, id)
-                .await
-                .expect("Failed to write session");
-            Redirect::to("/").into_response()
-        }
-        None => axum::http::Response::builder()
-            .status(500)
-            .body(axum::body::Body::from(
-                "No admin user found — run `horae seed` first.",
-            ))
-            .unwrap()
-            .into_response(),
-    }
+    let (id,) = user_id.ok_or((
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "No admin user found — run `horae seed` first.",
+    ))?;
+
+    set_session_user_id(&session, id)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to write session"))?;
+
+    Ok(Redirect::to("/"))
 }
 
 /// `POST /auth/logout` — flush the session and redirect to login.

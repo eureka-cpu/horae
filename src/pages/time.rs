@@ -13,7 +13,7 @@ pub fn TimeList() -> Element {
         server_fns::list_time_entries(None, None, None, None, Some(50)).await
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
-    let tasks = use_resource(|| async move { server_fns::list_tasks(None).await });
+    let tasks = use_resource(|| async move { server_fns::list_tasks().await });
 
     // "Log Time" form visibility
     let mut show_form = use_signal(|| false);
@@ -218,7 +218,7 @@ pub fn TimeList() -> Element {
                                             {
                                                 let eid = entry.id;
                                                 let is_editing = *editing_id.read() == Some(eid);
-                                                let is_open = entry.state == "open";
+                                                let is_open = entry.state == horae_core::types::EntryState::Open;
                                                 let entry_id_str = eid.to_string();
                                                 let entry_minutes = entry.minutes;
                                                 let entry_notes = entry.notes.clone().unwrap_or_default();

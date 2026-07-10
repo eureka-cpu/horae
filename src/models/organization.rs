@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use horae_core::types::RoundDir;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -11,7 +12,6 @@ pub struct Organization {
     pub default_currency: String,
     pub week_start: i16,
     pub round_minutes: i16,
-    /// "nearest" | "up" | "down"
-    pub round_dir: String,
+    pub round_dir: RoundDir,
     pub created_at: DateTime<Utc>,
 }
