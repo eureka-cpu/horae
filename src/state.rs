@@ -32,15 +32,26 @@ pub async fn global_state() -> &'static AppState {
             use crate::config::AppConfig;
             use crate::db;
 
-            let cfg = AppConfig::from_env().expect("Failed to read config from env");
+            let cfg = match AppConfig::from_env() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::error!("Failed to read config from env: {e}");
+                    std::process::exit(1);
+                }
+            };
 
-            let pool = db::create_pool(&cfg.database_url)
-                .await
-                .expect("Failed to connect to database");
+            let pool = match db::create_pool(&cfg.database_url).await {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::error!("Failed to connect to database: {e}");
+                    std::process::exit(1);
+                }
+            };
 
-            db::run_migrations(&pool)
-                .await
-                .expect("Failed to run migrations");
+            if let Err(e) = db::run_migrations(&pool).await {
+                tracing::error!("Failed to run migrations: {e}");
+                std::process::exit(1);
+            }
 
             AppState::new(pool)
         })

@@ -107,19 +107,19 @@ pub fn Approvals() -> Element {
                                                     approval.period_end.format("%b %d, %Y")
                                                 );
                                                 let submitted = approval.submitted_at.format("%b %d, %Y %H:%M").to_string();
-                                                let state = approval.state.clone();
+                                                let state = approval.state;
                                                 let aid = approval.id.to_string();
                                                 let aid2 = aid.clone();
-                                                let is_pending = state == "submitted";
+                                                let is_pending = state == horae_core::types::EntryState::Submitted;
                                                 rsx! {
                                                     tr {
                                                         td { "{name}" }
                                                         td { class: "text-mono", "{period}" }
                                                         td { class: "text-mono", style: "font-size: 0.85rem;", "{submitted}" }
                                                         td {
-                                                            match state.as_str() {
-                                                                "submitted" => rsx! { span { class: "badge badge-warning", "Pending" } },
-                                                                "approved" => rsx! { span { class: "badge badge-success", "Approved" } },
+                                                            match state {
+                                                                horae_core::types::EntryState::Submitted => rsx! { span { class: "badge badge-warning", "Pending" } },
+                                                                horae_core::types::EntryState::Approved  => rsx! { span { class: "badge badge-success", "Approved" } },
                                                                 other => rsx! { span { class: "badge badge-neutral", "{other}" } },
                                                             }
                                                         }

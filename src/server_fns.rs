@@ -1,4 +1,6 @@
 use dioxus::prelude::*;
+#[cfg(feature = "server")]
+use horae_core::types::{EntryState, OrgRole};
 
 use crate::models::{
     Approval, Assignment, Client, DetailedReportRow, Invoice, Project, ReportRow, Task, TimeEntry,
@@ -39,7 +41,7 @@ async fn require_admin() -> Result<crate::models::User, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
     let user = sqlx::query_as::<_, crate::models::User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+        "SELECT id, org_id, email, name, oidc_subject, org_role,
                 cost_rate_cents, billable_rate_cents, active, created_at
          FROM users WHERE id = $1 AND active = true",
     )
@@ -68,7 +70,7 @@ async fn require_manager() -> Result<crate::models::User, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
     let user = sqlx::query_as::<_, crate::models::User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+        "SELECT id, org_id, email, name, oidc_subject, org_role,
                 cost_rate_cents, billable_rate_cents, active, created_at
          FROM users WHERE id = $1 AND active = true",
     )
@@ -124,7 +126,7 @@ pub async fn get_me() -> Result<User, ServerFnError> {
     let state = crate::state::global_state().await;
 
     sqlx::query_as::<_, User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+        "SELECT id, org_id, email, name, oidc_subject, org_role,
                 cost_rate_cents, billable_rate_cents, active, created_at
          FROM users
          WHERE id = $1 AND active = true",
@@ -176,7 +178,7 @@ pub async fn list_time_entries(
     let entries = sqlx::query_as::<_, TimeEntry>(
         "SELECT id, org_id, user_id, project_id, task_id, spent_date,
                 minutes, rounded_minutes, notes, billable, is_running, started_at,
-                state::text AS state, invoice_id, created_at, updated_at
+                state, invoice_id, created_at, updated_at
          FROM time_entries
          WHERE user_id = $1
            AND ($2::uuid IS NULL OR project_id = $2)
@@ -214,7 +216,7 @@ pub async fn start_timer(
 
     // Get user's org_id
     let user = sqlx::query_as::<_, User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role::text AS org_role,
+        "SELECT id, org_id, email, name, oidc_subject, org_role,
                 cost_rate_cents, billable_rate_cents, active, created_at
          FROM users WHERE id = $1",
     )
@@ -245,10 +247,10 @@ pub async fn start_timer(
 
     sqlx::query_as::<_, TimeEntry>(
         "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, started_at, state)
-         VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), 'open'::entry_state)
+         VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), $8)
          RETURNING id, org_id, user_id, project_id, task_id, spent_date,
                    minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state::text AS state, invoice_id, created_at, updated_at",
+                   state, invoice_id, created_at, updated_at",
     )
     .bind(id)
     .bind(user.org_id)
@@ -257,6 +259,7 @@ pub async fn start_timer(
     .bind(task_id)
     .bind(today)
     .bind(&notes)
+    .bind(EntryState::Open)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -280,7 +283,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
          WHERE id = $1 AND user_id = $2 AND is_running = true
          RETURNING id, org_id, user_id, project_id, task_id, spent_date,
                    minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state::text AS state, invoice_id, created_at, updated_at",
+                   state, invoice_id, created_at, updated_at",
     )
     .bind(entry_id)
     .bind(user_id)
@@ -303,7 +306,7 @@ pub async fn get_current_timer() -> Result<Option<TimeEntry>, ServerFnError> {
     let entry = sqlx::query_as::<_, TimeEntry>(
         "SELECT id, org_id, user_id, project_id, task_id, spent_date,
                 minutes, rounded_minutes, notes, billable, is_running, started_at,
-                state::text AS state, invoice_id, created_at, updated_at
+                state, invoice_id, created_at, updated_at
          FROM time_entries
          WHERE user_id = $1 AND is_running = true
          LIMIT 1",
@@ -336,15 +339,15 @@ pub async fn create_time_entry(
         .parse()
         .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
 
-    let (org_id, org_role): (uuid::Uuid, String) =
-        sqlx::query_as("SELECT org_id, org_role::text FROM users WHERE id = $1")
+    let (org_id, org_role): (uuid::Uuid, OrgRole) =
+        sqlx::query_as("SELECT org_id, org_role FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_one(&state.db)
             .await
             .map_err(server_err)?;
 
     // Check assignment (skip for admins)
-    if org_role != "admin" {
+    if org_role != OrgRole::Admin {
         let assigned: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM assignments WHERE project_id = $1 AND user_id = $2)",
         )
@@ -367,10 +370,10 @@ pub async fn create_time_entry(
 
     sqlx::query_as::<_, TimeEntry>(
         "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, 'open'::entry_state)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10)
          RETURNING id, org_id, user_id, project_id, task_id, spent_date,
                    minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state::text AS state, invoice_id, created_at, updated_at",
+                   state, invoice_id, created_at, updated_at",
     )
     .bind(id)
     .bind(org_id)
@@ -381,6 +384,7 @@ pub async fn create_time_entry(
     .bind(minutes)
     .bind(&notes)
     .bind(billable)
+    .bind(EntryState::Open)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -406,7 +410,7 @@ pub async fn update_time_entry(
          WHERE id = $1 AND user_id = $2 AND state = 'open'
          RETURNING id, org_id, user_id, project_id, task_id, spent_date,
                    minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state::text AS state, invoice_id, created_at, updated_at",
+                   state, invoice_id, created_at, updated_at",
     )
     .bind(entry_id)
     .bind(user_id)
@@ -509,9 +513,9 @@ pub async fn list_projects(
 
     let projects = sqlx::query_as::<_, Project>(
         "SELECT id, org_id, client_id, code, name,
-                project_type::text AS project_type, currency,
+                project_type, currency,
                 starts_on, ends_on,
-                budget_kind::text AS budget_kind,
+                budget_kind,
                 budget_amount_cents, budget_minutes, active, created_at
          FROM projects
          WHERE ($1 IS NULL OR active = $1)
@@ -541,20 +545,28 @@ pub async fn create_project(
         .map_err(|_| server_err("Invalid client_id"))?;
     sqlx::query_as::<_, Project>(
         "INSERT INTO projects (id, org_id, client_id, name, project_type, currency, budget_kind)
-         VALUES ($1, $2, $3, $4, $5::project_type, $6, $7::budget_kind)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, org_id, client_id, code, name,
-                   project_type::text AS project_type, currency,
+                   project_type, currency,
                    starts_on, ends_on,
-                   budget_kind::text AS budget_kind,
+                   budget_kind,
                    budget_amount_cents, budget_minutes, active, created_at",
     )
     .bind(id)
     .bind(admin.org_id)
     .bind(client_id)
     .bind(&name)
-    .bind(&project_type)
+    .bind(
+        project_type
+            .parse::<horae_core::types::ProjectType>()
+            .map_err(|_| server_err("Invalid project_type"))?,
+    )
     .bind(&currency)
-    .bind(&budget_kind)
+    .bind(
+        budget_kind
+            .parse::<horae_core::types::BudgetKind>()
+            .map_err(|_| server_err("Invalid budget_kind"))?,
+    )
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -562,15 +574,10 @@ pub async fn create_project(
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
 
-/// Lists all org-level tasks.
-///
-/// The `project_id` parameter is kept for backwards compatibility with pages that
-/// pass it; in the new schema tasks are org-level (filtering by project is done
-/// via `project_tasks` in M4).
+/// Lists all active org-level tasks.
 #[server]
-pub async fn list_tasks(project_id: Option<String>) -> Result<Vec<Task>, ServerFnError> {
+pub async fn list_tasks() -> Result<Vec<Task>, ServerFnError> {
     let state = crate::state::global_state().await;
-    let _ = project_id;
 
     let tasks = sqlx::query_as::<_, Task>(
         "SELECT id, org_id, name, billable_default, default_rate_cents, active
@@ -636,7 +643,7 @@ pub async fn list_assignments(project_id: String) -> Result<Vec<Assignment>, Ser
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
     sqlx::query_as::<_, Assignment>(
-        "SELECT id, project_id, user_id, role::text AS role, rate_cents, created_at
+        "SELECT id, project_id, user_id, role, rate_cents, created_at
          FROM assignments WHERE project_id = $1 ORDER BY created_at",
     )
     .bind(project_id)
@@ -660,13 +667,16 @@ pub async fn create_assignment(
     let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
     sqlx::query_as::<_, Assignment>(
         "INSERT INTO assignments (id, project_id, user_id, role)
-         VALUES ($1, $2, $3, $4::project_role)
-         RETURNING id, project_id, user_id, role::text AS role, rate_cents, created_at",
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, project_id, user_id, role, rate_cents, created_at",
     )
     .bind(id)
     .bind(project_id)
     .bind(user_id)
-    .bind(&role)
+    .bind(
+        role.parse::<horae_core::types::ProjectRole>()
+            .map_err(|_| server_err("Invalid role"))?,
+    )
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -704,7 +714,7 @@ pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
 
     let users = sqlx::query_as::<_, User>(
         "SELECT id, org_id, email, name, oidc_subject,
-                org_role::text AS org_role,
+                org_role,
                 cost_rate_cents, billable_rate_cents, active, created_at
          FROM users
          WHERE active = true
@@ -740,18 +750,12 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
         .map_err(server_err)?;
 
     // Fetch org rounding config
-    let (round_min, round_dir_str): (i16, String) =
-        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
+    let (round_min, round_dir): (i16, horae_core::types::RoundDir) =
+        sqlx::query_as("SELECT round_minutes, round_dir FROM organizations WHERE id = $1")
             .bind(org_id)
             .fetch_one(&state.db)
             .await
             .map_err(server_err)?;
-
-    let round_dir = match round_dir_str.as_str() {
-        "up" => horae_core::types::RoundDir::Up,
-        "down" => horae_core::types::RoundDir::Down,
-        _ => horae_core::types::RoundDir::Nearest,
-    };
 
     // Apply rounding per entry if rounding is configured
     if round_min > 0 {
@@ -782,16 +786,18 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     // explicit rounding (round_min=0) still get rounded_minutes set to minutes
     let result = sqlx::query(
         "UPDATE time_entries
-         SET state = 'submitted'::entry_state,
+         SET state = $4,
              rounded_minutes = COALESCE(rounded_minutes, minutes),
              updated_at = now()
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3
-           AND state = 'open'",
+           AND state = $5",
     )
     .bind(user_id)
     .bind(ws)
     .bind(we)
+    .bind(EntryState::Submitted)
+    .bind(EntryState::Open)
     .execute(&state.db)
     .await
     .map_err(server_err)?;
@@ -808,17 +814,18 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     let id = uuid::Uuid::now_v7();
     let approval = sqlx::query_as::<_, Approval>(
         "INSERT INTO approvals (id, org_id, user_id, period_start, period_end, state)
-         VALUES ($1, $2, $3, $4, $5, 'submitted'::entry_state)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (user_id, period_start) DO UPDATE
-           SET state = 'submitted'::entry_state, submitted_at = now()
+           SET state = $6, submitted_at = now()
          RETURNING id, org_id, user_id, period_start, period_end,
-                   state::text AS state, submitted_at, approved_by, approved_at",
+                   state, submitted_at, approved_by, approved_at",
     )
     .bind(id)
     .bind(org_id)
     .bind(user_id)
     .bind(ws)
     .bind(we)
+    .bind(EntryState::Submitted)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)?;
@@ -832,14 +839,21 @@ pub async fn list_approvals(status: Option<String>) -> Result<Vec<Approval>, Ser
     let _manager = require_manager().await?;
     let state = crate::state::global_state().await;
 
+    let state_filter: Option<EntryState> = status
+        .map(|s| {
+            s.parse::<EntryState>()
+                .map_err(|_| server_err("Invalid status"))
+        })
+        .transpose()?;
+
     let approvals = sqlx::query_as::<_, Approval>(
         "SELECT id, org_id, user_id, period_start, period_end,
-                state::text AS state, submitted_at, approved_by, approved_at
+                state, submitted_at, approved_by, approved_at
          FROM approvals
-         WHERE ($1::text IS NULL OR state::text = $1)
+         WHERE ($1 IS NULL OR state = $1)
          ORDER BY period_start DESC",
     )
-    .bind(&status)
+    .bind(state_filter)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -851,6 +865,19 @@ pub async fn list_approvals(status: Option<String>) -> Result<Vec<Approval>, Ser
 #[server]
 pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerFnError> {
     let manager = require_manager().await?;
+
+    if !horae_core::state::can_transition(
+        EntryState::Submitted,
+        EntryState::Approved,
+        manager.org_role,
+    ) {
+        return Err(ServerFnError::ServerError {
+            message: "Insufficient role to approve submissions".into(),
+            code: 403,
+            details: None,
+        });
+    }
+
     let state = crate::state::global_state().await;
     let approval_id: uuid::Uuid = approval_id
         .parse()
@@ -859,15 +886,17 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     // Update approval row
     let approval = sqlx::query_as::<_, Approval>(
         "UPDATE approvals
-         SET state = 'approved'::entry_state,
+         SET state = $3,
              approved_by = $2,
              approved_at = now()
-         WHERE id = $1 AND state = 'submitted'::entry_state
+         WHERE id = $1 AND state = $4
          RETURNING id, org_id, user_id, period_start, period_end,
-                   state::text AS state, submitted_at, approved_by, approved_at",
+                   state, submitted_at, approved_by, approved_at",
     )
     .bind(approval_id)
     .bind(manager.id)
+    .bind(EntryState::Approved)
+    .bind(EntryState::Submitted)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -880,14 +909,16 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     // Transition corresponding time entries to approved
     sqlx::query(
         "UPDATE time_entries
-         SET state = 'approved'::entry_state, updated_at = now()
+         SET state = $4, updated_at = now()
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3
-           AND state = 'submitted'",
+           AND state = $5",
     )
     .bind(approval.user_id)
     .bind(approval.period_start)
     .bind(approval.period_end)
+    .bind(EntryState::Approved)
+    .bind(EntryState::Submitted)
     .execute(&state.db)
     .await
     .map_err(server_err)?;
@@ -899,7 +930,17 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
 /// Reopens the time entries and deletes the approval row.
 #[server]
 pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError> {
-    let _manager = require_manager().await?;
+    let manager = require_manager().await?;
+
+    if !horae_core::state::can_transition(EntryState::Submitted, EntryState::Open, manager.org_role)
+    {
+        return Err(ServerFnError::ServerError {
+            message: "Insufficient role to reject submissions".into(),
+            code: 403,
+            details: None,
+        });
+    }
+
     let state = crate::state::global_state().await;
     let approval_id: uuid::Uuid = approval_id
         .parse()
@@ -908,7 +949,7 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     // Fetch the approval to know user + period
     let approval = sqlx::query_as::<_, Approval>(
         "SELECT id, org_id, user_id, period_start, period_end,
-                state::text AS state, submitted_at, approved_by, approved_at
+                state, submitted_at, approved_by, approved_at
          FROM approvals WHERE id = $1",
     )
     .bind(approval_id)
@@ -924,14 +965,16 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     // Reopen entries
     sqlx::query(
         "UPDATE time_entries
-         SET state = 'open'::entry_state, rounded_minutes = NULL, updated_at = now()
+         SET state = $4, rounded_minutes = NULL, updated_at = now()
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3
-           AND state = 'submitted'",
+           AND state = $5",
     )
     .bind(approval.user_id)
     .bind(approval.period_start)
     .bind(approval.period_end)
+    .bind(EntryState::Open)
+    .bind(EntryState::Submitted)
     .execute(&state.db)
     .await
     .map_err(server_err)?;

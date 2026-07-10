@@ -5,7 +5,7 @@ use crate::server_fns;
 #[component]
 pub fn AdminUsers() -> Element {
     let users = use_resource(|| async move { server_fns::list_users().await });
-    let mut tasks = use_resource(|| async move { server_fns::list_tasks(None).await });
+    let mut tasks = use_resource(|| async move { server_fns::list_tasks().await });
 
     let mut show_task_form = use_signal(|| false);
     let mut task_name = use_signal(String::new);

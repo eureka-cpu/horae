@@ -14,6 +14,7 @@ path = "src/main.rs"
 [features]
 default = []
 server = [
+  "horae-core/sqlx",
   "dioxus/server",
   "dep:tokio",
   "dep:axum",
@@ -29,7 +30,7 @@ server = [
 web = ["dioxus/web", "dep:gloo-timers"]
 
 [dependencies]
-horae-core = { path = "crates/core" }
+horae-core = { path = "crates/core", features = [] }
 dioxus = { version = "0.7", features = ["fullstack", "router"] }
 clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }

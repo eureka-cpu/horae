@@ -4,6 +4,7 @@
 // return binary file data with custom Content-Type headers.
 
 use axum::extract::Query;
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
@@ -13,7 +14,10 @@ pub struct ExportParams {
     pub to: String,
 }
 
-async fn fetch_entries(from: &str, to: &str) -> Vec<crate::models::DetailedReportRow> {
+async fn fetch_entries(
+    from: &str,
+    to: &str,
+) -> Result<Vec<crate::models::DetailedReportRow>, sqlx::Error> {
     let state = crate::state::global_state().await;
     sqlx::query_as::<_, crate::models::DetailedReportRow>(
         "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
@@ -29,11 +33,14 @@ async fn fetch_entries(from: &str, to: &str) -> Vec<crate::models::DetailedRepor
     .bind(to)
     .fetch_all(&state.db)
     .await
-    .unwrap_or_default()
 }
 
-pub async fn export_csv(Query(params): Query<ExportParams>) -> impl IntoResponse {
-    let entries = fetch_entries(&params.from, &params.to).await;
+pub async fn export_csv(
+    Query(params): Query<ExportParams>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let entries = fetch_entries(&params.from, &params.to)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let mut wtr = csv::Writer::from_writer(vec![]);
     wtr.write_record([
@@ -46,7 +53,7 @@ pub async fn export_csv(Query(params): Query<ExportParams>) -> impl IntoResponse
         "Billable",
         "Notes",
     ])
-    .unwrap();
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     for e in &entries {
         wtr.write_record(&[
@@ -62,12 +69,14 @@ pub async fn export_csv(Query(params): Query<ExportParams>) -> impl IntoResponse
             if e.billable { "Yes" } else { "No" }.into(),
             e.notes.clone().unwrap_or_default(),
         ])
-        .unwrap();
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
 
-    let data = wtr.into_inner().unwrap();
+    let data = wtr
+        .into_inner()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    (
+    Ok((
         [
             (axum::http::header::CONTENT_TYPE, "text/csv"),
             (
@@ -76,11 +85,15 @@ pub async fn export_csv(Query(params): Query<ExportParams>) -> impl IntoResponse
             ),
         ],
         data,
-    )
+    ))
 }
 
-pub async fn export_xlsx(Query(params): Query<ExportParams>) -> impl IntoResponse {
-    let entries = fetch_entries(&params.from, &params.to).await;
+pub async fn export_xlsx(
+    Query(params): Query<ExportParams>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let entries = fetch_entries(&params.from, &params.to)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let mut workbook = rust_xlsxwriter::Workbook::new();
     let worksheet = workbook.add_worksheet();
@@ -96,34 +109,44 @@ pub async fn export_xlsx(Query(params): Query<ExportParams>) -> impl IntoRespons
         "Notes",
     ];
     for (col, h) in headers.iter().enumerate() {
-        worksheet.write_string(0, col as u16, *h).unwrap();
+        worksheet
+            .write_string(0, col as u16, *h)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
 
     for (row, e) in entries.iter().enumerate() {
         let r = (row + 1) as u32;
         worksheet
             .write_string(r, 0, e.spent_date.to_string())
-            .unwrap();
-        worksheet.write_string(r, 1, &e.project_name).unwrap();
-        worksheet.write_string(r, 2, &e.task_name).unwrap();
-        worksheet.write_string(r, 3, &e.user_name).unwrap();
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        worksheet
+            .write_string(r, 1, &e.project_name)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        worksheet
+            .write_string(r, 2, &e.task_name)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        worksheet
+            .write_string(r, 3, &e.user_name)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         worksheet
             .write_number(r, 4, e.minutes as f64 / 60.0)
-            .unwrap();
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         worksheet
             .write_number(r, 5, e.rounded_minutes.unwrap_or(e.minutes) as f64 / 60.0)
-            .unwrap();
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         worksheet
             .write_string(r, 6, if e.billable { "Yes" } else { "No" })
-            .unwrap();
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         worksheet
             .write_string(r, 7, e.notes.as_deref().unwrap_or(""))
-            .unwrap();
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
 
-    let data = workbook.save_to_buffer().unwrap();
+    let data = workbook
+        .save_to_buffer()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    (
+    Ok((
         [
             (
                 axum::http::header::CONTENT_TYPE,
@@ -135,5 +158,5 @@ pub async fn export_xlsx(Query(params): Query<ExportParams>) -> impl IntoRespons
             ),
         ],
         data,
-    )
+    ))
 }
