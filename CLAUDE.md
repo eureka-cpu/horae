@@ -1,1 +1,1 @@
-DESIGN.md
+AGENTS.md

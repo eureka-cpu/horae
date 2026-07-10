@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "core"]
+members = [".", "crates/core"]
 resolver = "2"
 
 [package]
@@ -29,7 +29,7 @@ server = [
 web = ["dioxus/web", "dep:gloo-timers"]
 
 [dependencies]
-horae-core = { path = "core" }
+horae-core = { path = "crates/core" }
 dioxus = { version = "0.7", features = ["fullstack", "router"] }
 clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
