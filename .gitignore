@@ -2,3 +2,9 @@
 .dev-vm.qcow2
 nixos.qcow2
 *result*
+
+# git worktrees
+/worktrees/
+
+# direnv
+.direnv/
