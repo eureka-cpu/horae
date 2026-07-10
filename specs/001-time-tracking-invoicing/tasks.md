@@ -13,9 +13,9 @@ ______________________________________________________________________
 
 ## Phase 1: Setup (shared infrastructure — mostly in place)
 
-- [ ] T001 Verify the workspace builds and the dev environment is reproducible: `nix develop`, `cargo build -p horae --features server`, `dx serve` renders (per [quickstart.md](./quickstart.md)).
-- [ ] T002 [P] Confirm formatting/lint gates pass locally: `nix fmt -- --ci` and `cargo clippy -p horae --features server`.
-- [ ] T003 Confirm a PostgreSQL target is reachable and `horae migrate run` + `horae seed` succeed (`crates/horae/src/db.rs`, `crates/horae/src/seed.rs`).
+- [x] T001 Verify the workspace builds and the dev environment is reproducible: `nix develop`, `cargo build -p horae --features server`, `dx serve` renders (per [quickstart.md](./quickstart.md)).
+- [x] T002 [P] Confirm formatting/lint gates pass locally: `nix fmt -- --ci` and `cargo clippy -p horae --features server`.
+- [x] T003 Confirm a PostgreSQL target is reachable and `horae migrate run` + `horae seed` succeed (`crates/horae/src/db.rs`, `crates/horae/src/seed.rs`).
 
 ______________________________________________________________________
 
@@ -23,12 +23,12 @@ ______________________________________________________________________
 
 **⚠️ Complete before starting any user story.**
 
-- [ ] T004 Reconcile the SQL schema in `crates/horae/migrations/0001_init.sql` with [data-model.md](./data-model.md) (organizations, users, clients, projects, tasks + project-task membership, assignments, time_entries; enums `org_role`/`project_type`/`budget_kind`/`entry_state`/`round_dir`).
-- [ ] T005 [P] Verify exact-value domain logic in `crates/core/src/{duration,money,rounding,totals}.rs` (integer minutes, integer minor units + ISO currency) and the entry/invoice transitions in `crates/core/src/state.rs` (FR-023).
-- [ ] T006 [P] Unit tests for core correctness in `crates/core/src/{duration,rounding,totals}.rs` (`#[cfg(test)]`): totals equal the exact sum of parts across groupings (SC-002).
-- [ ] T007 Confirm shared server state and pool wiring in `crates/horae/src/state.rs` (`AppState` in `OnceCell`) and `crates/horae/src/db.rs` (pool + eager migrations on `serve`).
-- [ ] T008 [P] Confirm session/auth foundation and role model in `crates/horae/src/auth/` (session store, OIDC, `DEV_LOGIN` bypass) and the `org_role` authorization helper used by server functions (FR-001).
-- [ ] T009 [P] Confirm error/logging foundation in `crates/horae/src/error.rs` and tracing init (`crates/horae/src/main.rs`).
+- [x] T004 Reconcile the SQL schema in `crates/horae/migrations/0001_init.sql` with [data-model.md](./data-model.md) (organizations, users, clients, projects, tasks + project-task membership, assignments, time_entries; enums `org_role`/`project_type`/`budget_kind`/`entry_state`/`round_dir`).
+- [x] T005 [P] Verify exact-value domain logic in `crates/core/src/{duration,money,rounding,totals}.rs` (integer minutes, integer minor units + ISO currency) and the entry/invoice transitions in `crates/core/src/state.rs` (FR-023).
+- [x] T006 [P] Unit tests for core correctness in `crates/core/src/{duration,rounding,totals}.rs` (`#[cfg(test)]`): totals equal the exact sum of parts across groupings (SC-002).
+- [x] T007 Confirm shared server state and pool wiring in `crates/horae/src/state.rs` (`AppState` in `OnceCell`) and `crates/horae/src/db.rs` (pool + eager migrations on `serve`).
+- [x] T008 [P] Confirm session/auth foundation and role model in `crates/horae/src/auth/` (session store, OIDC, `DEV_LOGIN` bypass) and the `org_role` authorization helper used by server functions (FR-001).
+- [x] T009 [P] Confirm error/logging foundation in `crates/horae/src/error.rs` and tracing init (`crates/horae/src/main.rs`).
 
 ______________________________________________________________________
 
@@ -38,14 +38,14 @@ ______________________________________________________________________
 
 **Independent test**: With seeded project/task, start→stop a timer, add a manual entry, edit an entry, see a correct day total — no client/invoice setup beyond seed.
 
-- [ ] T010 [P] [US1] Confirm the `TimeEntry` model and mapping in `crates/horae/src/models/time_entry.rs` matches data-model (user/project/task, `started_at`/`ended_at`/`duration_minutes`, `notes`, `billable`, `entry_state`, `invoice_id`).
-- [ ] T011 [US1] Complete the time-entry server functions in `crates/horae/src/server_fns.rs`: `list_time_entries` (with filters), `create_time_entry`, `update_time_entry`, `delete_time_entry`, `start_timer`, `stop_timer` (see [contracts/server-functions.md](./contracts/server-functions.md)).
-- [ ] T012 [US1] Enforce a single running timer per user in `start_timer` (`crates/horae/src/server_fns.rs`) — reject or auto-stop the prior running entry (FR-004, AS5).
-- [ ] T013 [US1] Compute duration exactly on stop via `crates/core` from `started_at`/`ended_at` in `stop_timer` (`crates/horae/src/server_fns.rs`) (FR-003, FR-023).
-- [ ] T014 [US1] Block edit/delete of entries already `invoiced` in `update_time_entry`/`delete_time_entry` (`crates/horae/src/server_fns.rs`) (FR-015).
-- [ ] T015 [P] [US1] Timer widget live-increment in `crates/horae/src/components/timer_widget.rs` and the time page list/add/edit UI in `crates/horae/src/pages/time.rs`.
-- [ ] T016 [P] [US1] Dashboard summary (current-period hours + running timer) in `crates/horae/src/pages/dashboard.rs` (FR-017).
-- [ ] T017 [US1] Integration tests in `crates/horae/tests/integration.rs` (`#[sqlx::test]`): start/stop produces exact duration; second concurrent timer prevented; invoiced entry is immutable.
+- [x] T010 [P] [US1] Confirm the `TimeEntry` model and mapping in `crates/horae/src/models/time_entry.rs` matches data-model (user/project/task, `started_at`/`ended_at`/`duration_minutes`, `notes`, `billable`, `entry_state`, `invoice_id`).
+- [x] T011 [US1] Complete the time-entry server functions in `crates/horae/src/server_fns.rs`: `list_time_entries` (with filters), `create_time_entry`, `update_time_entry`, `delete_time_entry`, `start_timer`, `stop_timer` (see [contracts/server-functions.md](./contracts/server-functions.md)).
+- [x] T012 [US1] Enforce a single running timer per user in `start_timer` (`crates/horae/src/server_fns.rs`) — reject or auto-stop the prior running entry (FR-004, AS5).
+- [x] T013 [US1] Compute duration exactly on stop via `crates/core` from `started_at`/`ended_at` in `stop_timer` (`crates/horae/src/server_fns.rs`) (FR-003, FR-023).
+- [x] T014 [US1] Block edit/delete of entries already `invoiced` in `update_time_entry`/`delete_time_entry` (`crates/horae/src/server_fns.rs`) (FR-015).
+- [x] T015 [P] [US1] Timer widget live-increment in `crates/horae/src/components/timer_widget.rs` and the time page list/add/edit UI in `crates/horae/src/pages/time.rs`.
+- [x] T016 [P] [US1] Dashboard summary (current-period hours + running timer) in `crates/horae/src/pages/dashboard.rs` (FR-017).
+- [x] T017 [US1] Integration tests in `crates/horae/tests/integration.rs` (`#[sqlx::test]`): start/stop produces exact duration; second concurrent timer prevented; invoiced entry is immutable.
 
 **Checkpoint**: US1 is an independently shippable MVP.
 

@@ -274,10 +274,32 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
         .parse()
         .map_err(|_| server_err("Invalid entry_id"))?;
 
+    // Read the running entry's start time, then compute the exact elapsed
+    // minutes in `horae-core` (floored to the minute, no artificial 1-minute
+    // minimum) so tracked totals stay exact (FR-003/FR-023).
+    let started_at: chrono::DateTime<chrono::Utc> =
+        sqlx::query_scalar::<_, Option<chrono::DateTime<chrono::Utc>>>(
+            "SELECT started_at FROM time_entries
+             WHERE id = $1 AND user_id = $2 AND is_running = true",
+        )
+        .bind(entry_id)
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(server_err)?
+        .flatten()
+        .ok_or_else(|| ServerFnError::ServerError {
+            message: "No running timer found for this entry".into(),
+            code: 404,
+            details: None,
+        })?;
+
+    let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
+
     sqlx::query_as::<_, TimeEntry>(
         "UPDATE time_entries
          SET is_running = false,
-             minutes = GREATEST(1, EXTRACT(EPOCH FROM (now() - started_at))::int / 60),
+             minutes = $3,
              started_at = NULL,
              updated_at = now()
          WHERE id = $1 AND user_id = $2 AND is_running = true
@@ -287,6 +309,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     )
     .bind(entry_id)
     .bind(user_id)
+    .bind(minutes)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
