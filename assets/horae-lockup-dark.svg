@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96">
+  <defs>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500&amp;display=swap');</style>
+    <clipPath id="dk-clip"><rect width="128" height="128" rx="30"/></clipPath>
+    <filter id="dk-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+  </defs>
+
+  <!-- Icon: 96×96 display, 128×128 internal viewBox -->
+  <svg x="0" y="0" width="96" height="96" viewBox="0 0 128 128">
+    <rect width="128" height="128" rx="30" fill="#1F5C4D"/>
+    <line x1="64" y1="70" x2="64" y2="24" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="64" y1="70" x2="57" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="64" y1="70" x2="71" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="64" cy="70" r="33" fill="#D99A3C" opacity="0.35" filter="url(#dk-glow)"/>
+    <circle cx="64" cy="70" r="29" fill="#D99A3C"/>
+    <rect y="85" width="128" height="2"  fill="#0F3D33" clip-path="url(#dk-clip)"/>
+    <rect y="87" width="128" height="41" fill="#164034" clip-path="url(#dk-clip)"/>
+  </svg>
+
+  <!-- "Horae" — Newsreader 500, 80px, letter-spacing -0.02em (-1.6px), nudged 1px down -->
+  <!-- text x=116 (96 icon + 20 gap), baseline y=75 -->
+  <text x="116" y="67"
+        font-family="'Newsreader', Georgia, serif"
+        font-size="80"
+        font-weight="500"
+        letter-spacing="-1.6"
+        fill="#EFEAE0">Horae</text>
+
+  <!-- Dot: 10px circle, cy=65 (horizon-aligned per margin-bottom calc), margin-left 6.4px -->
+  <circle cx="346" cy="65" r="5" fill="#D99A3C"/>
+</svg>
