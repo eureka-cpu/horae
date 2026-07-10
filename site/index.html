@@ -640,12 +640,12 @@
   imports = [ horae.nixosModules.default ];
 
   services.horae = {
-    enable        = true;
-    host          = "127.0.0.1";
-    port          = 3000;
-    database.createLocally = true;   # manages local PostgreSQL
-    # secretKeyFile = /run/secrets/horae-env;
-    # openFirewall  = true;
+    enable = true;
+    host = "127.0.0.1";
+    port = 3000;
+    database.createLocally = true; # manages local PostgreSQL
+    secretKeyFile = /run/secrets/horae-env;
+    openFirewall = true;
   };
 }</code></pre>
     </div>

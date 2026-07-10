@@ -71,6 +71,26 @@
 
       apps = lib.genAttrs systems (system:
         (blueprint.apps.${system} or { }) // {
+          preview-site =
+            let
+              pkgs = inputs.nixpkgs.legacyPackages.${system};
+              script = pkgs.writeShellApplication {
+                name = "preview-site";
+                runtimeInputs = with pkgs; [ python3 git ];
+                text = ''
+                  port=''${1:-8080}
+                  root=$(git rev-parse --show-toplevel)
+                  echo "Serving site at http://localhost:$port"
+                  exec python3 -m http.server "$port" --directory "$root/site"
+                '';
+              };
+            in
+            {
+              type = "app";
+              program = "${script}/bin/preview-site";
+              meta.description = "Serves the static site locally.";
+            };
+
           postgres =
             let
               hostPkgs = inputs.nixpkgs.legacyPackages.${system};
