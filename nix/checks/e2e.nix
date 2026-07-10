@@ -1,13 +1,13 @@
-{ pkgs, flake, perSystem, ... }:
+{ pkgs, flake, ... }:
 pkgs.testers.nixosTest {
   name = "horae-e2e";
-  nodes.server = { ... }: {
+  nodes.server = { config, ... }: {
     imports = [ flake.nixosModules.horae ];
     services.horae.enable = true;
     services.horae.database.createLocally = true;
     systemd.services.horae.environment.DEV_LOGIN = "1";
     # Put horae on PATH so the test script can call `horae seed`
-    environment.systemPackages = [ perSystem.self.default ];
+    environment.systemPackages = [ config.services.horae.package ];
   };
   testScript = ''
     server.start()
