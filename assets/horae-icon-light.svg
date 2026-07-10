@@ -1,19 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <defs>
     <clipPath id="icon-light-clip">
-      <rect width="128" height="128" rx="26"/>
+      <rect width="128" height="128" rx="30"/>
     </clipPath>
   </defs>
-  <!-- Paper background -->
-  <rect width="128" height="128" rx="26" fill="#FBF9F3"/>
-  <!-- Horizon shadow band — bottom ~31% -->
-  <rect y="88" width="128" height="40" fill="#E2DCCF" clip-path="url(#icon-light-clip)"/>
-  <!-- Rising sun — brass for contrast on pale bg -->
-  <circle cx="64" cy="65" r="30" fill="#C6802A"/>
-  <!-- Rays — Y-shape from circle top (y=35), ~38° spread -->
-  <g stroke="#C6802A" stroke-width="3" stroke-linecap="round">
-    <line x1="64" y1="35" x2="64" y2="20"/>
-    <line x1="64" y1="35" x2="57" y2="26"/>
-    <line x1="64" y1="35" x2="71" y2="26"/>
-  </g>
+  <rect width="128" height="128" rx="30" fill="#1F5C4D"/>
+  <line x1="64" y1="70" x2="64" y2="24" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="57" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="71" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="64" cy="70" r="29" fill="#D99A3C"/>
+  <rect y="85" width="128" height="2"  fill="#0F3D33" clip-path="url(#icon-light-clip)"/>
+  <rect y="87" width="128" height="41" fill="#164034" clip-path="url(#icon-light-clip)"/>
 </svg>
