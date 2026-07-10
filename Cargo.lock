@@ -2234,6 +2234,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "wasm-bindgen",
 ]
 
 [[package]]

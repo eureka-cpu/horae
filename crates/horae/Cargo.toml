@@ -36,6 +36,11 @@ uuid = { version = "1", features = ["v7", "serde", "js"] }
 thiserror = "2"
 anyhow = "1"
 tracing = "0.1"
+# wasm-bindgen version must match exactly the version of wasm-bindgen-cli in nixpkgs
+# that dioxus cli is built with:
+#
+# https://github.com/NixOS/nixpkgs/blob/0bb7ec54c8483066ec9d7720e780a5caa71f8612/pkgs/by-name/di/dioxus-cli/package.nix#L12
+wasm-bindgen = "=0.2.126"
 
 # server-only
 tokio = { version = "1", features = ["full"], optional = true }

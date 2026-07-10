@@ -6,3 +6,5 @@ resolver = "2"
 opt-level = 3
 lto = true
 codegen-units = 1
+debug = 0
+strip = "debuginfo" # strip residual DWARF — prevents binaryen/wasm-opt crash

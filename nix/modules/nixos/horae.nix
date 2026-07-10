@@ -83,6 +83,10 @@ in
         {
           name = "horae";
           ensureDBOwnership = true;
+          ensureClauses = {
+            createdb = true;
+            login = true;
+          };
         }
       ];
     };
@@ -110,6 +114,10 @@ in
           ExecStart = "${cfg.package}/bin/horae serve --host ${cfg.host} --port ${toString cfg.port}";
           DynamicUser = true;
           StateDirectory = "horae";
+          # The Dioxus fullstack server looks for `public/` relative to its
+          # working directory.  Point at the bin/ dir so it finds the bundled
+          # WASM + assets that live at ${package}/bin/public/.
+          WorkingDirectory = "${cfg.package}/bin";
           Restart = "on-failure";
 
           # Hardening
