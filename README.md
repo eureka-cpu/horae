@@ -6,77 +6,58 @@ Built with Rust, [Dioxus](https://dioxuslabs.com/) (fullstack SSR + WASM), Postg
 
 ______________________________________________________________________
 
-## Quick start (dev)
+## Features
 
-### Prerequisites
-
-- [Nix](https://nixos.org/download/) with flakes enabled
-- A nix-darwin Linux builder (for the dev VM) — or a running PostgreSQL instance
-
-### 1. Start the dev VM (provides PostgreSQL)
-
-```sh
-nix develop                    # enter the dev shell
-nix run .#qemu-vm              # boots a NixOS VM with Postgres (QEMU + HVF on Apple Silicon)
-```
-
-The VM forwards ports 2222 (SSH), 3000, and 5432 to localhost. SSH in with:
-
-```sh
-ssh -o StrictHostKeyChecking=no -p 2222 root@127.0.0.1
-```
-
-### 2. Run migrations and seed
-
-```sh
-DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- migrate run
-DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- seed
-```
-
-The seed creates: 1 org, 1 admin user, 2 clients, 2 projects, 4 tasks, 10 time entries.
-
-### 3. Start the dev server
-
-```sh
-DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:5432/horae dx serve
-```
-
-Open **http://localhost:8080/auth/login** and click **"Sign in as Admin"**.
-
-The first build compiles both the server binary and WASM bundle (~30s). Subsequent hot-reloads are fast.
+| Route | Description |
+|---|---|
+| `/` | Dashboard — weekly hours, active projects, timer |
+| `/time` | Time entries list with add/edit/delete |
+| `/timesheet` | Day / Week / Calendar views with weekly totals |
+| `/clients` | Client list + create (admin) |
+| `/projects` | Project list + create (admin); detail with assignments |
+| `/approvals` | Submit/approve/reject time submissions (manager+) |
+| `/reports` | Grouped time reports with CSV/XLSX export |
+| `/admin/users` | User + task management (admin) |
+| `/settings` | App settings |
 
 ______________________________________________________________________
 
-## Using without the dev VM
+## Self-hosting
 
-If you have PostgreSQL running locally:
+Horae ships as a NixOS module:
 
-```sh
-createdb horae
-DATABASE_URL=postgres://localhost/horae cargo run --features server -- migrate run
-DATABASE_URL=postgres://localhost/horae cargo run --features server -- seed
-DEV_LOGIN=1 DATABASE_URL=postgres://localhost/horae dx serve
+```nix
+{
+  imports = [ horae.nixosModules.default ];
+
+  services.horae = {
+    enable = true;
+    host = "127.0.0.1";
+    port = 3000;
+    database.createLocally = true;   # manages local PostgreSQL
+    # secretKeyFile = /run/secrets/horae-env;
+    # openFirewall = true;
+  };
+}
 ```
 
 ______________________________________________________________________
 
-## Environment variables
+## Configuration
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `postgres://localhost/horae` | PostgreSQL connection string |
-| `DEV_LOGIN` | _(unset)_ | Set to `1` to enable one-click admin login (no OIDC) |
-| `SESSION_SECRET` | `dev-secret-...` | Cookie signing secret (change in prod) |
+| `SESSION_SECRET` | `dev-secret-...` | Cookie signing secret — **always set in production** |
 | `HORAE_HOST` | `127.0.0.1` | Bind address |
-| `HORAE_PORT` | `3000` | Port (overridden to `8080` by `dx serve`) |
+| `HORAE_PORT` | `3000` | Listen port |
 | `HORAE_LOG` | `info` | Log level (`trace`, `debug`, `info`, `warn`, `error`) |
-| `OIDC_ISSUER` | _(unset)_ | OIDC provider URL (required in prod) |
+| `OIDC_ISSUER` | _(unset)_ | OIDC provider URL (required in production) |
 | `OIDC_CLIENT_ID` | _(unset)_ | OIDC client ID |
 | `OIDC_CLIENT_SECRET` | _(unset)_ | OIDC client secret |
 
 ______________________________________________________________________
 
-## CLI commands
+## CLI
 
 ```sh
 horae migrate run                   # apply pending migrations
@@ -89,31 +70,11 @@ horae user create --email admin@example.com --name "Admin" --role admin
 
 ______________________________________________________________________
 
-## Pages
-
-| Route | Description |
-|---|---|
-| `/auth/login` | Sign-in page (Axum-served, DEV_LOGIN or OIDC) |
-| `/` | Dashboard — weekly hours, active projects, timer |
-| `/time` | Time entries list with add/edit/delete |
-| `/timesheet` | Day / Week / Calendar views with weekly totals |
-| `/clients` | Client list + create (admin) |
-| `/projects` | Project list + create (admin); detail with assignments |
-| `/invoices` | Invoice list (Phase 4) |
-| `/approvals` | Submit/approve/reject time submissions (manager+) |
-| `/reports` | Grouped time reports with CSV/XLSX export |
-| `/admin/users` | User + task management (admin) |
-| `/settings` | App settings |
-
 ## API
 
-### Internal server functions
+### Harvest-compatible (read-only)
 
-All data mutations use Dioxus `#[server]` functions (auto-routed, session-authenticated).
-
-### Harvest-compatible API
-
-Read-only endpoints at `/harvest/v2` matching the [Harvest API v2](https://help.getharvest.com/api-v2/) shape:
+Endpoints at `/harvest/v2` matching the [Harvest API v2](https://help.getharvest.com/api-v2/) shape:
 
 ```
 GET /harvest/v2/users/me
@@ -136,49 +97,8 @@ GET /api/reports/export/xlsx?from=YYYY-MM-DD&to=YYYY-MM-DD
 
 ______________________________________________________________________
 
-## NixOS deployment
+## Resources
 
-```nix
-{
-  imports = [ horae.nixosModules.default ];
-
-  services.horae = {
-    enable = true;
-    host = "127.0.0.1";
-    port = 3000;
-    database.createLocally = true;   # manages local PostgreSQL
-    # secretKeyFile = /run/secrets/horae-env;
-    # openFirewall = true;
-  };
-}
-```
-
-______________________________________________________________________
-
-## Project layout
-
-```
-horae/
-├── core/                # Pure domain logic (duration, rounding, money, state machine)
-├── src/
-│   ├── main.rs          # CLI entry + custom Axum server
-│   ├── app.rs           # Root Dioxus component
-│   ├── route.rs         # SPA routes (Routable derive)
-│   ├── server_fns.rs    # #[server] functions (CRUD, auth, reports)
-│   ├── auth/            # Session management, DEV_LOGIN, OIDC stub
-│   ├── harvest/         # Harvest-compatible API (/harvest/v2)
-│   ├── reports.rs       # CSV/XLSX export Axum handlers
-│   ├── models/          # Domain types (User, Project, TimeEntry, ...)
-│   ├── pages/           # Page components (dashboard, time, timesheet, ...)
-│   ├── components/      # Shared UI (nav, sidebar, timer, table, form, badge)
-│   ├── seed.rs          # Demo data seeder
-│   ├── db.rs            # PgPool + migrations
-│   ├── config.rs        # Environment config
-│   └── state.rs         # Global AppState (OnceCell)
-├── migrations/          # sqlx SQL migration (0001_init.sql)
-├── assets/css/          # Design system CSS
-├── nixos/modules/horae/ # NixOS module
-├── flake.nix            # Nix flake (dev shell, VM, package)
-├── SPEC.md              # Phase 1 build spec
-└── Dioxus.toml          # dx CLI configuration
-```
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development setup and contribution guidelines
+- [SPEC.md](SPEC.md) — Phase 1 build specification
+- [DESIGN.md](DESIGN.md) — design system and component conventions
