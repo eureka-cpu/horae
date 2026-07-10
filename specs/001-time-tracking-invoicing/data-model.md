@@ -15,7 +15,7 @@ Derived from the spec's Key Entities and `SPEC.md` §2. Everything is scoped to 
 
 ### Organization *(singleton for v1)*
 
-- **Fields**: `id`, `name`, `default_currency` (char(3)), `week_start` (1 = Monday), `round_minutes` (0 = none), `round_dir`, `created_at`.
+- **Fields**: `id`, `name`, `default_currency` (char(3)), `week_start` (1 = Monday), `round_minutes` (0 = none), `round_dir`, `created_at`, plus **invoice-branding settings** (provider identity, bank/payment details, logo, default invoice template) used when rendering documents (FR-025).
 - **Relationships**: owns all other records via `org_id`.
 
 ### User
@@ -64,6 +64,7 @@ Derived from the spec's Key Entities and `SPEC.md` §2. Everything is scoped to 
 - **Line items**: each line references the source billable time (task/description, `minutes`, `rate_cents`, `amount_cents`); the invoice `total_cents` equals the exact sum of its lines (FR-012, FR-023).
 - **Relationships**: belongs to a `Client`; covers a set of `TimeEntry` records.
 - **Rules**: generating an invoice marks its entries `invoiced` so the same time cannot be billed twice (FR-013).
+- **Document**: the invoice PDF is a *derived artifact* rendered reproducibly from a template + the organization's branding settings (FR-025); the invoice and line records remain the authoritative data.
 
 ### Plugin *(planned — User Story 5)*
 

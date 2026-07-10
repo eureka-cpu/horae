@@ -80,6 +80,11 @@ ______________________________________________________________________
 - [ ] T028 [US3] `update_invoice_status` in `src/server_fns.rs` enforcing the invoice state machine, including `void` returning entries to un-invoiced (data-model.md state machine, FR-014).
 - [ ] T029 [US3] Prevent double-billing and editing invoiced time at the query/mutation layer (`src/server_fns.rs`) (FR-013/FR-015).
 - [ ] T030 [P] [US3] Invoice export handler in `src/reports.rs` (reuse CSV/XLSX; add invoice document) so exported amounts match on-screen (FR-016/SC-007).
+- [ ] T030a [US3] Add the Typst rendering toolchain (Cargo dep or `typst` CLI) and wire nixpkgs fonts into the dev shell / package for reproducible typography (`Cargo.toml`, `nix/`).
+- [ ] T030b [P] [US3] Author the invoice Typst template in `templates/invoice.typ` (branding, line items, totals, provider/bank details).
+- [ ] T030c [US3] Implement deterministic invoice PDF rendering (invoice data + branding → Typst → PDF) in `src/reports.rs` / a render module, reconciling exactly (FR-025/SC-007); see [contracts/invoice-rendering.md](./contracts/invoice-rendering.md).
+- [ ] T030d [P] [US3] Editable-fields review UI before finalize/send (provider identity, bank details, notes) in `src/pages/invoices.rs` (FR-025).
+- [ ] T030e [US3] Store per-organization invoice-branding settings (provider identity, bank details, logo, default template) in `migrations/` + `src/models/organization.rs`.
 - [ ] T031 [P] [US3] Invoice list + detail UI in `src/pages/invoices.rs`.
 - [ ] T032 [US3] Integration tests in `tests/integration.rs`: generated invoice total equals summed entries; entries become invoiced and cannot be re-billed; void restores entries.
 

@@ -59,6 +59,7 @@ A manager selects a client and a period, reviews the billable, not-yet-invoiced 
 1. **Given** a generated invoice, **When** it is created, **Then** the included time entries are marked as invoiced so they cannot be billed again.
 1. **Given** a draft invoice, **When** the manager marks it sent and later paid (or void), **Then** its status updates and is reflected in invoice lists.
 1. **Given** a finalized invoice, **When** the manager exports it, **Then** the exported document's amounts match the on-screen invoice exactly.
+1. **Given** a draft invoice, **When** the manager adjusts its editable fields and generates the PDF, **Then** a branded, print-ready PDF is produced whose amounts reconcile exactly with the invoice, and regenerating it yields the same document (FR-025).
 
 ______________________________________________________________________
 
@@ -132,6 +133,7 @@ An operator drops a sandboxed plugin into the deployment to react to business ev
 - **FR-013**: The system MUST mark time entries as invoiced when they are included on an invoice and MUST prevent the same time from being billed on more than one invoice.
 - **FR-014**: Invoices MUST support the lifecycle states draft, sent, paid, and void, and MUST carry an invoice number, issue date, due date, and total.
 - **FR-015**: The system MUST prevent editing or deleting time that is already attached to an invoice unless it is first removed from that invoice.
+- **FR-025**: The system MUST render each invoice as a print-ready PDF whose line items and totals reconcile exactly with the invoice (FR-012/FR-023). The document MUST be produced from a customizable template (branding, layout, and embeddable fonts), MUST be reproducible (the same invoice yields the same document), and users MUST be able to review and adjust the invoice's editable fields before it is finalized or sent.
 
 **Reporting & export**
 
@@ -186,5 +188,5 @@ An operator drops a sandboxed plugin into the deployment to react to business ev
 - **Currency is per client**: Each client has a single currency and its invoices use it; multi-currency invoices and currency conversion are out of scope. Monetary values are handled as exact minor units and durations as exact units to guarantee SC-002/SC-007.
 - **Rate resolution**: Billing rates cascade task → assignment override → project → user default (FR-024); a non-billable task or project yields no billable amount regardless of rate.
 - **Plugins are operator-trusted but sandboxed**: The operator chooses which plugins to install; the system still confines each to its granted capabilities. Plugins are portable modules and may be authored in any language that targets the supported sandbox format.
-- **Standard export formats**: Reports export to a common spreadsheet/CSV format and invoices to a common document format; specific format choices are deferred to the plan phase.
+- **Standard export formats**: Reports export to a common spreadsheet/CSV format and invoices to a print-ready PDF (FR-025). Invoice/timesheet documents are rendered from templates with embeddable fonts and deterministic output; the specific rendering engine is an implementation choice (see research.md/plan.md).
 - **Web application on modern browsers**: The interface targets current desktop browsers; native mobile apps are out of scope for v1.

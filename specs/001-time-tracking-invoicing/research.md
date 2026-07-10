@@ -38,6 +38,12 @@ The spec is intentionally implementation-free; this document records the technic
 - **Rationale**: Postgres is pinned by `SPEC.md`; sqlx gives async access and optional compile-time query checking. Nix gives reproducible dev shells, packages, and a deployable NixOS module.
 - **Alternatives considered**: SQLite — explicitly excluded by `SPEC.md` for Phase 1. An ORM (SeaORM/Diesel) — rejected in favor of sqlx's explicit SQL and migration model.
 
+## Decision: Invoice & document rendering via Typst
+
+- **Decision**: Render invoices (and later timesheets/report PDFs) with **Typst**, from a customizable `.typ` template. Fonts are sourced from nixpkgs so any typeface is embeddable and the build stays reproducible. The invoice's editable fields (provider identity, bank details, notes, line adjustments) feed the template, and the manager can review/adjust them before finalizing/sending (FR-025).
+- **Rationale**: Typst is deterministic — the same invoice yields byte-identical output — which extends the exactness principle (Constitution I) from numbers to documents. It is WASM-friendly (consistent with the Dioxus/WASM stack and the sandboxed-plugin direction), has excellent typography, and pulls fonts from nixpkgs for reproducible packaging. `SPEC.md` §0 already pins `typst` for PDF (fallback `printpdf`). The approach is proven by [eureka-cpu/nvoice](https://github.com/eureka-cpu/nvoice) (Harvest-exporter JSON → one PDF per client), which is directly reusable because Horae already exposes Harvest-shaped data.
+- **Alternatives considered**: `printpdf` — low-level, no templating; kept only as the documented fallback. `rust_xlsxwriter` — spreadsheets only (already used for XLSX export), not documents. Headless HTML→PDF (browser engine) — non-deterministic and a heavy runtime dependency; rejected.
+
 ## Resolved unknowns
 
 No `NEEDS CLARIFICATION` markers remained in the spec. The five open scope questions were settled with documented defaults in the spec's Assumptions (single-org, self-hosted, credential/role auth, no v1 approval workflow, per-client currency) and are reflected in the decisions above.

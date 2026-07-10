@@ -14,7 +14,7 @@ Much of P1–P4 already exists in the codebase; the plan covers completing those
 
 **Language/Version**: Rust (edition 2024); frontend compiled to WASM via Dioxus.
 
-**Primary Dependencies**: `dioxus` 0.7 (fullstack + router), `axum` 0.8, `tokio`, `sqlx` 0.8 (Postgres), `tower-sessions` + `tower-sessions-sqlx-store`, `openidconnect` (production auth), `clap` (CLI), `chrono`, `uuid` (v7), `csv` + `rust_xlsxwriter` (exports), `extism` 1 (plugin host — to add). Toolchain and packaging via Nix (`fenix`, `blueprint`, `treefmt-nix`).
+**Primary Dependencies**: `dioxus` 0.7 (fullstack + router), `axum` 0.8, `tokio`, `sqlx` 0.8 (Postgres), `tower-sessions` + `tower-sessions-sqlx-store`, `openidconnect` (production auth), `clap` (CLI), `chrono`, `uuid` (v7), `csv` + `rust_xlsxwriter` (spreadsheet/CSV export), `typst` (invoice/timesheet PDF rendering, fonts from nixpkgs), `extism` 1 (plugin host — to add). Toolchain and packaging via Nix (`fenix`, `blueprint`, `treefmt-nix`).
 
 **Storage**: PostgreSQL 15+. Migrations via `sqlx` (`migrations/`). Sessions persisted in Postgres.
 
@@ -87,6 +87,7 @@ src/                     # horae app crate (Dioxus fullstack; server + web targe
 └── plugin/              # NEW (P5): registry, host functions, events, manifest [server]
 
 migrations/              # sqlx SQL migrations (0001_init.sql, …)
+templates/               # Typst document templates: invoice.typ (+ timesheet.typ)  [NEW]
 assets/css/horae.css     # design system
 nix/                     # blueprint flake tree: package, devshell, module, checks, formatter
 nixos/ → nix/modules/nixos/horae.nix   # NixOS service module
