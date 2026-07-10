@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horae — Self-hostable time tracking</title>
+  <meta name="description" content="A Harvest-compatible time tracker you run on your own server. Open source, NixOS-native, no subscriptions.">
+  <link id="fav" rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link id="hljs-theme-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+  <link id="hljs-theme-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-light.min.css" disabled>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/nix.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg:           #100F0C;
+      --color-bg-secondary: #1A1813;
+      --color-bg-tertiary:  #232019;
+      --color-text:         #EFEAE0;
+      --color-text-secondary: #A29C8D;
+      --color-text-muted:   #7C7565;
+      --color-border:       #322E26;
+      --color-primary:      #4FB79A;
+      --color-primary-dark: #3D9E84;
+      --color-accent:       #D99A3C;
+      --font:               'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display:       'Newsreader', Georgia, serif;
+      --font-mono:          'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+      --radius:             11px;
+      --radius-btn:         8px;
+      --nav-height:         56px;
+      /* Icon variants — inline SVGs reference these */
+      --icon-bg-fill:         #1F5C4D;
+      --icon-horizon-line:    #0F3D33;  /* thin stripe at the waterline */
+      --icon-horizon-fill:    #164034;  /* deeper band below */
+      --icon-sun-fill:        #D99A3C;
+      --icon-ray-center:      #E7C079;  /* centre ray: pale gold */
+      --icon-ray-side:        #E4B061;  /* flanking rays: slightly deeper */
+    }
+
+    [data-theme="light"] {
+      --color-bg:             #EFEAE0;
+      --color-bg-secondary:   #F8F5EE;
+      --color-bg-tertiary:    #F1ECE1;
+      --color-text:           #22201B;
+      --color-text-secondary: #6B6459;
+      --color-text-muted:     #9A9182;
+      --color-border:         #E2DCCF;
+      --color-primary:        #1F5C4D;
+      --color-primary-dark:   #174a3c;
+      --color-accent:         #C6802A;
+      /* icon stays full-colour on paper — no overrides needed */
+    }
+
+    [data-theme="light"] .btn-primary { color: #FFFFFF; }
+
+    [data-theme="pine"] {
+      --color-bg:             #112b22;
+      --color-bg-secondary:   #1a3d2f;
+      --color-bg-tertiary:    #1F5C4D;
+      --color-text:           #F0EDE5;
+      --color-text-secondary: #9BBFB8;
+      --color-text-muted:     #5E9B8F;
+      --color-border:         #265544;
+      --color-primary:        #6EC8B5;
+      --color-primary-dark:   #58B49F;
+      --color-accent:         #E8B84B;
+      /* Reversed · on pine icon variant */
+      --icon-bg-fill:         #0F3D33;
+      --icon-horizon-line:    #072a22;
+      --icon-horizon-fill:    #0a352b;
+      --icon-sun-fill:        #EFEAE0;  /* warm cream, not pure white */
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Nav ─────────────────────────────────────────────────── */
+
+    nav {
+      height: var(--nav-height);
+      background: var(--color-bg-secondary);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover { color: var(--color-text); }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+
+    .hero {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 6rem 2rem 5rem;
+      text-align: center;
+    }
+
+    .hero-wordmark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    /* inner wrapper: baseline-aligns text + dot together */
+    .wm-lockup {
+      display: flex;
+      align-items: baseline;
+    }
+
+    .wm-text {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 8vw, 5rem);
+      position: relative;
+      top: 1px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      line-height: 1;
+    }
+
+    /* circle dot; align-self:flex-end + margin-bottom places it at the horizon */
+    .wm-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      flex-shrink: 0;
+      align-self: flex-end;
+      margin-left: 0.4rem;
+      /* horizon at y=85/128 of 96px icon = 63.75px from top.
+         with align-items:center: margin = font-size/2 - 25px */
+      margin-bottom: calc(clamp(3rem, 8vw, 5rem) / 2 - 22px);
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.25rem, 6vw, 3.75rem);
+      font-weight: 500;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero p {
+      font-size: 1.0625rem;
+      color: var(--color-text-secondary);
+      max-width: 520px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.75;
+    }
+
+    .ctas {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      background: var(--color-primary);
+      color: #0d211b;
+      border-radius: var(--radius-btn);
+      padding: 0.6875rem 1.375rem;
+      font-family: var(--font);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+
+    .btn-primary:hover { background: var(--color-primary-dark); }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+      border-radius: var(--radius-btn);
+      padding: 0.6875rem 1.375rem;
+      font-family: var(--font);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--color-text-secondary);
+      color: var(--color-text);
+    }
+
+    /* ── Divider ──────────────────────────────────────────────── */
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+    }
+
+    /* ── Features ─────────────────────────────────────────────── */
+
+    .features {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 4.5rem 2rem;
+    }
+
+    .section-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 2rem;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .feature-card {
+      background: var(--color-bg-secondary);
+      padding: 1.75rem 1.625rem;
+      border-right: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .feature-card:nth-child(3n) { border-right: none; }
+    .feature-card:nth-last-child(-n+3) { border-bottom: none; }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(79, 183, 154, 0.1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 1.0625rem;
+      font-weight: 500;
+      color: var(--color-text);
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-desc {
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+    }
+
+    .feature-desc code {
+      font-family: var(--font-mono);
+      font-size: 0.8em;
+      color: var(--color-primary);
+    }
+
+    /* ── Deploy ───────────────────────────────────────────────── */
+
+    .deploy {
+      max-width: 660px;
+      margin: 0 auto;
+      padding: 4.5rem 2rem 5.5rem;
+    }
+
+    .deploy h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 4vw, 2.625rem);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+
+    .deploy .lead {
+      font-size: 1rem;
+      color: var(--color-text-secondary);
+      line-height: 1.75;
+      margin-bottom: 1.75rem;
+    }
+
+    pre {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.75rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.8;
+      color: var(--color-text);
+      tab-size: 2;
+    }
+
+    .c { color: var(--color-text-muted); }
+
+    pre.hljs, pre code.hljs { background: var(--color-bg-secondary) !important; border-radius: var(--radius) !important; }
+
+    /* ── Code block ───────────────────────────────────────────── */
+
+    .code-block { position: relative; }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.625rem;
+      right: 0.625rem;
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+    }
+
+    .code-block:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { color: var(--color-text); }
+
+    /* ── Theme toggle ─────────────────────────────────────────── */
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-btn);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      padding: 0.3rem 0.4rem;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .theme-toggle:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+    /* dark: show sun → next = light */
+    .theme-toggle .icon-sun  { display: block; }
+    .theme-toggle .icon-leaf { display: none; }
+    .theme-toggle .icon-moon { display: none; }
+    /* light: show leaf → next = pine */
+    [data-theme="light"] .theme-toggle .icon-sun  { display: none; }
+    [data-theme="light"] .theme-toggle .icon-leaf { display: block; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+    /* pine: show moon → next = dark */
+    [data-theme="pine"]  .theme-toggle .icon-sun  { display: none; }
+    [data-theme="pine"]  .theme-toggle .icon-leaf { display: none; }
+    [data-theme="pine"]  .theme-toggle .icon-moon { display: block; }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+
+    footer {
+      border-top: 1px solid var(--color-border);
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .footer-links a {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover { color: var(--color-text-secondary); }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+
+    @media (max-width: 860px) {
+      .feature-grid { grid-template-columns: repeat(2, 1fr); }
+      .feature-card:nth-child(3n) { border-right: 1px solid var(--color-border); }
+      .feature-card:nth-child(2n) { border-right: none; }
+      .feature-card:nth-last-child(-n+3) { border-bottom: 1px solid var(--color-border); }
+      .feature-card:nth-last-child(-n+2) { border-bottom: none; }
+    }
+
+    @media (max-width: 560px) {
+      nav { padding: 0 1.25rem; }
+      .hero { padding: 3.5rem 1.25rem 3rem; }
+      .features { padding: 3rem 1.25rem; }
+      .deploy { padding: 3rem 1.25rem 4rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .feature-card { border-right: none !important; border-bottom: 1px solid var(--color-border) !important; }
+      .feature-card:last-child { border-bottom: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ──────────────────────────────────────────────────── -->
+  <nav>
+    <a href="/" class="nav-logo" aria-label="Horae home">
+      <svg width="28" height="28" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><clipPath id="nc"><rect width="128" height="128" rx="30"/></clipPath></defs>
+        <rect width="128" height="128" rx="30" style="fill: var(--icon-bg-fill)"/>
+        <circle cx="64" cy="70" r="29" style="fill: var(--icon-sun-fill)"/>
+        <rect y="85" width="128" height="2"  style="fill: var(--icon-horizon-line)" clip-path="url(#nc)"/>
+        <rect y="87" width="128" height="41" style="fill: var(--icon-horizon-fill)" clip-path="url(#nc)"/>
+      </svg>
+    </a>
+    <div class="nav-links">
+      <a href="https://github.com/eureka-cpu/horae" class="nav-link" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+      </a>
+      <a href="https://github.com/eureka-cpu/horae/wiki" class="nav-link" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M4 4.5h6M4 7h6M4 9.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        Wiki
+      </a>
+      <button class="theme-toggle" aria-label="Change colour theme" onclick="toggleTheme()">
+        <!-- Sun — shown in dark mode; click → light -->
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M11.54 3.05l-1.41 1.41M4.46 11.54l-1.41 1.41" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <!-- Leaf — shown in light mode; click → pine -->
+        <svg class="icon-leaf" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 13c1-4 3-7 10-9C12 9 9 12 3 13z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          <path d="M3 13c2-2 4-3 6-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <!-- Moon — shown in pine mode; click → dark -->
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M13.5 10.5A6 6 0 0 1 5.5 2.5a6 6 0 1 0 8 8z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Hero ─────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-wordmark">
+      <svg width="96" height="96" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <clipPath id="hc"><rect width="128" height="128" rx="30"/></clipPath>
+          <filter id="hc-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="5"/>
+          </filter>
+        </defs>
+        <rect width="128" height="128" rx="30" style="fill: var(--icon-bg-fill)"/>
+        <!-- rays from sun centre (64,70) — disc and horizon paint over their bases -->
+        <line x1="64" y1="70" x2="64" y2="24" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-center)"/>
+        <line x1="64" y1="70" x2="57" y2="35" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <line x1="64" y1="70" x2="71" y2="35" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <!-- sun glow halo -->
+        <circle cx="64" cy="70" r="33" style="fill: var(--icon-sun-fill)" opacity="0.35" filter="url(#hc-glow)"/>
+        <!-- sun disc — cy=70 is slightly below centre, horizon 14.5px below (0.5r) -->
+        <circle cx="64" cy="70" r="29" style="fill: var(--icon-sun-fill)"/>
+        <rect y="85" width="128" height="2"  style="fill: var(--icon-horizon-line)" clip-path="url(#hc)"/>
+        <rect y="87" width="128" height="41" style="fill: var(--icon-horizon-fill)" clip-path="url(#hc)"/>
+      </svg>
+      <div class="wm-lockup">
+        <span class="wm-text">Horae</span>
+        <span class="wm-dot"></span>
+      </div>
+    </div>
+    <p class="eyebrow">Open source · Self-hosted · NixOS-native</p>
+    <h1>Time tracking that's<br>fully yours.</h1>
+    <p>A Harvest-compatible time tracker you run on your own server. No subscriptions, no data leaving your infrastructure.</p>
+    <div class="ctas">
+      <a href="#deploy" class="btn-primary">Self-host on NixOS</a>
+      <a href="https://github.com/eureka-cpu/horae" class="btn-ghost" target="_blank" rel="noopener">
+        View on GitHub
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+          <path d="M2 1.5h7.5M9.5 1.5v7M9.5 1.5 1.5 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ── Features ─────────────────────────────────────────────── -->
+  <section class="features">
+    <p class="section-label">Features</p>
+    <div class="feature-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="9" cy="10" r="6.75" stroke="#4FB79A" stroke-width="1.4"/>
+            <path d="M9 7v3l2 2" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M6.5 1.5h5" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="feature-title">Timer & time entries</p>
+        <p class="feature-desc">Track time in real time or add entries manually. The live timer runs in the browser; durations are stored as integer minutes in PostgreSQL.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="1.5" y="3" width="15" height="13.5" rx="1.5" stroke="#4FB79A" stroke-width="1.4"/>
+            <path d="M1.5 7h15" stroke="#4FB79A" stroke-width="1.4"/>
+            <path d="M6 1.5v3M12 1.5v3" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M4.5 10.5h3M4.5 13h3M9.5 10.5h4M9.5 13h4" stroke="#4FB79A" stroke-width="1.1" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="feature-title">Weekly timesheets</p>
+        <p class="feature-desc">Day, week, and calendar views with automatic totals. Submit weekly timesheets for manager review and approval.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M1.5 4.5A1.5 1.5 0 0 1 3 3h12a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 15 15H3a1.5 1.5 0 0 1-1.5-1.5v-9Z" stroke="#4FB79A" stroke-width="1.4"/>
+            <path d="M1.5 7h15M6 3v4" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="5" cy="11" r="1" fill="#4FB79A"/>
+            <circle cx="9" cy="11" r="1" fill="#4FB79A"/>
+            <circle cx="13" cy="11" r="1" fill="#4FB79A"/>
+          </svg>
+        </div>
+        <p class="feature-title">Projects & clients</p>
+        <p class="feature-desc">Organize time by client and project. Assign team members, control roles, and configure billing context per project.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="9" cy="9" r="7.25" stroke="#4FB79A" stroke-width="1.4"/>
+            <path d="M5.5 9.5 7.5 11.5l5-5" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="feature-title">Approval workflow</p>
+        <p class="feature-desc">Managers review, approve, or reject submitted time. A state machine tracks every entry: open → submitted → approved or rejected.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M1.5 16.5h15" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round"/>
+            <rect x="2.5" y="10" width="2.5" height="6" rx="0.75" fill="#4FB79A" opacity="0.45"/>
+            <rect x="7.75" y="6.5" width="2.5" height="9.5" rx="0.75" fill="#4FB79A" opacity="0.7"/>
+            <rect x="13" y="2.5" width="2.5" height="13.5" rx="0.75" fill="#4FB79A"/>
+          </svg>
+        </div>
+        <p class="feature-title">Reports & export</p>
+        <p class="feature-desc">Aggregate time by project, client, or user. Export to CSV or XLSX for payroll, billing, or external reporting.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="9" cy="9" r="3" stroke="#4FB79A" stroke-width="1.4"/>
+            <path d="M1.5 9h4M12.5 9h4" stroke="#4FB79A" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="9" cy="9" r="1.25" fill="#4FB79A"/>
+          </svg>
+        </div>
+        <p class="feature-title">Harvest-compatible API</p>
+        <p class="feature-desc">A read-only <code>/harvest/v2</code> endpoint matching the Harvest API v2 shape — your existing integrations keep working without changes.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ── Deploy ────────────────────────────────────────────────── -->
+  <section id="deploy" class="deploy">
+    <h2>One NixOS module.</h2>
+    <p class="lead">Add Horae to your NixOS configuration. The module manages the systemd service, PostgreSQL database, and runtime environment.</p>
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><code class="language-nix"># configuration.nix
+{
+  imports = [ horae.nixosModules.default ];
+
+  services.horae = {
+    enable        = true;
+    host          = "127.0.0.1";
+    port          = 3000;
+    database.createLocally = true;   # manages local PostgreSQL
+    # secretKeyFile = /run/secrets/horae-env;
+    # openFirewall  = true;
+  };
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- ── Footer ────────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/eureka-cpu/horae" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/eureka-cpu/horae/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
+      <a href="https://github.com/eureka-cpu/horae/blob/master/SPEC.md" target="_blank" rel="noopener">Spec</a>
+      <a href="https://github.com/eureka-cpu/horae/blob/master/DESIGN.md" target="_blank" rel="noopener">Design</a>
+    </div>
+  </footer>
+
+  <script>
+    var THEMES = ['dark', 'light', 'pine'];
+
+    function applyTheme(t) {
+      document.documentElement.dataset.theme = t;
+      var isLight = t === 'light';
+      document.getElementById('hljs-theme-dark').disabled  = isLight;
+      document.getElementById('hljs-theme-light').disabled = !isLight;
+      document.getElementById('fav').href =
+        t === 'pine' ? 'favicon-pine.svg' : 'favicon.svg';
+    }
+
+    function toggleTheme() {
+      var cur = document.documentElement.dataset.theme || 'dark';
+      var next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+      applyTheme(next);
+      localStorage.setItem('horae-theme', next);
+    }
+
+    function getTimeTheme() {
+      var h = new Date().getHours();
+      if (h >= 6 && h < 18) return 'light';   // 6am–6pm: day
+      if (h >= 18 && h < 21) return 'pine';   // 6pm–9pm: dusk
+      return 'dark';                            // 9pm–6am: night
+    }
+
+    // Initialise: saved preference wins, otherwise time of day
+    (function () {
+      applyTheme(localStorage.getItem('horae-theme') || getTimeTheme());
+    })();
+
+    // Copy-to-clipboard
+    function copyCode(btn) {
+      var code = btn.closest('.code-block').querySelector('code');
+      navigator.clipboard.writeText(code.innerText).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+      });
+    }
+
+    // Syntax highlighting
+    hljs.highlightAll();
+  </script>
+</body>
+</html>
