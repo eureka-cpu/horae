@@ -21,7 +21,7 @@
 
   <!-- "Horae" — Newsreader 500, 80px, letter-spacing -0.02em (-1.6px), nudged 1px down -->
   <!-- text x=116 (96 icon + 20 gap), baseline y=75 -->
-  <text x="116" y="75"
+  <text x="116" y="67"
         font-family="'Newsreader', Georgia, serif"
         font-size="80"
         font-weight="500"
