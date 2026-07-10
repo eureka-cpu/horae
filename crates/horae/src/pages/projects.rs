@@ -6,11 +6,16 @@ use crate::server_fns;
 
 #[component]
 pub fn ProjectList() -> Element {
-    let mut projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
-    let clients_res = use_resource(|| async move { server_fns::list_clients().await });
+    // Management view: `Some(false)` includes inactive projects so managers can
+    // reactivate them; new-entry pickers elsewhere use the active-only default.
+    let mut projects =
+        use_resource(|| async move { server_fns::list_projects(None, Some(false)).await });
+    let clients_res = use_resource(|| async move { server_fns::list_clients(None).await });
     let me = use_resource(|| async move { server_fns::get_me().await });
 
     let mut show_form = use_signal(|| false);
+    // `Some(id)` while editing an existing project, `None` while creating.
+    let mut editing_id = use_signal(|| None::<Uuid>);
     let mut client_id = use_signal(String::new);
     let mut name = use_signal(String::new);
     let mut project_type = use_signal(|| "time_and_materials".to_string());
@@ -18,9 +23,20 @@ pub fn ProjectList() -> Element {
     let mut budget_kind = use_signal(|| "none".to_string());
     let mut error = use_signal(|| None::<String>);
 
-    let is_admin = match &*me.read() {
-        Some(Ok(user)) => user.is_admin(),
+    let is_manager = match &*me.read() {
+        Some(Ok(user)) => user.is_manager_or_above(),
         _ => false,
+    };
+
+    let mut reset_form = move || {
+        editing_id.set(None);
+        client_id.set(String::new());
+        name.set(String::new());
+        project_type.set("time_and_materials".to_string());
+        currency.set("USD".to_string());
+        budget_kind.set("none".to_string());
+        error.set(None);
+        show_form.set(false);
     };
 
     rsx! {
@@ -28,34 +44,46 @@ pub fn ProjectList() -> Element {
             div { class: "page-header",
                 h1 { class: "page-title", "Projects" }
                 div { class: "page-actions",
-                    if is_admin {
+                    if is_manager {
                         button {
                             class: "btn btn-primary",
-                            onclick: move |_| show_form.set(!show_form()),
+                            onclick: move |_| {
+                                if show_form() {
+                                    reset_form();
+                                } else {
+                                    editing_id.set(None);
+                                    show_form.set(true);
+                                }
+                            },
                             if show_form() { "Cancel" } else { "Add Project" }
                         }
                     }
                 }
             }
 
-            if show_form() && is_admin {
+            if show_form() && is_manager {
                 div { class: "card",
                     div { style: "padding: 1.25rem;",
-                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);", "New Project" }
+                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);",
+                            if editing_id().is_some() { "Edit Project" } else { "New Project" }
+                        }
                         if let Some(err) = &*error.read() {
                             div { class: "alert alert-danger", "{err}" }
                         }
-                        div { class: "form-group",
-                            label { class: "form-label", r#for: "proj-client", "Client" }
-                            select {
-                                class: "form-input",
-                                id: "proj-client",
-                                value: "{client_id}",
-                                oninput: move |e| client_id.set(e.value()),
-                                option { value: "", "Select a client..." }
-                                if let Some(Ok(clients)) = &*clients_res.read() {
-                                    for c in clients.iter() {
-                                        option { value: "{c.id}", "{c.name}" }
+                        // The client is fixed at creation; only shown when creating.
+                        if editing_id().is_none() {
+                            div { class: "form-group",
+                                label { class: "form-label", r#for: "proj-client", "Client" }
+                                select {
+                                    class: "form-input",
+                                    id: "proj-client",
+                                    value: "{client_id}",
+                                    oninput: move |e| client_id.set(e.value()),
+                                    option { value: "", "Select a client..." }
+                                    if let Some(Ok(clients)) = &*clients_res.read() {
+                                        for c in clients.iter() {
+                                            option { value: "{c.id}", "{c.name}" }
+                                        }
                                     }
                                 }
                             }
@@ -103,35 +131,36 @@ pub fn ProjectList() -> Element {
                                 value: "{budget_kind}",
                                 oninput: move |e| budget_kind.set(e.value()),
                                 option { value: "none", "None" }
-                                option { value: "amount", "Amount" }
+                                option { value: "money", "Amount" }
                                 option { value: "hours", "Hours" }
                             }
                         }
                         button {
                             class: "btn btn-primary",
                             onclick: move |_| {
+                                let editing = editing_id();
                                 let cid = client_id();
                                 let n = name();
                                 let pt = project_type();
                                 let c = currency();
                                 let bk = budget_kind();
                                 spawn(async move {
-                                    match server_fns::create_project(cid, n, pt, c, bk).await {
+                                    let result = match editing {
+                                        Some(id) => {
+                                            server_fns::update_project(id.to_string(), n, pt, c, bk).await
+                                        }
+                                        None => server_fns::create_project(cid, n, pt, c, bk).await,
+                                    };
+                                    match result {
                                         Ok(_) => {
-                                            client_id.set(String::new());
-                                            name.set(String::new());
-                                            project_type.set("time_and_materials".to_string());
-                                            currency.set("USD".to_string());
-                                            budget_kind.set("none".to_string());
-                                            error.set(None);
-                                            show_form.set(false);
+                                            reset_form();
                                             projects.restart();
                                         }
                                         Err(e) => error.set(Some(e.to_string())),
                                     }
                                 });
                             },
-                            "Create Project"
+                            if editing_id().is_some() { "Save Changes" } else { "Create Project" }
                         }
                     }
                 }
@@ -139,7 +168,7 @@ pub fn ProjectList() -> Element {
 
             div { class: "card",
                 match &*projects.read() {
-                    Some(Ok(projects)) => rsx! {
+                    Some(Ok(list)) => rsx! {
                         div { class: "table-container",
                             table {
                                 thead {
@@ -152,23 +181,64 @@ pub fn ProjectList() -> Element {
                                     }
                                 }
                                 tbody {
-                                    for project in projects.iter() {
-                                        tr { key: "{project.id}",
-                                            td { "{project.name}" }
-                                            td { "{project.client_id}" }
-                                            td { "{project.project_type}" }
-                                            td {
-                                                if project.active {
-                                                    span { class: "badge badge-success", "Active" }
-                                                } else {
-                                                    span { class: "badge badge-neutral", "Inactive" }
-                                                }
-                                            }
-                                            td {
-                                                Link {
-                                                    to: Route::ProjectDetail { id: project.id },
-                                                    class: "btn btn-secondary btn-sm",
-                                                    "View"
+                                    for project in list.iter() {
+                                        {
+                                            let p = project.clone();
+                                            rsx! {
+                                                tr { key: "{p.id}",
+                                                    td { "{p.name}" }
+                                                    td { "{p.client_id}" }
+                                                    td { "{p.project_type}" }
+                                                    td {
+                                                        if p.active {
+                                                            span { class: "badge badge-success", "Active" }
+                                                        } else {
+                                                            span { class: "badge badge-neutral", "Inactive" }
+                                                        }
+                                                    }
+                                                    td {
+                                                        Link {
+                                                            to: Route::ProjectDetail { id: p.id },
+                                                            class: "btn btn-secondary btn-sm",
+                                                            "View"
+                                                        }
+                                                        if is_manager {
+                                                            button {
+                                                                class: "btn btn-secondary btn-sm",
+                                                                style: "margin-left: 0.5rem;",
+                                                                onclick: {
+                                                                    let p = p.clone();
+                                                                    move |_| {
+                                                                        editing_id.set(Some(p.id));
+                                                                        name.set(p.name.clone());
+                                                                        project_type.set(p.project_type.to_string());
+                                                                        currency.set(p.currency.clone());
+                                                                        budget_kind.set(p.budget_kind.to_string());
+                                                                        error.set(None);
+                                                                        show_form.set(true);
+                                                                    }
+                                                                },
+                                                                "Edit"
+                                                            }
+                                                            button {
+                                                                class: "btn btn-secondary btn-sm",
+                                                                style: "margin-left: 0.5rem;",
+                                                                onclick: {
+                                                                    let id = p.id;
+                                                                    let next_active = !p.active;
+                                                                    move |_| {
+                                                                        spawn(async move {
+                                                                            match server_fns::set_project_active(id.to_string(), next_active).await {
+                                                                                Ok(_) => projects.restart(),
+                                                                                Err(e) => error.set(Some(e.to_string())),
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                },
+                                                                if p.active { "Deactivate" } else { "Activate" }
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }

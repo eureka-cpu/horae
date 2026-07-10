@@ -57,12 +57,12 @@ ______________________________________________________________________
 
 **Independent test**: Create client → project → task; the task becomes selectable when logging time; deactivating a project hides it from pickers.
 
-- [ ] T018 [P] [US2] Confirm `Client`/`Project`/`Task` models in `crates/horae/src/models/{client,project,task}.rs` against data-model (billing method, budget, currency, active flags).
-- [ ] T019 [US2] Add missing management server functions in `crates/horae/src/server_fns.rs` (contracts mark these **planned**): `update_client`/`deactivate_client`, `update_project`/`deactivate_project`, `create_task`/`update_task`/`deactivate_task`.
-- [ ] T020 [US2] Reconcile authorization: gate client/project/task management at **manager** (per FR-008/009/010), correcting the current admin-only gating flagged in [contracts/server-functions.md](./contracts/server-functions.md).
-- [ ] T021 [US2] Exclude inactive clients/projects/tasks from new-entry pickers while preserving links on existing entries (`crates/horae/src/server_fns.rs` list queries + `crates/horae/src/pages/{clients,projects}.rs`) (FR-011).
-- [ ] T022 [P] [US2] Client/project/task management UI in `crates/horae/src/pages/clients.rs` and `crates/horae/src/pages/projects.rs`.
-- [ ] T023 [US2] Integration tests in `crates/horae/tests/integration.rs`: new task becomes loggable; inactive project hidden from pickers but retained on history.
+- [x] T018 [P] [US2] Confirm `Client`/`Project`/`Task` models in `crates/horae/src/models/{client,project,task}.rs` against data-model (billing method, budget, currency, active flags).
+- [x] T019 [US2] Add missing management server functions in `crates/horae/src/server_fns.rs` (contracts mark these **planned**): `update_client`/`deactivate_client`, `update_project`/`deactivate_project`, `create_task`/`update_task`/`deactivate_task`.
+- [x] T020 [US2] Reconcile authorization: gate client/project/task management at **manager** (per FR-008/009/010), correcting the current admin-only gating flagged in [contracts/server-functions.md](./contracts/server-functions.md).
+- [x] T021 [US2] Exclude inactive clients/projects/tasks from new-entry pickers while preserving links on existing entries (`crates/horae/src/server_fns.rs` list queries + `crates/horae/src/pages/{clients,projects}.rs`) (FR-011).
+- [x] T022 [P] [US2] Client/project/task management UI in `crates/horae/src/pages/clients.rs` and `crates/horae/src/pages/projects.rs`.
+- [x] T023 [US2] Integration tests in `crates/horae/tests/integration.rs`: new task becomes loggable; inactive project hidden from pickers but retained on history.
 
 ______________________________________________________________________
 

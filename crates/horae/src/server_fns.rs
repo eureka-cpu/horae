@@ -480,16 +480,21 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
 
 // ── Clients ──────────────────────────────────────────────────────────────────
 
+/// Lists clients. By default only active clients are returned (the set shown in
+/// new-entry pickers); pass `include_inactive = Some(true)` for the management
+/// view that also needs to reactivate deactivated clients.
 #[server]
-pub async fn list_clients() -> Result<Vec<Client>, ServerFnError> {
+pub async fn list_clients(include_inactive: Option<bool>) -> Result<Vec<Client>, ServerFnError> {
     let state = crate::state::global_state().await;
+    let include_inactive = include_inactive.unwrap_or(false);
 
     let clients = sqlx::query_as::<_, Client>(
         "SELECT id, org_id, name, currency, address, tax_id, active, created_at
          FROM clients
-         WHERE active = true
+         WHERE ($1 OR active = true)
          ORDER BY name ASC",
     )
+    .bind(include_inactive)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -504,7 +509,7 @@ pub async fn create_client(
     address: Option<String>,
     tax_id: Option<String>,
 ) -> Result<Client, ServerFnError> {
-    let admin = require_admin().await?;
+    let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
     sqlx::query_as::<_, Client>(
@@ -513,7 +518,7 @@ pub async fn create_client(
          RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
     )
     .bind(id)
-    .bind(admin.org_id)
+    .bind(manager.org_id)
     .bind(&name)
     .bind(&currency)
     .bind(&address)
@@ -521,6 +526,67 @@ pub async fn create_client(
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
+}
+
+#[server]
+pub async fn update_client(
+    client_id: String,
+    name: String,
+    currency: String,
+    address: Option<String>,
+    tax_id: Option<String>,
+) -> Result<Client, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let client_id: uuid::Uuid = client_id
+        .parse()
+        .map_err(|_| server_err("Invalid client_id"))?;
+    sqlx::query_as::<_, Client>(
+        "UPDATE clients SET name = $3, currency = $4, address = $5, tax_id = $6
+         WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
+    )
+    .bind(client_id)
+    .bind(manager.org_id)
+    .bind(&name)
+    .bind(&currency)
+    .bind(&address)
+    .bind(&tax_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Client not found".into(),
+        code: 404,
+        details: None,
+    })
+}
+
+/// Activate or deactivate a client. Deactivated clients are hidden from
+/// new-entry pickers but remain linked to existing projects and entries (FR-011).
+#[server]
+pub async fn set_client_active(client_id: String, active: bool) -> Result<Client, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let client_id: uuid::Uuid = client_id
+        .parse()
+        .map_err(|_| server_err("Invalid client_id"))?;
+    sqlx::query_as::<_, Client>(
+        "UPDATE clients SET active = $3
+         WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
+    )
+    .bind(client_id)
+    .bind(manager.org_id)
+    .bind(active)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Client not found".into(),
+        code: 404,
+        details: None,
+    })
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────
@@ -560,7 +626,7 @@ pub async fn create_project(
     currency: String,
     budget_kind: String,
 ) -> Result<Project, ServerFnError> {
-    let admin = require_admin().await?;
+    let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
     let client_id: uuid::Uuid = client_id
@@ -576,7 +642,7 @@ pub async fn create_project(
                    budget_amount_cents, budget_minutes, active, created_at",
     )
     .bind(id)
-    .bind(admin.org_id)
+    .bind(manager.org_id)
     .bind(client_id)
     .bind(&name)
     .bind(
@@ -593,6 +659,87 @@ pub async fn create_project(
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
+}
+
+#[server]
+pub async fn update_project(
+    project_id: String,
+    name: String,
+    project_type: String,
+    currency: String,
+    budget_kind: String,
+) -> Result<Project, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    sqlx::query_as::<_, Project>(
+        "UPDATE projects
+            SET name = $3, project_type = $4, currency = $5, budget_kind = $6
+          WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, client_id, code, name,
+                   project_type, currency,
+                   starts_on, ends_on,
+                   budget_kind,
+                   budget_amount_cents, budget_minutes, active, created_at",
+    )
+    .bind(project_id)
+    .bind(manager.org_id)
+    .bind(&name)
+    .bind(
+        project_type
+            .parse::<horae_core::types::ProjectType>()
+            .map_err(|_| server_err("Invalid project_type"))?,
+    )
+    .bind(&currency)
+    .bind(
+        budget_kind
+            .parse::<horae_core::types::BudgetKind>()
+            .map_err(|_| server_err("Invalid budget_kind"))?,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Project not found".into(),
+        code: 404,
+        details: None,
+    })
+}
+
+/// Activate or deactivate a project. Deactivated projects are hidden from
+/// new-entry pickers but stay attached to existing time entries (FR-011).
+#[server]
+pub async fn set_project_active(
+    project_id: String,
+    active: bool,
+) -> Result<Project, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    sqlx::query_as::<_, Project>(
+        "UPDATE projects SET active = $3
+          WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, client_id, code, name,
+                   project_type, currency,
+                   starts_on, ends_on,
+                   budget_kind,
+                   budget_amount_cents, budget_minutes, active, created_at",
+    )
+    .bind(project_id)
+    .bind(manager.org_id)
+    .bind(active)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Project not found".into(),
+        code: 404,
+        details: None,
+    })
 }
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
@@ -639,7 +786,7 @@ pub async fn list_project_tasks(project_id: String) -> Result<Vec<Task>, ServerF
 
 #[server]
 pub async fn create_task(name: String, billable_default: bool) -> Result<Task, ServerFnError> {
-    let admin = require_admin().await?;
+    let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
     sqlx::query_as::<_, Task>(
@@ -648,12 +795,117 @@ pub async fn create_task(name: String, billable_default: bool) -> Result<Task, S
          RETURNING id, org_id, name, billable_default, default_rate_cents, active",
     )
     .bind(id)
-    .bind(admin.org_id)
+    .bind(manager.org_id)
     .bind(&name)
     .bind(billable_default)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
+}
+
+#[server]
+pub async fn update_task(
+    task_id: String,
+    name: String,
+    billable_default: bool,
+    default_rate_cents: Option<i64>,
+) -> Result<Task, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    sqlx::query_as::<_, Task>(
+        "UPDATE tasks
+            SET name = $3, billable_default = $4, default_rate_cents = $5
+          WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, name, billable_default, default_rate_cents, active",
+    )
+    .bind(task_id)
+    .bind(manager.org_id)
+    .bind(&name)
+    .bind(billable_default)
+    .bind(default_rate_cents)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Task not found".into(),
+        code: 404,
+        details: None,
+    })
+}
+
+/// Activate or deactivate an org-level task. Deactivated tasks are hidden from
+/// new-entry pickers but stay attached to existing time entries (FR-011).
+#[server]
+pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    sqlx::query_as::<_, Task>(
+        "UPDATE tasks SET active = $3
+          WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, name, billable_default, default_rate_cents, active",
+    )
+    .bind(task_id)
+    .bind(manager.org_id)
+    .bind(active)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Task not found".into(),
+        code: 404,
+        details: None,
+    })
+}
+
+/// Enable an org-level task on a project so it becomes loggable there. The
+/// project-task link inherits the task's default billable flag; idempotent.
+/// Both the project and the task must belong to the manager's organization.
+#[server]
+pub async fn link_project_task(project_id: String, task_id: String) -> Result<(), ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+    let project_id: uuid::Uuid = project_id
+        .parse()
+        .map_err(|_| server_err("Invalid project_id"))?;
+    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+
+    let result = sqlx::query(
+        "INSERT INTO project_tasks (project_id, task_id, billable, rate_cents)
+         SELECT p.id, t.id, t.billable_default, t.default_rate_cents
+           FROM projects p
+           JOIN tasks t ON t.org_id = p.org_id
+          WHERE p.id = $1 AND t.id = $2 AND p.org_id = $3
+         ON CONFLICT (project_id, task_id) DO NOTHING",
+    )
+    .bind(project_id)
+    .bind(task_id)
+    .bind(manager.org_id)
+    .execute(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    // No row inserted and no existing link means the project/task pair was not
+    // found in this org (the SELECT matched nothing).
+    if result.rows_affected() == 0 {
+        let linked = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM project_tasks WHERE project_id = $1 AND task_id = $2)",
+        )
+        .bind(project_id)
+        .bind(task_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(server_err)?;
+        if !linked {
+            return Err(ServerFnError::ServerError {
+                message: "Project or task not found in this organization".into(),
+                code: 404,
+                details: None,
+            });
+        }
+    }
+    Ok(())
 }
 
 // ── Assignments ─────────────────────────────────────────────────────────────
