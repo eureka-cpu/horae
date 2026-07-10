@@ -170,7 +170,9 @@
       flex-shrink: 0;
       align-self: flex-end;
       margin-left: 0.4rem;
-      margin-bottom: 0.2em;
+      /* horizon at y=79/128 of 96px icon = 59.25px from top.
+         with align-items:center: margin = font-size/2 - 17.75px */
+      margin-bottom: calc(clamp(3rem, 8vw, 5rem) / 2 - 17.75px);
     }
 
     .eyebrow {
@@ -457,11 +459,11 @@
   <nav>
     <a href="/" class="nav-logo" aria-label="Horae home">
       <svg width="28" height="28" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <defs><clipPath id="nc"><rect width="128" height="128" rx="27"/></clipPath></defs>
-        <rect width="128" height="128" rx="27" style="fill: var(--icon-bg-fill)"/>
-        <circle cx="64" cy="79" r="29" style="fill: var(--icon-sun-fill)"/>
-        <rect y="93" width="128" height="2"  style="fill: var(--icon-horizon-line)" clip-path="url(#nc)"/>
-        <rect y="95" width="128" height="33" style="fill: var(--icon-horizon-fill)" clip-path="url(#nc)"/>
+        <defs><clipPath id="nc"><rect width="128" height="128" rx="30"/></clipPath></defs>
+        <rect width="128" height="128" rx="30" style="fill: var(--icon-bg-fill)"/>
+        <circle cx="64" cy="64" r="29" style="fill: var(--icon-sun-fill)"/>
+        <rect y="79" width="128" height="2"  style="fill: var(--icon-horizon-line)" clip-path="url(#nc)"/>
+        <rect y="81" width="128" height="47" style="fill: var(--icon-horizon-fill)" clip-path="url(#nc)"/>
       </svg>
     </a>
     <div class="nav-links">
@@ -502,23 +504,23 @@
     <div class="hero-wordmark">
       <svg width="96" height="96" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
-          <clipPath id="hc"><rect width="128" height="128" rx="27"/></clipPath>
+          <clipPath id="hc"><rect width="128" height="128" rx="30"/></clipPath>
           <filter id="hc-glow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="5"/>
           </filter>
         </defs>
-        <rect width="128" height="128" rx="27" style="fill: var(--icon-bg-fill)"/>
-        <!-- rays from sun centre — disc and horizon paint over their bases -->
-        <line x1="64" y1="79" x2="64" y2="33" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-center)"/>
-        <line x1="64" y1="79" x2="57" y2="44" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
-        <line x1="64" y1="79" x2="71" y2="44" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <rect width="128" height="128" rx="30" style="fill: var(--icon-bg-fill)"/>
+        <!-- rays from sun centre (64,64) — disc and horizon paint over their bases -->
+        <line x1="64" y1="64" x2="64" y2="18" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-center)"/>
+        <line x1="64" y1="64" x2="57" y2="29" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <line x1="64" y1="64" x2="71" y2="29" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
         <!-- sun glow halo -->
-        <circle cx="64" cy="79" r="33" style="fill: var(--icon-sun-fill)" opacity="0.35" filter="url(#hc-glow)"/>
-        <!-- sun disc — cy=79 r=29 matches 244px design (cy=150 r=56) -->
-        <circle cx="64" cy="79" r="29" style="fill: var(--icon-sun-fill)"/>
-        <!-- horizon at y=93 matches design y=178/244 -->
-        <rect y="93" width="128" height="2"  style="fill: var(--icon-horizon-line)" clip-path="url(#hc)"/>
-        <rect y="95" width="128" height="33" style="fill: var(--icon-horizon-fill)" clip-path="url(#hc)"/>
+        <circle cx="64" cy="64" r="33" style="fill: var(--icon-sun-fill)" opacity="0.35" filter="url(#hc-glow)"/>
+        <!-- sun disc centred in icon -->
+        <circle cx="64" cy="64" r="29" style="fill: var(--icon-sun-fill)"/>
+        <!-- horizon 14.5px below centre = y=79 (mirrors design's 28/56r proportions) -->
+        <rect y="79" width="128" height="2"  style="fill: var(--icon-horizon-line)" clip-path="url(#hc)"/>
+        <rect y="81" width="128" height="47" style="fill: var(--icon-horizon-fill)" clip-path="url(#hc)"/>
       </svg>
       <div class="wm-lockup">
         <span class="wm-text">Horae</span>
