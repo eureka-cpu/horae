@@ -1,73 +1,97 @@
-# [PROJECT_NAME] Constitution
+<!--
+Sync Impact Report
+- Version change: (unratified template) → 1.0.0
+- Ratification: initial adoption; principles derived from SPEC.md §0 pinned decisions
+- Principles defined:
+  I. Exactness (NON-NEGOTIABLE)
+  II. Domain Purity
+  III. Single Datastore
+  IV. Mutations Through Server Functions
+  V. Reproducible Builds & Formatting Gate
+- Added sections: Technology & Data Constraints; Development Workflow & Quality Gates
+- Removed sections: none
+- Templates checked:
+  - .specify/templates/plan-template.md — Constitution Check gate present ✅ (no change required)
+  - .specify/templates/spec-template.md — no mandatory-section change ✅
+  - .specify/templates/tasks-template.md — task categories already cover these principles ✅
+  - specs/001-time-tracking-invoicing/plan.md — updated to reference this ratified constitution ✅
+- Deferred TODOs: none
+-->
 
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Horae Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
+### I. Exactness (NON-NEGOTIABLE)
 
-<!-- Example: I. Library-First -->
+Time is stored and computed as **integer minutes**; money as **integer minor units (cents) with an
+explicit ISO 4217 currency code**. Floating-point MUST NOT be used for any duration or monetary value.
+Every reported total MUST equal the exact sum of its parts across any grouping or period.
 
-[PRINCIPLE_1_DESCRIPTION]
+**Rationale**: Billing and invoicing are financial operations; floating-point accumulation produces
+rounding drift that corrupts totals and erodes trust. Integer representation makes correctness verifiable.
 
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### II. Domain Purity
 
-### [PRINCIPLE_2_NAME]
+Correctness-critical logic — duration parsing, rounding, money, totals, and entry/invoice state
+transitions — MUST live in the `horae-core` crate. `horae-core` MUST NOT depend on `sqlx`, `axum`,
+`dioxus`, or any I/O framework, and MUST be unit-tested in isolation.
 
-<!-- Example: II. CLI Interface -->
+**Rationale**: Isolating the rules that must be exact keeps them fast to test and impossible to break
+by unrelated I/O or UI changes.
 
-[PRINCIPLE_2_DESCRIPTION]
+### III. Single Datastore
 
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+PostgreSQL is the only supported datastore. Primary keys MUST be UUID v7 (time-ordered). Every table
+MUST carry an `org_id` foreign key even while the product is single-organization, so multi-organization
+support is a later flip rather than a migration rewrite.
 
-### [PRINCIPLE_3_NAME]
+**Rationale**: One well-understood datastore avoids dialect-portability tax; v7 keys give ordered,
+index-friendly identifiers; retaining `org_id` preserves an obvious future path.
 
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
+### IV. Mutations Through Server Functions
 
-[PRINCIPLE_3_DESCRIPTION]
+All data mutations MUST go through Dioxus `#[server]` functions (session-authenticated, role-checked).
+The UI MUST NOT issue ad-hoc client-side fetches for data reads or writes. Additional non-mutating
+surfaces (e.g. a read-only compatibility API, exports) are permitted but MUST NOT become a second
+mutation path.
 
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rationale**: A single, typed, authorized mutation path keeps authorization and validation in one
+place and keeps client and server types in sync.
 
-### [PRINCIPLE_4_NAME]
+### V. Reproducible Builds & Formatting Gate
 
-<!-- Example: IV. Integration Testing -->
+The project MUST build and run through the Nix dev shell and flake. `nix fmt` (treefmt) and
+`nix flake check` MUST be green before merge; formatting is enforced in CI via `nix fmt -- --ci`.
+Toolchain versions are pinned via the flake, not assumed from the host.
 
-[PRINCIPLE_4_DESCRIPTION]
+**Rationale**: Reproducible environments eliminate "works on my machine" drift and make CI results
+trustworthy; a formatting gate keeps diffs about substance.
 
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+## Technology & Data Constraints
 
-### [PRINCIPLE_5_NAME]
+- Language: Rust (edition 2024); the web UI compiles to WASM via Dioxus fullstack.
+- Persistence: PostgreSQL 15+ via `sqlx`; schema changes ship as ordered migrations under `migrations/`.
+- Authentication is credential/identity-provider based with role-based authorization
+  (administrator / manager / member); a local development bypass is permitted but MUST be off by default.
+- Plugins (when present) run sandboxed and MUST NOT bypass these principles — in particular, they have
+  no direct datastore write access (they use granted host capabilities only).
 
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
+## Development Workflow & Quality Gates
 
-[PRINCIPLE_5_DESCRIPTION]
-
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
-
-## [SECTION_2_NAME]
-
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
-
-[SECTION_2_CONTENT]
-
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Feature work follows the spec-driven flow: `spec.md` → `plan.md` → `tasks.md`, with artifacts under
+  `specs/<NNN-feature>/`.
+- Correctness-critical changes MUST include tests in `horae-core` and/or `#[sqlx::test]` integration
+  tests; the NixOS e2e check exercises the deployed surface.
+- A change MUST NOT merge with a red `nix flake check` or unformatted files.
+- Any deviation from a principle MUST be justified in the plan's Complexity Tracking (or rejected).
 
 ## Governance
 
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+This constitution supersedes ad-hoc conventions. Amendments MUST be made by editing this file with a
+Sync Impact Report and a semantic version bump: MAJOR for principle removals/redefinitions, MINOR for
+added principles or materially expanded guidance, PATCH for clarifications. Every plan's Constitution
+Check gate MUST verify compliance before Phase 0, and again after design. Unjustified violations block
+merge. Runtime working guidance for agents lives in `AGENTS.md`.
 
-[GOVERNANCE_RULES]
-
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-07-10 | **Last Amended**: 2026-07-10
