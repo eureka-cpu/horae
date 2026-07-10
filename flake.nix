@@ -69,43 +69,32 @@
           overlays = [ sharedNixpkgsOverlay ];
         });
 
-      # Developer convenience: `nix run .#qemu-vm` boots a NixOS VM running
-      # Horae against a local PostgreSQL, with dev login enabled. Blueprint has
-      # no `apps/` convention, so this is wired up here per system.
       apps = lib.genAttrs systems (system:
         (blueprint.apps.${system} or { }) // {
-          qemu-vm =
+          postgres =
             let
-              pkgs = inputs.nixpkgs.legacyPackages.${system};
+              hostPkgs = inputs.nixpkgs.legacyPackages.${system};
               guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] system;
               debugConfig = lib.nixosSystem {
                 system = null;
                 modules = [
                   "${inputs.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
-                  inputs.self.nixosModules.horae
-                  {
-                    virtualisation.host.pkgs = pkgs;
-                    nixpkgs.hostPlatform = guestSystem;
-                  }
-                  (
-                    { pkgs, ... }:
+                  ({ config, lib, ... }:
                     {
-                      services.horae = {
-                        enable = true;
-                        openFirewall = true;
-                        database.createLocally = true;
-                        # Dev login: skip OIDC, auto-login as admin.
-                        secretKeyFile = null;
-                      };
-                      systemd.services.horae.environment.DEV_LOGIN = "1";
-
-                      # Allow TCP connections from localhost (for host → guest Postgres).
                       services.postgresql = {
+                        enable = true;
                         enableTCPIP = true;
-                        # Grant CREATEDB so sqlx::test can create temp databases from the host.
-                        initialScript = pkgs.writeText "grant-createdb.sql" ''
-                          ALTER USER horae CREATEDB;
-                        '';
+                        ensureDatabases = [ "horae" ];
+                        ensureUsers = [
+                          {
+                            name = "horae";
+                            ensureDBOwnership = true;
+                            ensureClauses = {
+                              createdb = true;
+                              login = true;
+                            };
+                          }
+                        ];
                         authentication = lib.mkOverride 10 ''
                           # TYPE  DATABASE  USER    ADDRESS         METHOD
                           local   all       all                     trust
@@ -126,28 +115,45 @@
                       users.extraUsers.root.password = "";
 
                       virtualisation = {
-                        forwardPorts = [
-                          { from = "host"; host.port = 2222; guest.port = 22; }
-                          { from = "host"; host.port = 3000; guest.port = 3000; }
-                          { from = "host"; host.port = 5432; guest.port = 5432; }
-                        ];
+                        host.pkgs = hostPkgs;
+                        forwardPorts = with config.services;
+                          lib.optional openssh.enable
+                            {
+                              from = "host";
+                              host.port = 2222;
+                              guest.port = 22;
+                            }
+                          ++ lib.optional postgresql.enable
+                            {
+                              from = "host";
+                              host.port = postgresql.settings.port;
+                              guest.port = postgresql.settings.port;
+                            }
+                        ;
                       };
+                      networking.firewall.allowedTCPPorts =
+                        with config.services; lib.optional postgresql.enable postgresql.settings.port;
 
-                      networking.firewall.allowedTCPPorts = [ 3000 5432 ];
+                      environment.systemPackages =
+                        with config.services; lib.optional postgresql.enable postgresql.package;
 
-                      environment.systemPackages = [ pkgs.postgresql ];
-
-                      # TODO: We don't care about this, IIRC there's a way to suppress the warning
-                      system.stateVersion = "25.05";
-                    }
-                  )
+                      nixpkgs.hostPlatform = guestSystem;
+                      system.stateVersion = lib.trivial.release;
+                    })
                 ];
               };
             in
             {
               type = "app";
               program = "${debugConfig.config.system.build.vm}/bin/run-nixos-vm";
-              meta.description = "Starts a NixOS VM with PostgreSQL and Horae.";
+              meta.description = ''
+                Launch a NixOS VM preconfigured with PostgreSQL and SSH for Horae development.
+                The VM state is persisted in the generated `nixos.qcow2` file; you can wipe the
+                VM state completely by removing this file. This instance serves as the required
+                database container for running `sqlx` tests and provides root access with port
+                forwarding enabled. Note: Migrations are not automatic; please refer to the
+                Getting Started guide for instructions on seeding data and running migrations.
+              '';
             };
         });
     };
