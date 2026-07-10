@@ -163,14 +163,14 @@
     /* circle dot; align-self:flex-end + margin-bottom places it at the horizon */
     .wm-dot {
       display: inline-block;
-      width: 9px;
-      height: 9px;
+      width: 13px;
+      height: 13px;
       border-radius: 50%;
       background: var(--color-accent);
       flex-shrink: 0;
       align-self: flex-end;
-      margin-left: 0.375rem;
-      margin-bottom: 18px;
+      margin-left: 0.4rem;
+      margin-bottom: 16px;
     }
 
     .eyebrow {
@@ -501,12 +501,19 @@
   <section class="hero">
     <div class="hero-wordmark">
       <svg width="96" height="96" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <defs><clipPath id="hc"><rect width="128" height="128" rx="26"/></clipPath></defs>
+        <defs>
+          <clipPath id="hc"><rect width="128" height="128" rx="26"/></clipPath>
+          <filter id="hc-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="7"/>
+          </filter>
+        </defs>
         <rect width="128" height="128" rx="26" style="fill: var(--icon-bg-fill)"/>
         <!-- rays first — circle then horizon cover their bases -->
-        <line x1="64" y1="40" x2="64" y2="18" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-center)"/>
-        <line x1="64" y1="40" x2="51" y2="24" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
-        <line x1="64" y1="40" x2="77" y2="24" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <line x1="64" y1="40" x2="64" y2="22" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-center)"/>
+        <line x1="64" y1="40" x2="57" y2="26" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <line x1="64" y1="40" x2="71" y2="26" stroke-width="3" stroke-linecap="round" style="stroke: var(--icon-ray-side)"/>
+        <!-- sun glow halo -->
+        <circle cx="64" cy="65" r="34" style="fill: var(--icon-sun-fill)" opacity="0.35" filter="url(#hc-glow)"/>
         <!-- sun disc covers ray bases -->
         <circle cx="64" cy="65" r="30" style="fill: var(--icon-sun-fill)"/>
         <!-- horizon covers lower portion of sun disc -->
