@@ -34,7 +34,7 @@ The spec is intentionally implementation-free; this document records the technic
 
 ## Decision: Persistence, migrations, packaging, CI
 
-- **Decision**: PostgreSQL 15+ via `sqlx`; migrations in `migrations/*.sql` applied by `horae migrate run` (and eagerly on `serve`). Exports use `csv`/`rust_xlsxwriter`. Toolchain and builds via Nix (`fenix` toolchain, `numtide/blueprint`), formatted by `treefmt`, checked by `nix flake check` (formatting + a NixOS e2e VM test).
+- **Decision**: PostgreSQL 15+ via `sqlx`; migrations in `crates/horae/migrations/*.sql` applied by `horae migrate run` (and eagerly on `serve`). Exports use `csv`/`rust_xlsxwriter`. Toolchain and builds via Nix (`fenix` toolchain, `numtide/blueprint`), formatted by `treefmt`, checked by `nix flake check` (formatting + a NixOS e2e VM test).
 - **Rationale**: Postgres is pinned by `SPEC.md`; sqlx gives async access and optional compile-time query checking. Nix gives reproducible dev shells, packages, and a deployable NixOS module.
 - **Alternatives considered**: SQLite — explicitly excluded by `SPEC.md` for Phase 1. An ORM (SeaORM/Diesel) — rejected in favor of sqlx's explicit SQL and migration model.
 

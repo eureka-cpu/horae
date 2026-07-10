@@ -14,11 +14,11 @@ nix develop                 # dev shell: rust toolchain, dx, sqlx-cli, postgres,
 nix run .#qemu-vm           # (optional) boot a NixOS VM running PostgreSQL
 
 # apply schema, then load demo data
-DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- migrate run
-DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run --features server -- seed
+DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run -p horae --features server -- migrate run
+DATABASE_URL=postgres://horae@127.0.0.1:5432/horae cargo run -p horae --features server -- seed
 
 # run the app with the dev-login bypass (no OIDC needed locally)
-DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:5432/horae dx serve
+cd crates/horae && DEV_LOGIN=1 DATABASE_URL=postgres://horae@127.0.0.1:5432/horae dx serve
 ```
 
 Open <http://localhost:8080/auth/login> and choose "Sign in as Admin". Command and env-var details: `contracts/cli.md`.
@@ -63,7 +63,7 @@ Each maps to a user story in `spec.md`. "Expected" is the pass condition.
 
 ```sh
 cargo test -p horae-core                         # exact rounding/money/totals/state (FR-023, SC-002)
-DATABASE_URL=… cargo test --features server      # integration tests (#[sqlx::test], throwaway DBs)
+DATABASE_URL=… cargo test -p horae --features server      # integration tests (#[sqlx::test], throwaway DBs)
 nix flake check                                  # formatting + full NixOS e2e VM test
 nix fmt -- --ci                                  # formatting gate (CI)
 ```

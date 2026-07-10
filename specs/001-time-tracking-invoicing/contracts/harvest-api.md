@@ -7,17 +7,17 @@ Harvest-oriented tooling (for example `harvest-invoicer` and
 `harvest-exporter`) can be pointed at a Horae deployment
 (`https://horae.example.com/harvest`) and consume its data unchanged.
 
-The router is defined in `src/harvest/mod.rs`, with response DTOs in
-`src/harvest/types.rs` and the authenticating extractor in
-`src/harvest/auth.rs`. It is merged onto the main Axum router in
-`src/main.rs` under the Postgres-backed session layer.
+The router is defined in `crates/horae/src/harvest/mod.rs`, with response DTOs in
+`crates/horae/src/harvest/types.rs` and the authenticating extractor in
+`crates/horae/src/harvest/auth.rs`. It is merged onto the main Axum router in
+`crates/horae/src/main.rs` under the Postgres-backed session layer.
 
 ## Scope
 
 1. This API is **strictly read-only**. Only `GET` routes exist; there are no
    create, update, or delete endpoints.
 1. All mutations in Horae go through the internal Dioxus `#[server]` functions
-   (`src/server_fns.rs`), which the SPA uses directly. Those are a separate,
+   (`crates/horae/src/server_fns.rs`), which the SPA uses directly. Those are a separate,
    session-authenticated surface and are **not** part of this contract.
 1. All results are scoped to the authenticated user's organization (`org_id`).
    Horae is single-organization for now, but every query filters on `org_id`.
@@ -33,7 +33,7 @@ The router is defined in `src/harvest/mod.rs`, with response DTOs in
    session carries no user, `"User not found"` when the user cannot be resolved).
 1. `Authorization: Bearer <token>` authentication is **planned for Phase 2**
    (per the README) and is **not implemented**. The code comments in
-   `src/harvest/auth.rs` note that a future iteration will add bearer-token
+   `crates/horae/src/harvest/auth.rs` note that a future iteration will add bearer-token
    support backed by an `api_tokens` table; no such table or code path exists
    today.
 
@@ -64,7 +64,7 @@ placed under a **named key** matching the resource (for example `time_entries`,
 ```
 
 Envelope field semantics (from `HarvestPagination` in
-`src/harvest/types.rs`):
+`crates/horae/src/harvest/types.rs`):
 
 1. `<resource_name>` — array of resource objects; the key is the resource name.
 1. `per_page` — page size actually used (see pagination rules below).
@@ -191,7 +191,7 @@ users. The `users` table has no `updated_at` column; `updated_at` mirrors
 ## Resource Object Shapes
 
 Field names and types below reflect the serialized DTOs in
-`src/harvest/types.rs`. All ids are UUID strings. Durations are exposed as
+`crates/horae/src/harvest/types.rs`. All ids are UUID strings. Durations are exposed as
 **hours** (`f64`) and rates/amounts as **major currency units** (`f64`), even
 though Horae stores minutes and cents internally.
 

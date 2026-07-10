@@ -1,0 +1,70 @@
+[package]
+name = "horae"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "horae"
+path = "src/main.rs"
+
+[features]
+default = []
+server = [
+  "horae-core/sqlx",
+  "dioxus/server",
+  "dep:tokio",
+  "dep:axum",
+  "dep:tower-http",
+  "dep:sqlx",
+  "dep:tower-sessions",
+  "dep:tower-sessions-sqlx-store",
+  "dep:tracing-subscriber",
+  "dep:openidconnect",
+  "dep:csv",
+  "dep:rust_xlsxwriter",
+]
+web = ["dioxus/web", "dep:gloo-timers"]
+
+[dependencies]
+horae-core = { path = "../core", features = [] }
+dioxus = { version = "0.7", features = ["fullstack", "router"] }
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+uuid = { version = "1", features = ["v7", "serde", "js"] }
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+
+# server-only
+tokio = { version = "1", features = ["full"], optional = true }
+axum = { version = "0.8", features = ["macros", "multipart"], optional = true }
+tower-http = { version = "0.6", features = [
+  "fs",
+  "compression-gzip",
+  "trace",
+], optional = true }
+sqlx = { version = "0.8", features = [
+  "runtime-tokio",
+  "postgres",
+  "uuid",
+  "chrono",
+  "migrate",
+], optional = true }
+tower-sessions = { version = "0.14", optional = true }
+tower-sessions-sqlx-store = { version = "0.15", features = [
+  "postgres",
+], optional = true }
+tracing-subscriber = { version = "0.3", features = [
+  "env-filter",
+], optional = true }
+openidconnect = { version = "3", optional = true }
+csv = { version = "1", optional = true }
+rust_xlsxwriter = { version = "0.80", optional = true }
+
+# web-only
+gloo-timers = { version = "0.3", features = ["futures"], optional = true }
+
+[dev-dependencies]
+serial_test = "3"

@@ -7,7 +7,7 @@
 1. **Invoice data** — the invoice and its line items (see [data-model.md](../data-model.md) and [contracts/server-functions.md](./server-functions.md)): number, client, issue/due dates, currency, line items (`description`, `minutes`, `rate_cents`, `amount_cents`), and `total_cents`. This mirrors the Harvest-shaped export data, so the same JSON that drives [contracts/harvest-api.md](./harvest-api.md) can drive rendering (as in `eureka-cpu/nvoice`).
 1. **Branding / provider settings** — from the organization: provider identity, bank/payment details, logo, and the default template selection.
 1. **Editable fields** — reviewer-adjustable values (notes, payment terms, provider identity overrides) captured before finalize/send.
-1. **Template** — a Typst `.typ` template (default `templates/invoice.typ`); operators MAY customize or supply their own.
+1. **Template** — a Typst `.typ` template (default `crates/horae/templates/invoice.typ`); operators MAY customize or supply their own.
 
 ## Output
 
@@ -22,5 +22,5 @@
 
 ## Notes
 
-- The same rendering path is intended to serve **timesheet/report PDFs** later (`templates/timesheet.typ`); this contract covers invoices for v1.
+- The same rendering path is intended to serve **timesheet/report PDFs** later (`crates/horae/templates/timesheet.typ`); this contract covers invoices for v1.
 - Fallback: `printpdf` is retained only as a documented fallback if Typst is unavailable (research.md); it is not part of this contract's guarantees.
