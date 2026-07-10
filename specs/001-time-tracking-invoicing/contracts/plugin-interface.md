@@ -15,7 +15,7 @@ Plugins are **WASM modules loaded at runtime via
 operator-trusted but **sandboxed**: they may only call the host functions Horae
 explicitly exposes and can never write to the datastore or render arbitrary UI code.
 
-Planned module layout (`src/plugin/`):
+Planned module layout (`crates/horae/src/plugin/`):
 
 1. `registry.rs` — `PluginRegistry`: scans the `plugins/` data directory, loads each
    `*.wasm` at startup, holds a handle per plugin.

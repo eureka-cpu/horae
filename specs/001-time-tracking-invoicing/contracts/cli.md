@@ -1,14 +1,14 @@
 # CLI Contract
 
 The `horae` binary is the server-and-tooling entry point. It is built from the
-`server` feature of the single Horae crate; the CLI is defined in `src/cli.rs`
-(clap) and dispatched in `src/main.rs`. Configuration is read from the
-environment in `src/config.rs`.
+`server` feature of the single Horae crate; the CLI is defined in `crates/horae/src/cli.rs`
+(clap) and dispatched in `crates/horae/src/main.rs`. Configuration is read from the
+environment in `crates/horae/src/config.rs`.
 
 Invocation forms:
 
 1. `horae <subcommand> [args]` when running the compiled server binary.
-1. `cargo run --features server -- <subcommand> [args]` during development.
+1. `cargo run -p horae --features server -- <subcommand> [args]` during development.
 1. Running the binary with **no subcommand** defaults to `serve` (with default
    arguments). This exists so `dx serve` can launch the binary bare.
 
@@ -80,11 +80,11 @@ Intended to list all users.
 
 ## Environment Variables
 
-Defaults and behavior are taken from `src/config.rs`, `.env.example`, and the
+Defaults and behavior are taken from `crates/horae/src/config.rs`, `.env.example`, and the
 README. The `serve` command's bind address can also come from `--host` /
 `--port` flags, which the environment variables back.
 
-### Read by `AppConfig` (`src/config.rs`)
+### Read by `AppConfig` (`crates/horae/src/config.rs`)
 
 1. `DATABASE_URL` — Postgres connection string. Default in code:
    `postgres://localhost/horae` (the `.env.example` sample uses
@@ -102,7 +102,7 @@ README. The `serve` command's bind address can also come from `--host` /
    `dev-secret-change-me-in-production` (the `.env.example` sample uses
    `changeme`). **Always set a strong value in production.**
 
-### Read by the OIDC auth layer (`src/auth/oidc.rs`), not `AppConfig`
+### Read by the OIDC auth layer (`crates/horae/src/auth/oidc.rs`), not `AppConfig`
 
 These are consumed directly by the OIDC module rather than parsed into
 `AppConfig`. They are required for production (non-`DEV_LOGIN`) authentication;

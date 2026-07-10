@@ -16,9 +16,9 @@ Much of P1–P4 already exists in the codebase; the plan covers completing those
 
 **Primary Dependencies**: `dioxus` 0.7 (fullstack + router), `axum` 0.8, `tokio`, `sqlx` 0.8 (Postgres), `tower-sessions` + `tower-sessions-sqlx-store`, `openidconnect` (production auth), `clap` (CLI), `chrono`, `uuid` (v7), `csv` + `rust_xlsxwriter` (spreadsheet/CSV export), `typst` (invoice/timesheet PDF rendering, fonts from nixpkgs), `extism` 1 (plugin host — to add). Toolchain and packaging via Nix (`fenix`, `blueprint`, `treefmt-nix`).
 
-**Storage**: PostgreSQL 15+. Migrations via `sqlx` (`migrations/`). Sessions persisted in Postgres.
+**Storage**: PostgreSQL 15+. Migrations via `sqlx` (`crates/horae/migrations/`). Sessions persisted in Postgres.
 
-**Testing**: `cargo test -p horae-core` (pure unit tests); `cargo test --features server` integration tests using `#[sqlx::test]` (throwaway DB per test, `#[serial]`); `nix flake check` runs formatting + a NixOS e2e VM test.
+**Testing**: `cargo test -p horae-core` (pure unit tests); `cargo test -p horae --features server` integration tests using `#[sqlx::test]` (throwaway DB per test, `#[serial]`); `nix flake check` runs formatting + a NixOS e2e VM test.
 
 **Target Platform**: Linux server (self-hosted; NixOS module + systemd) for the backend; modern desktop browsers (WASM SPA) for the UI.
 
@@ -65,35 +65,39 @@ specs/001-time-tracking-invoicing/
 ### Source Code (repository root)
 
 ```text
+Cargo.toml               # virtual workspace root (members: crates/horae, crates/core)
 crates/
-└── core/                # horae-core: pure domain (duration, rounding, money, totals, state)
+├── core/                # horae-core: pure domain (duration, rounding, money, totals, state)
+└── horae/               # the Dioxus fullstack app (server + web targets)
+    ├── Cargo.toml
+    ├── Dioxus.toml
+    ├── migrations/      # sqlx SQL migrations (0001_init.sql, …)
+    ├── templates/       # Typst document templates: invoice.typ (+ timesheet.typ)  [NEW]
+    ├── assets/css/horae.css   # design system
+    ├── tests/           # #[sqlx::test] integration tests
+    └── src/
+        ├── main.rs      # cfg-gated entry points: server (Axum+CLI) / web (WASM) / stub
+        ├── cli.rs       # clap CLI (serve, migrate, seed, user)          [server]
+        ├── config.rs    # AppConfig from env                             [server]
+        ├── db.rs        # PgPool + migrations                            [server]
+        ├── state.rs     # global AppState (OnceCell): pool, plugins       [server]
+        ├── auth/        # sessions, OIDC, DEV_LOGIN bypass               [server]
+        ├── server_fns.rs # #[server] functions (CRUD, timer, auth, reports)
+        ├── harvest/     # read-only Harvest-compatible REST API          [server]
+        ├── reports.rs   # CSV/XLSX export Axum handlers                  [server]
+        ├── seed.rs      # demo-data seeder                               [server]
+        ├── models/      # user, client, project, task, time_entry, invoice
+        ├── route.rs     # Routable Route enum (SPA routes)
+        ├── app.rs       # root component + Router
+        ├── pages/       # dashboard, time, timesheet, clients, projects, invoices, approvals, reports, admin, settings, auth
+        ├── components/  # nav, sidebar, timer_widget, table, form, badge
+        └── plugin/      # NEW (P5): registry, host functions, events, manifest [server]
 
-src/                     # horae app crate (Dioxus fullstack; server + web targets)
-├── main.rs              # cfg-gated entry points: server (Axum+CLI) / web (WASM) / stub
-├── cli.rs               # clap CLI (serve, migrate, seed, user)          [server]
-├── config.rs            # AppConfig from env                              [server]
-├── db.rs                # PgPool + migrations                            [server]
-├── state.rs             # global AppState (OnceCell): pool, plugins       [server]
-├── auth/                # sessions, OIDC, DEV_LOGIN bypass                [server]
-├── server_fns.rs        # #[server] functions (CRUD, timer, auth, reports)
-├── harvest/             # read-only Harvest-compatible REST API           [server]
-├── reports.rs           # CSV/XLSX export Axum handlers                   [server]
-├── seed.rs              # demo-data seeder                                [server]
-├── models/              # user, client, project, task, time_entry, invoice
-├── route.rs             # Routable Route enum (SPA routes)
-├── app.rs               # root component + Router
-├── pages/               # dashboard, time, timesheet, clients, projects, invoices, approvals, reports, admin, settings, auth
-├── components/          # nav, sidebar, timer_widget, table, form, badge
-└── plugin/              # NEW (P5): registry, host functions, events, manifest [server]
-
-migrations/              # sqlx SQL migrations (0001_init.sql, …)
-templates/               # Typst document templates: invoice.typ (+ timesheet.typ)  [NEW]
-assets/css/horae.css     # design system
 nix/                     # blueprint flake tree: package, devshell, module, checks, formatter
 nixos/ → nix/modules/nixos/horae.nix   # NixOS service module
 ```
 
-**Structure Decision**: Keep the existing two-crate layout — pure `horae-core` (correctness) + the `horae` fullstack app. P1–P4 extend the existing `models/`, `server_fns.rs`, `pages/`, and `harvest/` code to fully satisfy the spec; P5 adds a new `src/plugin/` module and wires event dispatch into `server_fns.rs` after DB writes, with plugin handles held in `AppState`.
+**Structure Decision**: Keep the two-crate workspace — pure `horae-core` (correctness) + the `horae` fullstack app at `crates/horae/`. P1–P4 extend the existing `crates/horae/src/models/`, `server_fns.rs`, `pages/`, and `harvest/` code to fully satisfy the spec; P5 adds a new `crates/horae/src/plugin/` module and wires event dispatch into `server_fns.rs` after DB writes, with plugin handles held in `AppState`.
 
 ## Complexity Tracking
 

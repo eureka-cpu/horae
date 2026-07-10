@@ -29,7 +29,7 @@ This is a **contract, not an implementation** — no function bodies are given.
 1. **Units**: Durations are integer minutes; money is integer minor units (cents) +
    ISO currency code — never floats (per the domain invariants).
 1. **(planned)** marks functions required by the spec (FR-001..FR-023) that are
-   **not yet defined** in `src/server_fns.rs`.
+   **not yet defined** in `crates/horae/src/server_fns.rs`.
 
 ______________________________________________________________________
 
