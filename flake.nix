@@ -135,6 +135,24 @@
 
       apps = eachSystem (pkgs:
         {
+          preview-site =
+            let
+              script = pkgs.writeShellApplication {
+                name = "preview-site";
+                runtimeInputs = [ pkgs.python3 pkgs.git ];
+                text = ''
+                  root=$(git rev-parse --show-toplevel)
+                  echo "Serving site at http://localhost:8080"
+                  exec python3 -m http.server 8080 --directory "$root/site"
+                '';
+              };
+            in
+            {
+              type = "app";
+              program = "${script}/bin/preview-site";
+              meta.description = "Serves the static site locally on http://localhost:8080.";
+            };
+
           qemu-vm =
             let
               guestSystem = builtins.replaceStrings [ "darwin" ] [ "linux" ] pkgs.stdenv.hostPlatform.system;
