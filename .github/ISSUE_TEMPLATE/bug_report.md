@@ -1,8 +1,6 @@
----
-name: Bug report
-about: Report a reproducible defect
-labels: bug
----
+______________________________________________________________________
+
+## name: Bug report about: Report a reproducible defect labels: bug
 
 ## Description
 
@@ -11,8 +9,8 @@ labels: bug
 ## Steps to reproduce
 
 1.
-2.
-3.
+1.
+1.
 
 ## Expected behavior
 

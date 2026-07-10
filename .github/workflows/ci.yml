@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: CI
 
 on:
@@ -8,9 +9,33 @@ on:
 
 jobs:
   check:
+    name: Flake Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v31
-      - uses: mic92/hestia@v2
-      - run: nix flake check
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+
+      - name: Nix binary cache (GitHub Actions cache)
+        uses: Mic92/hestia@fb239a2f72d4b6e26eec5425f289dea23b27a527 # v2
+
+      - name: Flake check
+        run: nix flake check -L
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+
+      - name: Nix binary cache (GitHub Actions cache)
+        uses: Mic92/hestia@fb239a2f72d4b6e26eec5425f289dea23b27a527 # v2
+
+      - name: Check formatting
+        run: nix fmt -- --ci
