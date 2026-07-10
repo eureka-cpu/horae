@@ -4,15 +4,11 @@
       <rect width="128" height="128" rx="30"/>
     </clipPath>
   </defs>
-  <!-- Reversed · on pine -->
   <rect width="128" height="128" rx="30" fill="#0F3D33"/>
-  <!-- 3 rays from sun centre -->
-  <line x1="64" y1="64" x2="64" y2="18" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="64" y1="64" x2="57" y2="29" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="64" y1="64" x2="71" y2="29" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
-  <!-- Sun disc — warm cream per design spec -->
-  <circle cx="64" cy="64" r="29" fill="#EFEAE0"/>
-  <!-- Horizon -->
-  <rect y="79" width="128" height="2"  fill="#072a22" clip-path="url(#icon-pine-clip)"/>
-  <rect y="81" width="128" height="47" fill="#0a352b" clip-path="url(#icon-pine-clip)"/>
+  <line x1="64" y1="70" x2="64" y2="24" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="57" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="71" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="64" cy="70" r="29" fill="#EFEAE0"/>
+  <rect y="85" width="128" height="2"  fill="#072a22" clip-path="url(#icon-pine-clip)"/>
+  <rect y="87" width="128" height="41" fill="#0a352b" clip-path="url(#icon-pine-clip)"/>
 </svg>

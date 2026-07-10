@@ -5,13 +5,12 @@
     </clipPath>
   </defs>
   <rect width="128" height="128" rx="30" fill="#1F5C4D"/>
-  <!-- 3 rays from sun centre (64,64) — disc then horizon cover their bases -->
-  <line x1="64" y1="64" x2="64" y2="18" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="64" y1="64" x2="57" y2="29" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="64" y1="64" x2="71" y2="29" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
-  <!-- Rising sun disc centred in icon -->
-  <circle cx="64" cy="64" r="29" fill="#D99A3C"/>
-  <!-- Horizon 14.5px below centre: thin waterline then deeper band -->
-  <rect y="79" width="128" height="2"  fill="#0F3D33" clip-path="url(#icon-clip)"/>
-  <rect y="81" width="128" height="47" fill="#164034" clip-path="url(#icon-clip)"/>
+  <!-- 3 rays from sun centre (64,70) — disc then horizon cover their bases -->
+  <line x1="64" y1="70" x2="64" y2="24" stroke="#E7C079" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="57" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="71" y2="35" stroke="#E4B061" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Sun disc, horizon 14.5px (0.5r) below centre -->
+  <circle cx="64" cy="70" r="29" fill="#D99A3C"/>
+  <rect y="85" width="128" height="2"  fill="#0F3D33" clip-path="url(#icon-clip)"/>
+  <rect y="87" width="128" height="41" fill="#164034" clip-path="url(#icon-clip)"/>
 </svg>

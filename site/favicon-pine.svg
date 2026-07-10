@@ -5,7 +5,7 @@
     </clipPath>
   </defs>
   <rect width="128" height="128" rx="30" fill="#0F3D33"/>
-  <circle cx="64" cy="64" r="29" fill="#EFEAE0"/>
-  <rect y="79" width="128" height="2"  fill="#072a22" clip-path="url(#fav-pine-clip)"/>
-  <rect y="81" width="128" height="47" fill="#0a352b" clip-path="url(#fav-pine-clip)"/>
+  <circle cx="64" cy="70" r="29" fill="#EFEAE0"/>
+  <rect y="85" width="128" height="2"  fill="#072a22" clip-path="url(#fav-pine-clip)"/>
+  <rect y="87" width="128" height="41" fill="#0a352b" clip-path="url(#fav-pine-clip)"/>
 </svg>
