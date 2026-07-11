@@ -290,7 +290,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
         .flatten()
         .ok_or_else(|| ServerFnError::ServerError {
             message: "No running timer found for this entry".into(),
-            code: 404,
+            code: axum::http::StatusCode::NOT_FOUND.as_u16(),
             details: None,
         })?;
 

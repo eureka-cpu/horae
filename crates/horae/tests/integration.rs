@@ -184,17 +184,27 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
             .unwrap();
     assert!(is_running);
 
-    // Stop the timer: exact elapsed minutes (floored, no artificial minimum),
-    // mirroring the stop_timer server function (which computes via horae-core).
+    // Stop the timer: read started_at then compute elapsed minutes via
+    // horae-core, mirroring the exact code path in the stop_timer server fn.
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT started_at FROM time_entries WHERE id = $1 AND is_running = true",
+    )
+    .bind(entry_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
+
     sqlx::query(
         "UPDATE time_entries \
          SET is_running = false, \
-             minutes = EXTRACT(EPOCH FROM (now() - started_at))::int / 60, \
+             minutes = $2, \
              started_at = NULL, \
              updated_at = now() \
          WHERE id = $1 AND is_running = true",
     )
     .bind(entry_id)
+    .bind(minutes)
     .execute(&pool)
     .await
     .unwrap();
@@ -239,19 +249,30 @@ async fn timer_under_a_minute_records_zero(pool: PgPool) {
     .await
     .unwrap();
 
+    // Read started_at, compute via horae-core — same path as the server fn.
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT started_at FROM time_entries WHERE id = $1 AND is_running = true",
+    )
+    .bind(entry_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
+
     sqlx::query(
         "UPDATE time_entries \
          SET is_running = false, \
-             minutes = EXTRACT(EPOCH FROM (now() - started_at))::int / 60, \
+             minutes = $2, \
              started_at = NULL \
          WHERE id = $1 AND is_running = true",
     )
     .bind(entry_id)
+    .bind(minutes)
     .execute(&pool)
     .await
     .unwrap();
 
-    let (minutes,): (i32,) = sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
+    let minutes: i32 = sqlx::query_scalar("SELECT minutes FROM time_entries WHERE id = $1")
         .bind(entry_id)
         .fetch_one(&pool)
         .await
