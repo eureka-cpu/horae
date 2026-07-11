@@ -230,7 +230,11 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
     .await
     .unwrap();
     assert!(!row.is_running);
-    assert_eq!(row.minutes, 5, "Expected exactly 5 minutes, got {}", row.minutes);
+    assert_eq!(
+        row.minutes, 5,
+        "Expected exactly 5 minutes, got {}",
+        row.minutes
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -287,16 +291,14 @@ async fn timer_under_a_minute_records_zero(pool: PgPool) {
     .await
     .unwrap();
 
-    let row = sqlx::query!(
-        "SELECT minutes FROM time_entries WHERE id = $1",
-        entry_id,
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let row = sqlx::query!("SELECT minutes FROM time_entries WHERE id = $1", entry_id,)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(
         row.minutes, 0,
-        "Sub-minute run must be 0 minutes, got {}", row.minutes
+        "Sub-minute run must be 0 minutes, got {}",
+        row.minutes
     );
 }
 

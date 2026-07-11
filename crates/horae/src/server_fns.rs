@@ -316,23 +316,22 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     // Read the running entry's start time, then compute the exact elapsed
     // minutes in `horae-core` (floored to the minute, no artificial 1-minute
     // minimum) so tracked totals stay exact (FR-003/FR-023).
-    let started_at: chrono::DateTime<chrono::Utc> =
-        sqlx::query_scalar!(
-            r#"SELECT started_at as "started_at: chrono::DateTime<chrono::Utc>"
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar!(
+        r#"SELECT started_at as "started_at: chrono::DateTime<chrono::Utc>"
                FROM time_entries
                WHERE id = $1 AND user_id = $2 AND is_running = true"#,
-            entry_id,
-            user_id,
-        )
-        .fetch_optional(&state.db)
-        .await
-        .map_err(server_err)?
-        .flatten()
-        .ok_or_else(|| ServerFnError::ServerError {
-            message: "No running timer found for this entry".into(),
-            code: axum::http::StatusCode::NOT_FOUND.as_u16(),
-            details: None,
-        })?;
+        entry_id,
+        user_id,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .flatten()
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "No running timer found for this entry".into(),
+        code: axum::http::StatusCode::NOT_FOUND.as_u16(),
+        details: None,
+    })?;
 
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
