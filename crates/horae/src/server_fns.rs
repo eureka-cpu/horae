@@ -7,6 +7,21 @@ use crate::models::{
     User,
 };
 
+// HTTP status codes for `ServerFnError::ServerError { code, .. }` — named so
+// error paths read at a glance (see AGENTS.md conventions). Server-only: on the
+// web target `#[server]` bodies are replaced by client stubs that never build
+// these errors.
+#[cfg(feature = "server")]
+mod status {
+    pub const UNAUTHORIZED: u16 = 401;
+    pub const FORBIDDEN: u16 = 403;
+    pub const NOT_FOUND: u16 = 404;
+    pub const CONFLICT: u16 = 409;
+    pub const INTERNAL_ERROR: u16 = 500;
+}
+#[cfg(feature = "server")]
+use status::*;
+
 /// Extract the session user UUID from the request context.
 /// Returns `Err(401)` if the session has no user (not logged in).
 #[cfg(feature = "server")]
@@ -23,15 +38,16 @@ async fn session_user_id() -> Result<uuid::Uuid, ServerFnError> {
         .await
         .ok_or_else(|| ServerFnError::ServerError {
             message: "Not authenticated — please sign in.".into(),
-            code: 401,
+            code: UNAUTHORIZED,
             details: None,
         })
 }
 
+#[cfg(feature = "server")]
 fn server_err(msg: impl std::fmt::Display) -> ServerFnError {
     ServerFnError::ServerError {
         message: msg.to_string(),
-        code: 500,
+        code: INTERNAL_ERROR,
         details: None,
     }
 }
@@ -51,14 +67,14 @@ async fn require_admin() -> Result<crate::models::User, ServerFnError> {
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "User not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })?;
 
     if !user.is_admin() {
         return Err(ServerFnError::ServerError {
             message: "Admin access required".into(),
-            code: 403,
+            code: FORBIDDEN,
             details: None,
         });
     }
@@ -80,14 +96,14 @@ async fn require_manager() -> Result<crate::models::User, ServerFnError> {
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "User not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })?;
 
     if !user.is_manager_or_above() {
         return Err(ServerFnError::ServerError {
             message: "Manager access required".into(),
-            code: 403,
+            code: FORBIDDEN,
             details: None,
         });
     }
@@ -102,7 +118,7 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
     let _ = (email, password);
     Err(ServerFnError::ServerError {
         message: "Direct login removed; navigate to /auth/login.".into(),
-        code: 401,
+        code: UNAUTHORIZED,
         details: None,
     })
 }
@@ -137,7 +153,7 @@ pub async fn get_me() -> Result<User, ServerFnError> {
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "User not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -237,7 +253,7 @@ pub async fn start_timer(
     if existing {
         return Err(ServerFnError::ServerError {
             message: "A timer is already running. Stop it first.".into(),
-            code: 409,
+            code: CONFLICT,
             details: None,
         });
     }
@@ -315,7 +331,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "No running timer found for this entry".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -383,7 +399,7 @@ pub async fn create_time_entry(
         if !assigned {
             return Err(ServerFnError::ServerError {
                 message: "You are not assigned to this project".into(),
-                code: 403,
+                code: FORBIDDEN,
                 details: None,
             });
         }
@@ -445,7 +461,7 @@ pub async fn update_time_entry(
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Entry not found or is locked (not in 'open' state)".into(),
-        code: 409,
+        code: CONFLICT,
         details: None,
     })
 }
@@ -470,7 +486,7 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
     if result.rows_affected() == 0 {
         return Err(ServerFnError::ServerError {
             message: "Entry not found or is locked (not in 'open' state)".into(),
-            code: 409,
+            code: CONFLICT,
             details: None,
         });
     }
@@ -480,13 +496,12 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
 
 // ── Clients ──────────────────────────────────────────────────────────────────
 
-/// Lists clients. By default only active clients are returned (the set shown in
-/// new-entry pickers); pass `include_inactive = Some(true)` for the management
+/// Lists clients. With `include_inactive = false` only active clients are
+/// returned (the set shown in new-entry pickers); pass `true` for the management
 /// view that also needs to reactivate deactivated clients.
 #[server]
-pub async fn list_clients(include_inactive: Option<bool>) -> Result<Vec<Client>, ServerFnError> {
+pub async fn list_clients(include_inactive: bool) -> Result<Vec<Client>, ServerFnError> {
     let state = crate::state::global_state().await;
-    let include_inactive = include_inactive.unwrap_or(false);
 
     let clients = sqlx::query_as::<_, Client>(
         "SELECT id, org_id, name, currency, address, tax_id, active, created_at
@@ -557,7 +572,7 @@ pub async fn update_client(
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Client not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -584,7 +599,7 @@ pub async fn set_client_active(client_id: String, active: bool) -> Result<Client
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Client not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -594,11 +609,10 @@ pub async fn set_client_active(client_id: String, active: bool) -> Result<Client
 #[server]
 pub async fn list_projects(
     client_id: Option<String>,
-    active_only: Option<bool>,
+    include_inactive: bool,
 ) -> Result<Vec<Project>, ServerFnError> {
     let state = crate::state::global_state().await;
     let _ = client_id;
-    let active = active_only.unwrap_or(true);
 
     let projects = sqlx::query_as::<_, Project>(
         "SELECT id, org_id, client_id, code, name,
@@ -607,10 +621,10 @@ pub async fn list_projects(
                 budget_kind,
                 budget_amount_cents, budget_minutes, active, created_at
          FROM projects
-         WHERE ($1 IS NULL OR active = $1)
+         WHERE ($1 OR active = true)
          ORDER BY name ASC",
     )
-    .bind(if active { Some(true) } else { None::<bool> })
+    .bind(include_inactive)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -703,7 +717,7 @@ pub async fn update_project(
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Project not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -737,7 +751,7 @@ pub async fn set_project_active(
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Project not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -829,7 +843,7 @@ pub async fn update_task(
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Task not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -854,7 +868,7 @@ pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, Serv
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Task not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })
 }
@@ -900,7 +914,7 @@ pub async fn link_project_task(project_id: String, task_id: String) -> Result<()
         if !linked {
             return Err(ServerFnError::ServerError {
                 message: "Project or task not found in this organization".into(),
-                code: 404,
+                code: NOT_FOUND,
                 details: None,
             });
         }
@@ -1080,7 +1094,7 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     if result.rows_affected() == 0 {
         return Err(ServerFnError::ServerError {
             message: "No open entries found for this week".into(),
-            code: 404,
+            code: NOT_FOUND,
             details: None,
         });
     }
@@ -1148,7 +1162,7 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     ) {
         return Err(ServerFnError::ServerError {
             message: "Insufficient role to approve submissions".into(),
-            code: 403,
+            code: FORBIDDEN,
             details: None,
         });
     }
@@ -1177,7 +1191,7 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Approval not found or not in 'submitted' state".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })?;
 
@@ -1211,7 +1225,7 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     {
         return Err(ServerFnError::ServerError {
             message: "Insufficient role to reject submissions".into(),
-            code: 403,
+            code: FORBIDDEN,
             details: None,
         });
     }
@@ -1233,7 +1247,7 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     .map_err(server_err)?
     .ok_or_else(|| ServerFnError::ServerError {
         message: "Approval not found".into(),
-        code: 404,
+        code: NOT_FOUND,
         details: None,
     })?;
 

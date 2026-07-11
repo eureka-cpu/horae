@@ -52,7 +52,7 @@ pub fn Timesheet() -> Element {
             .await
         }
     });
-    let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
+    let projects = use_resource(|| async move { server_fns::list_projects(None, false).await });
     let tasks = use_resource(|| async move { server_fns::list_tasks().await });
 
     let project_names: HashMap<Uuid, String> = projects

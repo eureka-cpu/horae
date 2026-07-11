@@ -6,7 +6,7 @@ use crate::server_fns;
 #[component]
 pub fn ClientList() -> Element {
     // Management view: include inactive clients so managers can reactivate them.
-    let mut clients = use_resource(|| async move { server_fns::list_clients(Some(true)).await });
+    let mut clients = use_resource(|| async move { server_fns::list_clients(true).await });
     let me = use_resource(|| async move { server_fns::get_me().await });
 
     let mut show_form = use_signal(|| false);

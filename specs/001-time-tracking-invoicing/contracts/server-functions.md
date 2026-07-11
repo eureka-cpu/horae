@@ -81,7 +81,7 @@ ______________________________________________________________________
 
 | Function | Inputs | Output | Errors | Required role |
 |---|---|---|---|---|
-| `list_clients` | `include_inactive: Option<bool>` (default false) | `Vec<Client>` | `ServerFnError` (`500`) | member |
+| `list_clients` | `include_inactive: bool` | `Vec<Client>` | `ServerFnError` (`500`) | member |
 | `create_client` | `name: String`, `currency: String`, `address: Option<String>`, `tax_id: Option<String>` | `Client` | `ServerFnError` (`403` non-manager) | manager |
 | `update_client` | `client_id: Uuid`, `name: String`, `currency: String`, `address: Option<String>`, `tax_id: Option<String>` | `Client` | `ServerFnError` (`403`, `404`) | manager |
 | `set_client_active` | `client_id: Uuid`, `active: bool` | `Client` | `ServerFnError` (`403`, `404`) | manager |
@@ -90,7 +90,7 @@ Notes:
 
 1. `list_clients` returns only `active = true` rows by default so inactive clients
    are not selectable for new work (FR-011); the management view passes
-   `include_inactive = Some(true)` to also list deactivated clients for reactivation.
+   `include_inactive = true` to also list deactivated clients for reactivation.
 1. Per FR-008 client create/edit/deactivate are gated at **manager** (managers or
    admins).
 
@@ -100,7 +100,7 @@ ______________________________________________________________________
 
 | Function | Inputs | Output | Errors | Required role |
 |---|---|---|---|---|
-| `list_projects` | `client_id: Option<Uuid>` (reserved; not yet filtered), `active_only: Option<bool>` (default true) | `Vec<Project>` | `ServerFnError` (`500`) | member |
+| `list_projects` | `client_id: Option<Uuid>` (reserved; not yet filtered), `include_inactive: bool` | `Vec<Project>` | `ServerFnError` (`500`) | member |
 | `create_project` | `client_id: Uuid`, `name: String`, `project_type: String`, `currency: String`, `budget_kind: String` | `Project` | `ServerFnError` (`403` non-manager) | manager |
 | `update_project` | `project_id: Uuid`, `name: String`, `project_type: String`, `currency: String`, `budget_kind: String` | `Project` | `ServerFnError` (`403`, `404`) | manager |
 | `set_project_active` | `project_id: Uuid`, `active: bool` | `Project` | `ServerFnError` (`403`, `404`) | manager |
@@ -111,7 +111,7 @@ Notes:
    method / budget rate fields of FR-009 map onto these plus `budget_amount_cents`
    / `budget_minutes` on the row.
 1. Per FR-009 project create/edit/deactivate are gated at **manager**. The
-   management view passes `active_only = Some(false)` to `list_projects` to include
+   management view passes `include_inactive = true` to `list_projects` to include
    inactive projects for reactivation. The `client_id` filter argument on
    `list_projects` is accepted but not yet applied.
 

@@ -6,11 +6,10 @@ use crate::server_fns;
 
 #[component]
 pub fn ProjectList() -> Element {
-    // Management view: `Some(false)` includes inactive projects so managers can
-    // reactivate them; new-entry pickers elsewhere use the active-only default.
-    let mut projects =
-        use_resource(|| async move { server_fns::list_projects(None, Some(false)).await });
-    let clients_res = use_resource(|| async move { server_fns::list_clients(None).await });
+    // Management view: `include_inactive = true` also lists deactivated projects
+    // so managers can reactivate them; new-entry pickers pass `false`.
+    let mut projects = use_resource(|| async move { server_fns::list_projects(None, true).await });
+    let clients_res = use_resource(|| async move { server_fns::list_clients(false).await });
     let me = use_resource(|| async move { server_fns::get_me().await });
 
     let mut show_form = use_signal(|| false);
