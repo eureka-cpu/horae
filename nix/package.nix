@@ -34,7 +34,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   nativeBuildInputs = with buildPkgs; [
     dioxus-cli
-    wasm-bindgen-cli_0_2_126 # Must match the version of wasm-bindgen in Cargo.toml
     wasm-pack
     binaryen
   ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
