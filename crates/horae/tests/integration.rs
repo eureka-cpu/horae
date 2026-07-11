@@ -184,22 +184,32 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
             .unwrap();
     assert!(is_running);
 
-    // Stop the timer: compute elapsed minutes from started_at and clear the
-    // running flag.  This mirrors the stop_timer server function logic.
+    // Stop the timer: read started_at then compute elapsed minutes via
+    // horae-core, mirroring the exact code path in the stop_timer server fn.
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT started_at FROM time_entries WHERE id = $1 AND is_running = true",
+    )
+    .bind(entry_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
+
     sqlx::query(
         "UPDATE time_entries \
          SET is_running = false, \
-             minutes = GREATEST(1, EXTRACT(EPOCH FROM (now() - started_at))::int / 60), \
+             minutes = $2, \
              started_at = NULL, \
              updated_at = now() \
          WHERE id = $1 AND is_running = true",
     )
     .bind(entry_id)
+    .bind(minutes)
     .execute(&pool)
     .await
     .unwrap();
 
-    // Verify minutes >= 5 and no longer running
+    // Verify the recorded duration is exactly 5 minutes and no longer running.
     let (minutes, stopped): (i32, bool) =
         sqlx::query_as("SELECT minutes, is_running FROM time_entries WHERE id = $1")
             .bind(entry_id)
@@ -207,7 +217,70 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
             .await
             .unwrap();
     assert!(!stopped);
-    assert!(minutes >= 5, "Expected >= 5 minutes, got {minutes}");
+    assert_eq!(minutes, 5, "Expected exactly 5 minutes, got {minutes}");
+}
+
+// ---------------------------------------------------------------------------
+// A sub-minute timer records 0 minutes — no artificial 1-minute minimum
+// (exactness: totals are never inflated).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn timer_under_a_minute_records_zero(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, "member").await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    let entry_id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, started_at, state) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
+                 0, true, true, now() - interval '30 seconds', 'open'::entry_state)",
+    )
+    .bind(entry_id)
+    .bind(org_id)
+    .bind(user_id)
+    .bind(project_id)
+    .bind(task_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Read started_at, compute via horae-core — same path as the server fn.
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT started_at FROM time_entries WHERE id = $1 AND is_running = true",
+    )
+    .bind(entry_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
+
+    sqlx::query(
+        "UPDATE time_entries \
+         SET is_running = false, \
+             minutes = $2, \
+             started_at = NULL \
+         WHERE id = $1 AND is_running = true",
+    )
+    .bind(entry_id)
+    .bind(minutes)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let minutes: i32 = sqlx::query_scalar("SELECT minutes FROM time_entries WHERE id = $1")
+        .bind(entry_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        minutes, 0,
+        "Sub-minute run must be 0 minutes, got {minutes}"
+    );
 }
 
 // ---------------------------------------------------------------------------

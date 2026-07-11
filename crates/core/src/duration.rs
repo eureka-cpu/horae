@@ -45,6 +45,17 @@ pub fn format_decimal(minutes: u32) -> String {
     }
 }
 
+/// Whole minutes elapsed between two instants, floored to the minute — the
+/// exact tracked duration with no artificial minimum. A non-positive interval
+/// (e.g. a clock skew) clamps to 0. Used by the timer stop path so totals stay
+/// exact (never inflated).
+pub fn minutes_between(
+    start: chrono::DateTime<chrono::Utc>,
+    end: chrono::DateTime<chrono::Utc>,
+) -> u32 {
+    (end - start).num_minutes().max(0) as u32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,5 +77,17 @@ mod tests {
     fn format_round_trip() {
         assert_eq!(format_hhmm(90), "1:30");
         assert_eq!(format_decimal(90), "1.5");
+    }
+
+    #[test]
+    fn minutes_between_is_exact_no_minimum() {
+        use chrono::{Duration, TimeZone, Utc};
+        let start = Utc.with_ymd_and_hms(2026, 1, 1, 9, 0, 0).unwrap();
+        // Under a minute records 0 — no artificial 1-minute minimum (exactness).
+        assert_eq!(minutes_between(start, start + Duration::seconds(30)), 0);
+        assert_eq!(minutes_between(start, start + Duration::seconds(90)), 1);
+        assert_eq!(minutes_between(start, start + Duration::minutes(5)), 5);
+        // Non-positive intervals clamp to 0.
+        assert_eq!(minutes_between(start, start - Duration::minutes(3)), 0);
     }
 }
