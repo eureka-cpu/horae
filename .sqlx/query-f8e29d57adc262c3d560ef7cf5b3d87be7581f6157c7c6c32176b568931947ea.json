@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT started_at as \"started_at: chrono::DateTime<chrono::Utc>\"\n               FROM time_entries\n               WHERE id = $1 AND user_id = $2 AND is_running = true",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "started_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f8e29d57adc262c3d560ef7cf5b3d87be7581f6157c7c6c32176b568931947ea"
+}

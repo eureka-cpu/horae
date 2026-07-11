@@ -50,9 +50,11 @@ At compile time, macros need either `DATABASE_URL` pointing to a live DB with mi
 After changing any `query!`/`query_as!`/`query_scalar!` macro or migration, regenerate the cache:
 
 ```sh
-cargo sqlx prepare --workspace   # requires live DB with migrations applied
-git add .sqlx/                   # commit the updated cache
+cargo sqlx prepare --workspace -- --features server   # requires live DB with migrations applied
+git add .sqlx/                                        # commit the updated cache
 ```
+
+**Important:** the `--features server` flag is required because all sqlx query macros live behind `#[cfg(feature = "server")]`. Without it, `cargo sqlx prepare` finds zero queries and **deletes** the entire cache.
 
 For custom PostgreSQL enum types, use type overrides in the SQL:
 

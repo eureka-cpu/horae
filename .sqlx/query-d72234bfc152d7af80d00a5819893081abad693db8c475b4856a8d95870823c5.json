@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE time_entries\n         SET is_running = false,\n             minutes = GREATEST(1, EXTRACT(EPOCH FROM (now() - started_at))::int / 60),\n             started_at = NULL,\n             updated_at = now()\n         WHERE id = $1 AND user_id = $2 AND is_running = true\n         RETURNING id, org_id, user_id, project_id, task_id,\n                   spent_date as \"spent_date: chrono::NaiveDate\",\n                   minutes, rounded_minutes, notes, billable, is_running,\n                   started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n                   state as \"state: EntryState\", invoice_id,\n                   created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n                   updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"",
+  "query": "UPDATE time_entries\n         SET is_running = false,\n             minutes = $3,\n             started_at = NULL,\n             updated_at = now()\n         WHERE id = $1 AND user_id = $2 AND is_running = true\n         RETURNING id, org_id, user_id, project_id, task_id,\n                   spent_date as \"spent_date: chrono::NaiveDate\",\n                   minutes, rounded_minutes, notes, billable, is_running,\n                   started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n                   state as \"state: EntryState\", invoice_id,\n                   created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n                   updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -99,7 +99,8 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid"
+        "Uuid",
+        "Int4"
       ]
     },
     "nullable": [
@@ -121,5 +122,5 @@
       false
     ]
   },
-  "hash": "800189a265d7ecaa4b35dbb97920a8aa883a9424007532453f3cf05a923c4ecf"
+  "hash": "d72234bfc152d7af80d00a5819893081abad693db8c475b4856a8d95870823c5"
 }
