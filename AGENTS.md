@@ -50,7 +50,7 @@ At compile time, macros need either `DATABASE_URL` pointing to a live DB with mi
 After changing any `query!`/`query_as!`/`query_scalar!` macro or migration, regenerate the cache:
 
 ```sh
-cargo sqlx prepare --workspace -- --features server   # requires live DB with migrations applied
+cargo sqlx prepare --workspace -- --features server --all-targets   # requires live DB with migrations applied
 git add .sqlx/                                        # commit the updated cache
 ```
 

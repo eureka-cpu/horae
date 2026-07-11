@@ -23,7 +23,7 @@ perSystem.self.default.overrideAttrs (old: {
 
     # Apply migrations then verify the .sqlx/ cache is up-to-date.
     cargo sqlx migrate run --source crates/horae/migrations
-    cargo sqlx prepare --workspace --check -- --features server
+    cargo sqlx prepare --workspace --check -- --features server --all-targets
 
     pg_ctl -D "$PGDATA" stop
     runHook postBuild
