@@ -130,7 +130,7 @@ pub fn ProjectList() -> Element {
                                 value: "{budget_kind}",
                                 oninput: move |e| budget_kind.set(e.value()),
                                 option { value: "none", "None" }
-                                option { value: "money", "Amount" }
+                                option { value: "amount", "Amount" }
                                 option { value: "hours", "Hours" }
                             }
                         }
