@@ -19,18 +19,20 @@ async fn fetch_entries(
     to: &str,
 ) -> Result<Vec<crate::models::DetailedReportRow>, sqlx::Error> {
     let state = crate::state::global_state().await;
-    sqlx::query_as::<_, crate::models::DetailedReportRow>(
-        "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
+    sqlx::query_as!(
+        crate::models::DetailedReportRow,
+        r#"SELECT te.spent_date as "spent_date: chrono::NaiveDate",
+                p.name AS project_name, t.name AS task_name,
                 u.name AS user_name, te.minutes, te.rounded_minutes, te.billable, te.notes
          FROM time_entries te
          JOIN projects p ON te.project_id = p.id
          JOIN tasks t ON te.task_id = t.id
          JOIN users u ON te.user_id = u.id
          WHERE te.spent_date BETWEEN $1::date AND $2::date
-         ORDER BY te.spent_date, p.name, t.name",
+         ORDER BY te.spent_date, p.name, t.name"#,
+        from as &str,
+        to as &str,
     )
-    .bind(from)
-    .bind(to)
     .fetch_all(&state.db)
     .await
 }

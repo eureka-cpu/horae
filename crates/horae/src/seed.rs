@@ -3,6 +3,7 @@
 ///
 /// All INSERTs use ON CONFLICT DO NOTHING so this is safe to run multiple times.
 use chrono::{Datelike, NaiveDate, Utc};
+use horae_core::types::{BudgetKind, OrgRole, ProjectRole, ProjectType, RoundDir};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -33,68 +34,74 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
     tracing::info!("Seeding demo data…");
 
     // Organisation
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO organizations (id, name, default_currency, week_start, round_minutes, round_dir)
-         VALUES ($1, $2, 'EUR', 1, 15, 'nearest')
+         VALUES ($1, $2, 'EUR', 1, 15, $3)
          ON CONFLICT (id) DO NOTHING",
+        ORG_ID,
+        "Demo Org",
+        RoundDir::Nearest as RoundDir,
     )
-    .bind(ORG_ID)
-    .bind("Demo Org")
     .execute(pool)
     .await?;
 
     // Admin user (used for DEV_LOGIN)
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO users (id, org_id, email, name, org_role, billable_rate_cents)
-         VALUES ($1, $2, 'admin@example.com', 'Admin User', 'admin', 10000)
+         VALUES ($1, $2, 'admin@example.com', 'Admin User', $3, 10000)
          ON CONFLICT (id) DO NOTHING",
+        ADMIN_ID,
+        ORG_ID,
+        OrgRole::Admin as OrgRole,
     )
-    .bind(ADMIN_ID)
-    .bind(ORG_ID)
     .execute(pool)
     .await?;
 
     // Clients
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO clients (id, org_id, name, currency)
          VALUES ($1, $2, 'Acme Corp', 'EUR')
          ON CONFLICT (id) DO NOTHING",
+        CLIENT_ACME_ID,
+        ORG_ID,
     )
-    .bind(CLIENT_ACME_ID)
-    .bind(ORG_ID)
     .execute(pool)
     .await?;
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO clients (id, org_id, name, currency)
          VALUES ($1, $2, 'TechStart Inc', 'USD')
          ON CONFLICT (id) DO NOTHING",
+        CLIENT_TECH_ID,
+        ORG_ID,
     )
-    .bind(CLIENT_TECH_ID)
-    .bind(ORG_ID)
     .execute(pool)
     .await?;
 
     // Projects
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO projects (id, org_id, client_id, code, name, project_type, currency, budget_kind, budget_minutes)
-         VALUES ($1, $2, $3, 'ACME-01', 'Acme Website Redesign', 'time_and_materials', 'EUR', 'hours', 12000)
+         VALUES ($1, $2, $3, 'ACME-01', 'Acme Website Redesign', $4, 'EUR', $5, 12000)
          ON CONFLICT (id) DO NOTHING",
+        PROJ_ACME_ID,
+        ORG_ID,
+        CLIENT_ACME_ID,
+        ProjectType::TimeAndMaterials as ProjectType,
+        BudgetKind::Hours as BudgetKind,
     )
-    .bind(PROJ_ACME_ID)
-    .bind(ORG_ID)
-    .bind(CLIENT_ACME_ID)
     .execute(pool)
     .await?;
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO projects (id, org_id, client_id, code, name, project_type, currency, budget_kind, budget_amount_cents)
-         VALUES ($1, $2, $3, 'TECH-01', 'TechStart API Integration', 'fixed_fee', 'USD', 'amount', 1500000)
+         VALUES ($1, $2, $3, 'TECH-01', 'TechStart API Integration', $4, 'USD', $5, 1500000)
          ON CONFLICT (id) DO NOTHING",
+        PROJ_TECH_ID,
+        ORG_ID,
+        CLIENT_TECH_ID,
+        ProjectType::FixedFee as ProjectType,
+        BudgetKind::Amount as BudgetKind,
     )
-    .bind(PROJ_TECH_ID)
-    .bind(ORG_ID)
-    .bind(CLIENT_TECH_ID)
     .execute(pool)
     .await?;
 
@@ -105,16 +112,16 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
         (TASK_MEETING_ID, "Meetings", false, 8000i64),
         (TASK_REVIEW_ID, "Code Review", true, 11000i64),
     ] {
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO tasks (id, org_id, name, billable_default, default_rate_cents)
              VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (id) DO NOTHING",
+            id,
+            ORG_ID,
+            name,
+            billable,
+            rate_cents,
         )
-        .bind(id)
-        .bind(ORG_ID)
-        .bind(name)
-        .bind(billable)
-        .bind(rate_cents)
         .execute(pool)
         .await?;
     }
@@ -128,27 +135,28 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
         (PROJ_TECH_ID, TASK_REVIEW_ID, true),
         (PROJ_TECH_ID, TASK_MEETING_ID, false),
     ] {
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO project_tasks (project_id, task_id, billable)
              VALUES ($1, $2, $3)
              ON CONFLICT (project_id, task_id) DO NOTHING",
+            proj_id,
+            task_id,
+            billable,
         )
-        .bind(proj_id)
-        .bind(task_id)
-        .bind(billable)
         .execute(pool)
         .await?;
     }
 
     // Assign admin to both projects
     for proj_id in [PROJ_ACME_ID, PROJ_TECH_ID] {
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO assignments (id, project_id, user_id, role, rate_cents)
-             VALUES (gen_random_uuid(), $1, $2, 'lead', 12000)
+             VALUES (gen_random_uuid(), $1, $2, $3, 12000)
              ON CONFLICT (project_id, user_id) DO NOTHING",
+            proj_id,
+            ADMIN_ID,
+            ProjectRole::Lead as ProjectRole,
         )
-        .bind(proj_id)
-        .bind(ADMIN_ID)
         .execute(pool)
         .await?;
     }
@@ -246,20 +254,20 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
     ];
 
     for (date, project_id, task_id, minutes, notes, billable) in entries {
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO time_entries
                (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable)
              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
              ON CONFLICT DO NOTHING",
+            ORG_ID,
+            ADMIN_ID,
+            *project_id,
+            *task_id,
+            *date as chrono::NaiveDate,
+            *minutes,
+            *notes,
+            *billable,
         )
-        .bind(ORG_ID)
-        .bind(ADMIN_ID)
-        .bind(project_id)
-        .bind(task_id)
-        .bind(date)
-        .bind(minutes)
-        .bind(notes)
-        .bind(billable)
         .execute(pool)
         .await?;
     }
@@ -280,14 +288,16 @@ fn days(n: i64) -> chrono::Duration {
 
 /// Verify that the seed data looks reasonable (called after seeding).
 pub async fn verify(pool: &PgPool) -> anyhow::Result<()> {
-    let (entry_count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM time_entries")
+    let entry_count = sqlx::query_scalar!("SELECT COUNT(*) FROM time_entries")
         .fetch_one(pool)
-        .await?;
+        .await?
+        .unwrap_or(0);
     tracing::info!("time_entries: {entry_count} rows");
 
-    let (client_count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM clients")
+    let client_count = sqlx::query_scalar!("SELECT COUNT(*) FROM clients")
         .fetch_one(pool)
-        .await?;
+        .await?
+        .unwrap_or(0);
     tracing::info!("clients: {client_count} rows");
 
     Ok(())

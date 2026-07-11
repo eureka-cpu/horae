@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO organizations (id, name, default_currency, week_start, round_minutes, round_dir)\n         VALUES ($1, $2, 'EUR', 1, 15, $3)\n         ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "round_dir",
+            "kind": {
+              "Enum": [
+                "nearest",
+                "up",
+                "down"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "396a1d0e89b976b7a3289fa07f9d2de4192cbb67828f25edf9715383bb66756b"
+}

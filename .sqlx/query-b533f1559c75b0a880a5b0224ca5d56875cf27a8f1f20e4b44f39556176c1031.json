@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO projects (id, org_id, client_id, code, name, project_type, currency, budget_kind, budget_minutes)\n         VALUES ($1, $2, $3, 'ACME-01', 'Acme Website Redesign', $4, 'EUR', $5, 12000)\n         ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "project_type",
+            "kind": {
+              "Enum": [
+                "time_and_materials",
+                "fixed_fee",
+                "non_billable",
+                "retainer"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "budget_kind",
+            "kind": {
+              "Enum": [
+                "none",
+                "amount",
+                "hours"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b533f1559c75b0a880a5b0224ca5d56875cf27a8f1f20e4b44f39556176c1031"
+}

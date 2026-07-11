@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE time_entries\n         SET state = $4,\n             rounded_minutes = COALESCE(rounded_minutes, minutes),\n             updated_at = now()\n         WHERE user_id = $1\n           AND spent_date BETWEEN $2 AND $3\n           AND state = $5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Date",
+        {
+          "Custom": {
+            "name": "entry_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "submitted",
+                "approved",
+                "invoiced"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "entry_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "submitted",
+                "approved",
+                "invoiced"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "64d3921fc28dcf86556aa1b9b66a05881c5efde21a8b6bcda51816fb4aef0566"
+}

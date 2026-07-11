@@ -1,0 +1,99 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id, p.name, p.code, p.project_type::text AS \"project_type!: String\", p.active,\n         p.budget_kind::text AS \"budget_kind!: String\", p.budget_amount_cents, p.budget_minutes,\n         p.starts_on as \"starts_on: chrono::NaiveDate\",\n         p.ends_on as \"ends_on: chrono::NaiveDate\",\n         p.created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n         p.client_id, c.name AS client_name\n         FROM projects p\n         JOIN clients c ON c.id = p.client_id\n         WHERE p.org_id = $1\n           AND ($2::bool IS NULL OR p.active = $2)\n           AND ($3::uuid IS NULL OR p.client_id = $3)\n           AND ($4::timestamptz IS NULL OR p.created_at >= $4::timestamptz)\n         ORDER BY p.name\n         LIMIT $5 OFFSET $6",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_type!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "budget_kind!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "budget_amount_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "budget_minutes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "starts_on: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 9,
+        "name": "ends_on: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "client_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 12,
+        "name": "client_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Uuid",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "525e45411320b44e740a690fe23c0a9c18a530857d4cc15d3625971b77674ace"
+}

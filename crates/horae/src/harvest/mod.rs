@@ -53,12 +53,14 @@ fn not_found() -> (axum::http::StatusCode, String) {
 async fn users_me(user: AuthUser) -> ApiResult<HarvestUser> {
     let state = crate::state::global_state().await;
 
-    let row: UserRow = sqlx::query_as(
-        "SELECT id, name, email, active, org_role::text AS org_role, \
-         cost_rate_cents, billable_rate_cents, created_at \
-         FROM users WHERE id = $1",
+    let row: UserRow = sqlx::query_as!(
+        UserRow,
+        r#"SELECT id, name, email, active, org_role::text AS "org_role!: String",
+         cost_rate_cents, billable_rate_cents,
+         created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM users WHERE id = $1"#,
+        user.user_id,
     )
-    .bind(user.user_id)
     .fetch_one(&state.db)
     .await
     .map_err(internal)?;
@@ -109,24 +111,6 @@ struct TimeEntryRow {
     user_cost_rate_cents: Option<i64>,
     budget_kind: String,
 }
-
-const TIME_ENTRY_SELECT: &str = "\
-    SELECT te.id, te.spent_date, te.minutes, te.rounded_minutes, te.notes, \
-           te.billable, te.is_running, te.started_at, \
-           te.state::text AS state, te.invoice_id, \
-           te.created_at, te.updated_at, \
-           te.user_id, u.name AS user_name, \
-           te.project_id, p.name AS project_name, p.code AS project_code, \
-           te.task_id, t.name AS task_name, \
-           p.client_id, c.name AS client_name, \
-           u.billable_rate_cents AS user_billable_rate_cents, \
-           u.cost_rate_cents AS user_cost_rate_cents, \
-           p.budget_kind::text AS budget_kind \
-    FROM time_entries te \
-    JOIN users u ON u.id = te.user_id \
-    JOIN projects p ON p.id = te.project_id \
-    JOIN tasks t ON t.id = te.task_id \
-    JOIN clients c ON c.id = p.client_id";
 
 fn time_entry_row_to_harvest(
     row: &TimeEntryRow,
@@ -201,125 +185,101 @@ async fn list_time_entries(
     let state = crate::state::global_state().await;
 
     // Fetch org rounding config
-    let (org_round_min, org_round_dir_str): (i16, String) =
-        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
-            .bind(user.org_id)
-            .fetch_one(&state.db)
-            .await
-            .map_err(internal)?;
-    let org_round_dir = match org_round_dir_str.as_str() {
-        "up" => horae_core::types::RoundDir::Up,
-        "down" => horae_core::types::RoundDir::Down,
-        _ => horae_core::types::RoundDir::Nearest,
-    };
+    let org_row = sqlx::query!(
+        r#"SELECT round_minutes, round_dir as "round_dir: horae_core::types::RoundDir"
+           FROM organizations WHERE id = $1"#,
+        user.org_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?;
 
     let page = filters.page.unwrap_or(1).max(1);
     let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
-    // Build dynamic WHERE clause
-    let mut conditions = vec!["te.org_id = $1".to_string()];
-    let mut param_idx = 2u32;
+    // Parse filter strings to properly typed values
+    let user_id_filter: Option<Uuid> = filters
+        .user_id
+        .as_ref()
+        .map(|s| s.parse().map_err(|_| internal("Invalid user_id filter")))
+        .transpose()?;
+    let project_id_filter: Option<Uuid> = filters
+        .project_id
+        .as_ref()
+        .map(|s| s.parse().map_err(|_| internal("Invalid project_id filter")))
+        .transpose()?;
+    let total_entries = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM time_entries te
+         JOIN projects p ON p.id = te.project_id
+         WHERE te.org_id = $1
+           AND ($2::uuid IS NULL OR te.user_id = $2)
+           AND ($3::uuid IS NULL OR te.project_id = $3)
+           AND ($4::date IS NULL OR te.spent_date >= $4::date)
+           AND ($5::date IS NULL OR te.spent_date <= $5::date)
+           AND ($6::bool IS NULL OR te.is_running = $6)
+           AND ($7::timestamptz IS NULL OR te.updated_at >= $7::timestamptz)",
+        user.org_id,
+        user_id_filter,
+        project_id_filter,
+        filters.from.as_deref() as Option<&str>,
+        filters.to.as_deref() as Option<&str>,
+        filters.is_running,
+        filters.updated_since.as_deref() as Option<&str>,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?
+    .unwrap_or(0);
 
-    // We collect bind values as strings so we can bind them uniformly.
-    // UUIDs and dates are passed as text and cast in the query.
-    struct Param {
-        value: String,
-        _kind: ParamKind,
-    }
-    enum ParamKind {
-        Uuid,
-        Date,
-        Timestamp,
-        Bool,
-    }
-
-    let mut extra_params: Vec<Param> = Vec::new();
-
-    if let Some(ref uid) = filters.user_id {
-        conditions.push(format!("te.user_id = ${param_idx}::uuid"));
-        extra_params.push(Param {
-            value: uid.clone(),
-            _kind: ParamKind::Uuid,
-        });
-        param_idx += 1;
-    }
-    if let Some(ref pid) = filters.project_id {
-        conditions.push(format!("te.project_id = ${param_idx}::uuid"));
-        extra_params.push(Param {
-            value: pid.clone(),
-            _kind: ParamKind::Uuid,
-        });
-        param_idx += 1;
-    }
-    if let Some(ref from) = filters.from {
-        conditions.push(format!("te.spent_date >= ${param_idx}::date"));
-        extra_params.push(Param {
-            value: from.clone(),
-            _kind: ParamKind::Date,
-        });
-        param_idx += 1;
-    }
-    if let Some(ref to) = filters.to {
-        conditions.push(format!("te.spent_date <= ${param_idx}::date"));
-        extra_params.push(Param {
-            value: to.clone(),
-            _kind: ParamKind::Date,
-        });
-        param_idx += 1;
-    }
-    if let Some(running) = filters.is_running {
-        conditions.push(format!("te.is_running = ${param_idx}::bool"));
-        extra_params.push(Param {
-            value: running.to_string(),
-            _kind: ParamKind::Bool,
-        });
-        param_idx += 1;
-    }
-    if let Some(ref since) = filters.updated_since {
-        conditions.push(format!("te.updated_at >= ${param_idx}::timestamptz"));
-        extra_params.push(Param {
-            value: since.clone(),
-            _kind: ParamKind::Timestamp,
-        });
-        param_idx += 1;
-    }
-
-    let where_clause = conditions.join(" AND ");
-
-    // Count query
-    let count_sql = format!(
-        "SELECT COUNT(*) FROM time_entries te \
-         JOIN projects p ON p.id = te.project_id \
-         WHERE {where_clause}"
-    );
-
-    let data_sql = format!(
-        "{TIME_ENTRY_SELECT} WHERE {where_clause} \
-         ORDER BY te.spent_date DESC, te.created_at DESC \
-         LIMIT ${param_idx} OFFSET ${}",
-        param_idx + 1
-    );
-
-    // Bind parameters to count query
-    let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql).bind(user.org_id);
-    for p in &extra_params {
-        count_query = count_query.bind(&p.value);
-    }
-    let total_entries: i64 = count_query.fetch_one(&state.db).await.map_err(internal)?;
-
-    // Bind parameters to data query
-    let mut data_query = sqlx::query_as::<_, TimeEntryRow>(&data_sql).bind(user.org_id);
-    for p in &extra_params {
-        data_query = data_query.bind(&p.value);
-    }
-    data_query = data_query.bind(per_page).bind(offset);
-
-    let rows: Vec<TimeEntryRow> = data_query.fetch_all(&state.db).await.map_err(internal)?;
+    let rows = sqlx::query_as!(
+        TimeEntryRow,
+        r#"SELECT te.id,
+               te.spent_date as "spent_date: chrono::NaiveDate",
+               te.minutes, te.rounded_minutes, te.notes,
+               te.billable, te.is_running,
+               te.started_at as "started_at: chrono::DateTime<chrono::Utc>",
+               te.state::text AS "state!: String", te.invoice_id,
+               te.created_at as "created_at: chrono::DateTime<chrono::Utc>",
+               te.updated_at as "updated_at: chrono::DateTime<chrono::Utc>",
+               te.user_id, u.name AS user_name,
+               te.project_id, p.name AS project_name, p.code AS project_code,
+               te.task_id, t.name AS task_name,
+               p.client_id, c.name AS client_name,
+               u.billable_rate_cents AS user_billable_rate_cents,
+               u.cost_rate_cents AS user_cost_rate_cents,
+               p.budget_kind::text AS "budget_kind!: String"
+         FROM time_entries te
+         JOIN users u ON u.id = te.user_id
+         JOIN projects p ON p.id = te.project_id
+         JOIN tasks t ON t.id = te.task_id
+         JOIN clients c ON c.id = p.client_id
+         WHERE te.org_id = $1
+           AND ($2::uuid IS NULL OR te.user_id = $2)
+           AND ($3::uuid IS NULL OR te.project_id = $3)
+           AND ($4::date IS NULL OR te.spent_date >= $4::date)
+           AND ($5::date IS NULL OR te.spent_date <= $5::date)
+           AND ($6::bool IS NULL OR te.is_running = $6)
+           AND ($7::timestamptz IS NULL OR te.updated_at >= $7::timestamptz)
+         ORDER BY te.spent_date DESC, te.created_at DESC
+         LIMIT $8 OFFSET $9"#,
+        user.org_id,
+        user_id_filter,
+        project_id_filter,
+        filters.from.as_deref() as Option<&str>,
+        filters.to.as_deref() as Option<&str>,
+        filters.is_running,
+        filters.updated_since.as_deref() as Option<&str>,
+        per_page,
+        offset,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(internal)?;
 
     let entries: Vec<HarvestTimeEntry> = rows
         .iter()
-        .map(|r| time_entry_row_to_harvest(r, org_round_min as u32, org_round_dir))
+        .map(|r| time_entry_row_to_harvest(r, org_row.round_minutes as u32, org_row.round_dir))
         .collect();
 
     Ok(Json(HarvestPagination::new(
@@ -336,31 +296,50 @@ async fn get_time_entry(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<Harve
     let state = crate::state::global_state().await;
 
     // Fetch org rounding config
-    let (org_round_min, org_round_dir_str): (i16, String) =
-        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
-            .bind(user.org_id)
-            .fetch_one(&state.db)
-            .await
-            .map_err(internal)?;
-    let org_round_dir = match org_round_dir_str.as_str() {
-        "up" => horae_core::types::RoundDir::Up,
-        "down" => horae_core::types::RoundDir::Down,
-        _ => horae_core::types::RoundDir::Nearest,
-    };
+    let org_row = sqlx::query!(
+        r#"SELECT round_minutes, round_dir as "round_dir: horae_core::types::RoundDir"
+           FROM organizations WHERE id = $1"#,
+        user.org_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?;
 
-    let sql = format!("{TIME_ENTRY_SELECT} WHERE te.id = $1 AND te.org_id = $2");
-    let row: TimeEntryRow = sqlx::query_as(&sql)
-        .bind(id)
-        .bind(user.org_id)
-        .fetch_optional(&state.db)
-        .await
-        .map_err(internal)?
-        .ok_or_else(not_found)?;
+    let row = sqlx::query_as!(
+        TimeEntryRow,
+        r#"SELECT te.id,
+               te.spent_date as "spent_date: chrono::NaiveDate",
+               te.minutes, te.rounded_minutes, te.notes,
+               te.billable, te.is_running,
+               te.started_at as "started_at: chrono::DateTime<chrono::Utc>",
+               te.state::text AS "state!: String", te.invoice_id,
+               te.created_at as "created_at: chrono::DateTime<chrono::Utc>",
+               te.updated_at as "updated_at: chrono::DateTime<chrono::Utc>",
+               te.user_id, u.name AS user_name,
+               te.project_id, p.name AS project_name, p.code AS project_code,
+               te.task_id, t.name AS task_name,
+               p.client_id, c.name AS client_name,
+               u.billable_rate_cents AS user_billable_rate_cents,
+               u.cost_rate_cents AS user_cost_rate_cents,
+               p.budget_kind::text AS "budget_kind!: String"
+         FROM time_entries te
+         JOIN users u ON u.id = te.user_id
+         JOIN projects p ON p.id = te.project_id
+         JOIN tasks t ON t.id = te.task_id
+         JOIN clients c ON c.id = p.client_id
+         WHERE te.id = $1 AND te.org_id = $2"#,
+        id,
+        user.org_id,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(internal)?
+    .ok_or_else(not_found)?;
 
     Ok(Json(time_entry_row_to_harvest(
         &row,
-        org_round_min as u32,
-        org_round_dir,
+        org_row.round_minutes as u32,
+        org_row.round_dir,
     )))
 }
 
@@ -440,54 +419,54 @@ async fn list_projects(
     let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
-    let mut conditions = vec!["p.org_id = $1".to_string()];
-    let mut extra_values: Vec<String> = Vec::new();
-    let mut param_idx = 2u32;
+    let client_id_filter: Option<Uuid> = filters
+        .client_id
+        .as_ref()
+        .map(|s| s.parse().map_err(|_| internal("Invalid client_id")))
+        .transpose()?;
 
-    if let Some(active) = filters.is_active {
-        conditions.push(format!("p.active = ${param_idx}::bool"));
-        extra_values.push(active.to_string());
-        param_idx += 1;
-    }
-    if let Some(ref cid) = filters.client_id {
-        conditions.push(format!("p.client_id = ${param_idx}::uuid"));
-        extra_values.push(cid.clone());
-        param_idx += 1;
-    }
-    if let Some(ref since) = filters.updated_since {
-        conditions.push(format!("p.created_at >= ${param_idx}::timestamptz"));
-        extra_values.push(since.clone());
-        param_idx += 1;
-    }
+    let total = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM projects p
+         WHERE p.org_id = $1
+           AND ($2::bool IS NULL OR p.active = $2)
+           AND ($3::uuid IS NULL OR p.client_id = $3)
+           AND ($4::timestamptz IS NULL OR p.created_at >= $4::timestamptz)",
+        user.org_id,
+        filters.is_active,
+        client_id_filter,
+        filters.updated_since.as_deref() as Option<&str>,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?
+    .unwrap_or(0);
 
-    let where_clause = conditions.join(" AND ");
-
-    let count_sql = format!("SELECT COUNT(*) FROM projects p WHERE {where_clause}");
-    let data_sql = format!(
-        "SELECT p.id, p.name, p.code, p.project_type::text AS project_type, p.active, \
-         p.budget_kind::text AS budget_kind, p.budget_amount_cents, p.budget_minutes, \
-         p.starts_on, p.ends_on, p.created_at, \
-         p.client_id, c.name AS client_name \
-         FROM projects p \
-         JOIN clients c ON c.id = p.client_id \
-         WHERE {where_clause} \
-         ORDER BY p.name \
-         LIMIT ${param_idx} OFFSET ${}",
-        param_idx + 1
-    );
-
-    let mut cq = sqlx::query_scalar::<_, i64>(&count_sql).bind(user.org_id);
-    for v in &extra_values {
-        cq = cq.bind(v);
-    }
-    let total: i64 = cq.fetch_one(&state.db).await.map_err(internal)?;
-
-    let mut dq = sqlx::query_as::<_, ProjectRow>(&data_sql).bind(user.org_id);
-    for v in &extra_values {
-        dq = dq.bind(v);
-    }
-    dq = dq.bind(per_page).bind(offset);
-    let rows: Vec<ProjectRow> = dq.fetch_all(&state.db).await.map_err(internal)?;
+    let rows = sqlx::query_as!(
+        ProjectRow,
+        r#"SELECT p.id, p.name, p.code, p.project_type::text AS "project_type!: String", p.active,
+         p.budget_kind::text AS "budget_kind!: String", p.budget_amount_cents, p.budget_minutes,
+         p.starts_on as "starts_on: chrono::NaiveDate",
+         p.ends_on as "ends_on: chrono::NaiveDate",
+         p.created_at as "created_at: chrono::DateTime<chrono::Utc>",
+         p.client_id, c.name AS client_name
+         FROM projects p
+         JOIN clients c ON c.id = p.client_id
+         WHERE p.org_id = $1
+           AND ($2::bool IS NULL OR p.active = $2)
+           AND ($3::uuid IS NULL OR p.client_id = $3)
+           AND ($4::timestamptz IS NULL OR p.created_at >= $4::timestamptz)
+         ORDER BY p.name
+         LIMIT $5 OFFSET $6"#,
+        user.org_id,
+        filters.is_active,
+        client_id_filter,
+        filters.updated_since.as_deref() as Option<&str>,
+        per_page,
+        offset,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(internal)?;
 
     let items: Vec<HarvestProject> = rows.iter().map(project_row_to_harvest).collect();
 
@@ -504,17 +483,20 @@ async fn list_projects(
 async fn get_project(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<HarvestProject> {
     let state = crate::state::global_state().await;
 
-    let row: ProjectRow = sqlx::query_as(
-        "SELECT p.id, p.name, p.code, p.project_type::text AS project_type, p.active, \
-         p.budget_kind::text AS budget_kind, p.budget_amount_cents, p.budget_minutes, \
-         p.starts_on, p.ends_on, p.created_at, \
-         p.client_id, c.name AS client_name \
-         FROM projects p \
-         JOIN clients c ON c.id = p.client_id \
-         WHERE p.id = $1 AND p.org_id = $2",
+    let row = sqlx::query_as!(
+        ProjectRow,
+        r#"SELECT p.id, p.name, p.code, p.project_type::text AS "project_type!: String", p.active,
+         p.budget_kind::text AS "budget_kind!: String", p.budget_amount_cents, p.budget_minutes,
+         p.starts_on as "starts_on: chrono::NaiveDate",
+         p.ends_on as "ends_on: chrono::NaiveDate",
+         p.created_at as "created_at: chrono::DateTime<chrono::Utc>",
+         p.client_id, c.name AS client_name
+         FROM projects p
+         JOIN clients c ON c.id = p.client_id
+         WHERE p.id = $1 AND p.org_id = $2"#,
+        id,
+        user.org_id,
     )
-    .bind(id)
-    .bind(user.org_id)
     .fetch_optional(&state.db)
     .await
     .map_err(internal)?
@@ -564,43 +546,39 @@ async fn list_clients(
     let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
-    let mut conditions = vec!["org_id = $1".to_string()];
-    let mut extra_values: Vec<String> = Vec::new();
-    let mut param_idx = 2u32;
+    let total = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM clients
+         WHERE org_id = $1
+           AND ($2::bool IS NULL OR active = $2)
+           AND ($3::timestamptz IS NULL OR created_at >= $3::timestamptz)",
+        user.org_id,
+        filters.is_active,
+        filters.updated_since.as_deref() as Option<&str>,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?
+    .unwrap_or(0);
 
-    if let Some(active) = filters.is_active {
-        conditions.push(format!("active = ${param_idx}::bool"));
-        extra_values.push(active.to_string());
-        param_idx += 1;
-    }
-    if let Some(ref since) = filters.updated_since {
-        conditions.push(format!("created_at >= ${param_idx}::timestamptz"));
-        extra_values.push(since.clone());
-        param_idx += 1;
-    }
-
-    let where_clause = conditions.join(" AND ");
-
-    let count_sql = format!("SELECT COUNT(*) FROM clients WHERE {where_clause}");
-    let data_sql = format!(
-        "SELECT id, name, active, address, currency, created_at \
-         FROM clients WHERE {where_clause} ORDER BY name \
-         LIMIT ${param_idx} OFFSET ${}",
-        param_idx + 1
-    );
-
-    let mut cq = sqlx::query_scalar::<_, i64>(&count_sql).bind(user.org_id);
-    for v in &extra_values {
-        cq = cq.bind(v);
-    }
-    let total: i64 = cq.fetch_one(&state.db).await.map_err(internal)?;
-
-    let mut dq = sqlx::query_as::<_, ClientRow>(&data_sql).bind(user.org_id);
-    for v in &extra_values {
-        dq = dq.bind(v);
-    }
-    dq = dq.bind(per_page).bind(offset);
-    let rows: Vec<ClientRow> = dq.fetch_all(&state.db).await.map_err(internal)?;
+    let rows = sqlx::query_as!(
+        ClientRow,
+        r#"SELECT id, name, active, address, currency,
+         created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM clients
+         WHERE org_id = $1
+           AND ($2::bool IS NULL OR active = $2)
+           AND ($3::timestamptz IS NULL OR created_at >= $3::timestamptz)
+         ORDER BY name
+         LIMIT $4 OFFSET $5"#,
+        user.org_id,
+        filters.is_active,
+        filters.updated_since.as_deref() as Option<&str>,
+        per_page,
+        offset,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(internal)?;
 
     let items: Vec<HarvestClient> = rows.iter().map(client_row_to_harvest).collect();
 
@@ -617,12 +595,14 @@ async fn list_clients(
 async fn get_client(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<HarvestClient> {
     let state = crate::state::global_state().await;
 
-    let row: ClientRow = sqlx::query_as(
-        "SELECT id, name, active, address, currency, created_at \
-         FROM clients WHERE id = $1 AND org_id = $2",
+    let row = sqlx::query_as!(
+        ClientRow,
+        r#"SELECT id, name, active, address, currency,
+         created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM clients WHERE id = $1 AND org_id = $2"#,
+        id,
+        user.org_id,
     )
-    .bind(id)
-    .bind(user.org_id)
     .fetch_optional(&state.db)
     .await
     .map_err(internal)?
@@ -672,38 +652,34 @@ async fn list_tasks(
     let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
-    let mut conditions = vec!["org_id = $1".to_string()];
-    let mut extra_values: Vec<String> = Vec::new();
-    let mut param_idx = 2u32;
+    let total = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM tasks
+         WHERE org_id = $1
+           AND ($2::bool IS NULL OR active = $2)",
+        user.org_id,
+        filters.is_active,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?
+    .unwrap_or(0);
 
-    if let Some(active) = filters.is_active {
-        conditions.push(format!("active = ${param_idx}::bool"));
-        extra_values.push(active.to_string());
-        param_idx += 1;
-    }
-
-    let where_clause = conditions.join(" AND ");
-
-    let count_sql = format!("SELECT COUNT(*) FROM tasks WHERE {where_clause}");
-    let data_sql = format!(
-        "SELECT id, name, active, billable_default, default_rate_cents \
-         FROM tasks WHERE {where_clause} ORDER BY name \
-         LIMIT ${param_idx} OFFSET ${}",
-        param_idx + 1
-    );
-
-    let mut cq = sqlx::query_scalar::<_, i64>(&count_sql).bind(user.org_id);
-    for v in &extra_values {
-        cq = cq.bind(v);
-    }
-    let total: i64 = cq.fetch_one(&state.db).await.map_err(internal)?;
-
-    let mut dq = sqlx::query_as::<_, TaskRow>(&data_sql).bind(user.org_id);
-    for v in &extra_values {
-        dq = dq.bind(v);
-    }
-    dq = dq.bind(per_page).bind(offset);
-    let rows: Vec<TaskRow> = dq.fetch_all(&state.db).await.map_err(internal)?;
+    let rows = sqlx::query_as!(
+        TaskRow,
+        "SELECT id, name, active, billable_default, default_rate_cents
+         FROM tasks
+         WHERE org_id = $1
+           AND ($2::bool IS NULL OR active = $2)
+         ORDER BY name
+         LIMIT $3 OFFSET $4",
+        user.org_id,
+        filters.is_active,
+        per_page,
+        offset,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(internal)?;
 
     let items: Vec<HarvestTask> = rows.iter().map(task_row_to_harvest).collect();
 
@@ -720,12 +696,13 @@ async fn list_tasks(
 async fn get_task(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<HarvestTask> {
     let state = crate::state::global_state().await;
 
-    let row: TaskRow = sqlx::query_as(
-        "SELECT id, name, active, billable_default, default_rate_cents \
+    let row = sqlx::query_as!(
+        TaskRow,
+        "SELECT id, name, active, billable_default, default_rate_cents
          FROM tasks WHERE id = $1 AND org_id = $2",
+        id,
+        user.org_id,
     )
-    .bind(id)
-    .bind(user.org_id)
     .fetch_optional(&state.db)
     .await
     .map_err(internal)?
@@ -787,39 +764,36 @@ async fn list_users(
     let per_page = filters.per_page.unwrap_or(100).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
-    let mut conditions = vec!["org_id = $1".to_string()];
-    let mut extra_values: Vec<String> = Vec::new();
-    let mut param_idx = 2u32;
+    let total = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM users
+         WHERE org_id = $1
+           AND ($2::bool IS NULL OR active = $2)",
+        user.org_id,
+        filters.is_active,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(internal)?
+    .unwrap_or(0);
 
-    if let Some(active) = filters.is_active {
-        conditions.push(format!("active = ${param_idx}::bool"));
-        extra_values.push(active.to_string());
-        param_idx += 1;
-    }
-
-    let where_clause = conditions.join(" AND ");
-
-    let count_sql = format!("SELECT COUNT(*) FROM users WHERE {where_clause}");
-    let data_sql = format!(
-        "SELECT id, name, email, active, org_role::text AS org_role, \
-         cost_rate_cents, billable_rate_cents, created_at \
-         FROM users WHERE {where_clause} ORDER BY name \
-         LIMIT ${param_idx} OFFSET ${}",
-        param_idx + 1
-    );
-
-    let mut cq = sqlx::query_scalar::<_, i64>(&count_sql).bind(user.org_id);
-    for v in &extra_values {
-        cq = cq.bind(v);
-    }
-    let total: i64 = cq.fetch_one(&state.db).await.map_err(internal)?;
-
-    let mut dq = sqlx::query_as::<_, UserRow>(&data_sql).bind(user.org_id);
-    for v in &extra_values {
-        dq = dq.bind(v);
-    }
-    dq = dq.bind(per_page).bind(offset);
-    let rows: Vec<UserRow> = dq.fetch_all(&state.db).await.map_err(internal)?;
+    let rows = sqlx::query_as!(
+        UserRow,
+        r#"SELECT id, name, email, active, org_role::text AS "org_role!: String",
+         cost_rate_cents, billable_rate_cents,
+         created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM users
+         WHERE org_id = $1
+           AND ($2::bool IS NULL OR active = $2)
+         ORDER BY name
+         LIMIT $3 OFFSET $4"#,
+        user.org_id,
+        filters.is_active,
+        per_page,
+        offset,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(internal)?;
 
     let items: Vec<HarvestUser> = rows.iter().map(user_row_to_harvest).collect();
 

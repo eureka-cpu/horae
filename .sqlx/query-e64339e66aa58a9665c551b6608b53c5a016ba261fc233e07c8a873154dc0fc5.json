@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) FROM projects p\n         WHERE p.org_id = $1\n           AND ($2::bool IS NULL OR p.active = $2)\n           AND ($3::uuid IS NULL OR p.client_id = $3)\n           AND ($4::timestamptz IS NULL OR p.created_at >= $4::timestamptz)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e64339e66aa58a9665c551b6608b53c5a016ba261fc233e07c8a873154dc0fc5"
+}

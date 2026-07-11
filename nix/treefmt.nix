@@ -39,6 +39,7 @@ _: {
       ".specify/**"
       ".agents/**"
       ".claude/skills/**"
+      ".sqlx/**"
     ];
 
     # When several tools touch the same files, group them into a pipeline and

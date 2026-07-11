@@ -1,6 +1,7 @@
 #![cfg(feature = "server")]
 
 use chrono::NaiveDate;
+use horae_core::types::{EntryState, OrgRole, ProjectRole, RoundDir};
 use serial_test::serial;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -11,25 +12,28 @@ use uuid::Uuid;
 
 async fn seed_org(pool: &PgPool) -> Uuid {
     let id = Uuid::now_v7();
-    sqlx::query("INSERT INTO organizations (id, name) VALUES ($1, 'Test Org')")
-        .bind(id)
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "INSERT INTO organizations (id, name) VALUES ($1, 'Test Org')",
+        id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
     id
 }
 
-async fn seed_user(pool: &PgPool, org_id: Uuid, role: &str) -> Uuid {
+async fn seed_user(pool: &PgPool, org_id: Uuid, role: OrgRole) -> Uuid {
     let id = Uuid::now_v7();
-    sqlx::query(
+    let email = format!("{}@test.com", id);
+    sqlx::query!(
         "INSERT INTO users (id, org_id, email, name, org_role) \
-         VALUES ($1, $2, $3, $4, $5::org_role)",
+         VALUES ($1, $2, $3, $4, $5)",
+        id,
+        org_id,
+        email,
+        "Test User",
+        role as OrgRole,
     )
-    .bind(id)
-    .bind(org_id)
-    .bind(format!("{}@test.com", id))
-    .bind("Test User")
-    .bind(role)
     .execute(pool)
     .await
     .unwrap();
@@ -48,50 +52,53 @@ async fn seed_project_with_assignment(
     let task_id = Uuid::now_v7();
     let assignment_id = Uuid::now_v7();
 
-    sqlx::query("INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')")
-        .bind(client_id)
-        .bind(org_id)
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')",
+        client_id,
+        org_id,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO projects (id, org_id, client_id, name, currency) \
          VALUES ($1, $2, $3, 'Widget', 'EUR')",
+        project_id,
+        org_id,
+        client_id,
     )
-    .bind(project_id)
-    .bind(org_id)
-    .bind(client_id)
     .execute(pool)
     .await
     .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO tasks (id, org_id, name, billable_default) VALUES ($1, $2, 'Dev', true)",
+        task_id,
+        org_id,
     )
-    .bind(task_id)
-    .bind(org_id)
     .execute(pool)
     .await
     .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO project_tasks (project_id, task_id, billable, rate_cents) \
          VALUES ($1, $2, true, NULL)",
+        project_id,
+        task_id,
     )
-    .bind(project_id)
-    .bind(task_id)
     .execute(pool)
     .await
     .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO assignments (id, project_id, user_id, role) \
-         VALUES ($1, $2, $3, 'freelancer'::project_role)",
+         VALUES ($1, $2, $3, $4)",
+        assignment_id,
+        project_id,
+        user_id,
+        ProjectRole::Freelancer as ProjectRole,
     )
-    .bind(assignment_id)
-    .bind(project_id)
-    .bind(user_id)
     .execute(pool)
     .await
     .unwrap();
@@ -105,39 +112,41 @@ async fn seed_project_without_assignment(pool: &PgPool, org_id: Uuid) -> (Uuid, 
     let project_id = Uuid::now_v7();
     let task_id = Uuid::now_v7();
 
-    sqlx::query("INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')")
-        .bind(client_id)
-        .bind(org_id)
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "INSERT INTO clients (id, org_id, name, currency) VALUES ($1, $2, 'Acme', 'EUR')",
+        client_id,
+        org_id,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO projects (id, org_id, client_id, name, currency) \
          VALUES ($1, $2, $3, 'Widget', 'EUR')",
+        project_id,
+        org_id,
+        client_id,
     )
-    .bind(project_id)
-    .bind(org_id)
-    .bind(client_id)
     .execute(pool)
     .await
     .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO tasks (id, org_id, name, billable_default) VALUES ($1, $2, 'Dev', true)",
+        task_id,
+        org_id,
     )
-    .bind(task_id)
-    .bind(org_id)
     .execute(pool)
     .await
     .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO project_tasks (project_id, task_id, billable, rate_cents) \
          VALUES ($1, $2, true, NULL)",
+        project_id,
+        task_id,
     )
-    .bind(project_id)
-    .bind(task_id)
     .execute(pool)
     .await
     .unwrap();
@@ -153,71 +162,75 @@ async fn seed_project_without_assignment(pool: &PgPool, org_id: Uuid) -> (Uuid, 
 #[serial]
 async fn timer_start_stop_records_minutes(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     // Start a timer by inserting a running entry whose started_at is 5 minutes
     // in the past.
     let entry_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, started_at, state) \
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
-                 0, true, true, now() - interval '5 minutes', 'open'::entry_state)",
+                 0, true, true, now() - interval '5 minutes', $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Verify is_running
-    let (is_running,): (bool,) =
-        sqlx::query_as("SELECT is_running FROM time_entries WHERE id = $1")
-            .bind(entry_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert!(is_running);
+    let row = sqlx::query!(
+        "SELECT is_running FROM time_entries WHERE id = $1",
+        entry_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(row.is_running);
 
     // Stop the timer: read started_at then compute elapsed minutes via
     // horae-core, mirroring the exact code path in the stop_timer server fn.
-    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
-        "SELECT started_at FROM time_entries WHERE id = $1 AND is_running = true",
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar!(
+        r#"SELECT started_at as "started_at!: chrono::DateTime<chrono::Utc>"
+           FROM time_entries WHERE id = $1 AND is_running = true"#,
+        entry_id,
     )
-    .bind(entry_id)
     .fetch_one(&pool)
     .await
     .unwrap();
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
          SET is_running = false, \
              minutes = $2, \
              started_at = NULL, \
              updated_at = now() \
          WHERE id = $1 AND is_running = true",
+        entry_id,
+        minutes,
     )
-    .bind(entry_id)
-    .bind(minutes)
     .execute(&pool)
     .await
     .unwrap();
 
     // Verify the recorded duration is exactly 5 minutes and no longer running.
-    let (minutes, stopped): (i32, bool) =
-        sqlx::query_as("SELECT minutes, is_running FROM time_entries WHERE id = $1")
-            .bind(entry_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert!(!stopped);
-    assert_eq!(minutes, 5, "Expected exactly 5 minutes, got {minutes}");
+    let row = sqlx::query!(
+        "SELECT minutes, is_running FROM time_entries WHERE id = $1",
+        entry_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!row.is_running);
+    assert_eq!(row.minutes, 5, "Expected exactly 5 minutes, got {}", row.minutes);
 }
 
 // ---------------------------------------------------------------------------
@@ -229,57 +242,61 @@ async fn timer_start_stop_records_minutes(pool: PgPool) {
 #[serial]
 async fn timer_under_a_minute_records_zero(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     let entry_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, started_at, state) \
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
-                 0, true, true, now() - interval '30 seconds', 'open'::entry_state)",
+                 0, true, true, now() - interval '30 seconds', $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Read started_at, compute via horae-core — same path as the server fn.
-    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
-        "SELECT started_at FROM time_entries WHERE id = $1 AND is_running = true",
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar!(
+        r#"SELECT started_at as "started_at!: chrono::DateTime<chrono::Utc>"
+           FROM time_entries WHERE id = $1 AND is_running = true"#,
+        entry_id,
     )
-    .bind(entry_id)
     .fetch_one(&pool)
     .await
     .unwrap();
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
          SET is_running = false, \
              minutes = $2, \
              started_at = NULL \
          WHERE id = $1 AND is_running = true",
+        entry_id,
+        minutes,
     )
-    .bind(entry_id)
-    .bind(minutes)
     .execute(&pool)
     .await
     .unwrap();
 
-    let minutes: i32 = sqlx::query_scalar("SELECT minutes FROM time_entries WHERE id = $1")
-        .bind(entry_id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let row = sqlx::query!(
+        "SELECT minutes FROM time_entries WHERE id = $1",
+        entry_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(
-        minutes, 0,
-        "Sub-minute run must be 0 minutes, got {minutes}"
+        row.minutes, 0,
+        "Sub-minute run must be 0 minutes, got {}", row.minutes
     );
 }
 
@@ -291,41 +308,43 @@ async fn timer_under_a_minute_records_zero(pool: PgPool) {
 #[serial]
 async fn one_timer_per_user_enforced(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     // First running timer -- should succeed
     let entry1 = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, started_at, state) \
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
-                 0, true, true, now(), 'open'::entry_state)",
+                 0, true, true, now(), $6)",
+        entry1,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry1)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Second running timer for the same user -- must fail
     let entry2 = Uuid::now_v7();
-    let result = sqlx::query(
+    let result = sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, started_at, state) \
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
-                 0, true, true, now(), 'open'::entry_state)",
+                 0, true, true, now(), $6)",
+        entry2,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry2)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await;
 
@@ -343,43 +362,46 @@ async fn one_timer_per_user_enforced(pool: PgPool) {
 #[serial]
 async fn submitted_entries_cannot_be_updated(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     let entry_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, state) \
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
-                 30, true, false, 'open'::entry_state)",
+                 30, true, false, $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Transition to submitted
-    sqlx::query(
-        "UPDATE time_entries SET state = 'submitted'::entry_state, updated_at = now() \
-         WHERE id = $1",
+    sqlx::query!(
+        "UPDATE time_entries SET state = $1, updated_at = now() \
+         WHERE id = $2",
+        EntryState::Submitted as EntryState,
+        entry_id,
     )
-    .bind(entry_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Attempt to change minutes using a WHERE guard that only matches open entries
-    let result = sqlx::query(
+    let result = sqlx::query!(
         "UPDATE time_entries \
          SET minutes = 999, updated_at = now() \
-         WHERE id = $1 AND state = 'open'::entry_state",
+         WHERE id = $1 AND state = $2",
+        entry_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_id)
     .execute(&pool)
     .await
     .unwrap();
@@ -391,12 +413,11 @@ async fn submitted_entries_cannot_be_updated(pool: PgPool) {
     );
 
     // Confirm minutes unchanged
-    let (minutes,): (i32,) = sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
-        .bind(entry_id)
+    let row = sqlx::query!("SELECT minutes FROM time_entries WHERE id = $1", entry_id)
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(minutes, 30);
+    assert_eq!(row.minutes, 30);
 }
 
 // ---------------------------------------------------------------------------
@@ -407,48 +428,53 @@ async fn submitted_entries_cannot_be_updated(pool: PgPool) {
 #[serial]
 async fn rounding_applied_on_submit(pool: PgPool) {
     use horae_core::rounding::round;
-    use horae_core::types::RoundDir;
 
     // Create org with 15-minute rounding
     let org_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO organizations (id, name, round_minutes, round_dir) \
-         VALUES ($1, 'Rounded Org', 15, 'nearest'::round_dir)",
+         VALUES ($1, 'Rounded Org', 15, $2)",
+        org_id,
+        RoundDir::Nearest as RoundDir,
     )
-    .bind(org_id)
     .execute(&pool)
     .await
     .unwrap();
 
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     // Insert entry with 8 raw minutes
     let entry_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, state) \
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
-                 8, true, false, 'open'::entry_state)",
+                 8, true, false, $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Simulate the submit path: read org rounding config, compute rounded value,
     // persist it together with the state transition.
-    let (round_minutes, round_dir_str): (i16, String) =
-        sqlx::query_as("SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1")
-            .bind(org_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let row = sqlx::query!(
+        "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1",
+        org_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let round_minutes = row.round_minutes;
+    let round_dir_str = row.round_dir.unwrap_or_default();
 
     let dir = match round_dir_str.as_str() {
         "up" => RoundDir::Up,
@@ -456,11 +482,11 @@ async fn rounding_applied_on_submit(pool: PgPool) {
         _ => RoundDir::Nearest,
     };
 
-    let (raw_minutes,): (i32,) = sqlx::query_as("SELECT minutes FROM time_entries WHERE id = $1")
-        .bind(entry_id)
+    let row = sqlx::query!("SELECT minutes FROM time_entries WHERE id = $1", entry_id)
         .fetch_one(&pool)
         .await
         .unwrap();
+    let raw_minutes = row.minutes;
 
     let rounded = round(raw_minutes as u32, round_minutes as u32, dir);
 
@@ -468,27 +494,29 @@ async fn rounding_applied_on_submit(pool: PgPool) {
     assert_eq!(rounded, 15, "8 rounds to 15 with 15-min nearest rounding");
 
     // Persist and transition
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
-         SET rounded_minutes = $1, state = 'submitted'::entry_state, updated_at = now() \
-         WHERE id = $2",
+         SET rounded_minutes = $1, state = $2, updated_at = now() \
+         WHERE id = $3",
+        rounded as i32,
+        EntryState::Submitted as EntryState,
+        entry_id,
     )
-    .bind(rounded as i32)
-    .bind(entry_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Verify stored values
-    let (db_rounded, state): (Option<i32>, String) =
-        sqlx::query_as("SELECT rounded_minutes, state::text FROM time_entries WHERE id = $1")
-            .bind(entry_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let row = sqlx::query!(
+        "SELECT rounded_minutes, state::text FROM time_entries WHERE id = $1",
+        entry_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
 
-    assert_eq!(db_rounded, Some(15));
-    assert_eq!(state, "submitted");
+    assert_eq!(row.rounded_minutes, Some(15));
+    assert_eq!(row.state.unwrap_or_default(), "submitted");
 }
 
 // ---------------------------------------------------------------------------
@@ -499,18 +527,19 @@ async fn rounding_applied_on_submit(pool: PgPool) {
 #[serial]
 async fn unassigned_user_cannot_create_entry(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, _task_id, _) = seed_project_without_assignment(&pool, org_id).await;
 
     // Confirm no assignment exists
-    let assigned: bool = sqlx::query_scalar(
+    let assigned: bool = sqlx::query_scalar!(
         "SELECT EXISTS(SELECT 1 FROM assignments WHERE project_id = $1 AND user_id = $2)",
+        project_id,
+        user_id,
     )
-    .bind(project_id)
-    .bind(user_id)
     .fetch_one(&pool)
     .await
-    .unwrap();
+    .unwrap()
+    .unwrap_or(false);
     assert!(!assigned, "User should not be assigned to this project");
 }
 
@@ -522,8 +551,8 @@ async fn unassigned_user_cannot_create_entry(pool: PgPool) {
 #[serial]
 async fn approval_workflow_approve_and_reject(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
-    let manager_id = seed_user(&pool, org_id, "manager").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let manager_id = seed_user(&pool, org_id, OrgRole::Manager).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     let period_start = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
@@ -533,106 +562,115 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
 
     // Create an open entry
     let entry_a = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, state) \
          VALUES ($1, $2, $3, $4, $5, '2026-07-02', \
-                 60, true, false, 'open'::entry_state)",
+                 60, true, false, $6)",
+        entry_a,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_a)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Submit the entry
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
-         SET state = 'submitted'::entry_state, updated_at = now() \
-         WHERE id = $1",
+         SET state = $1, updated_at = now() \
+         WHERE id = $2",
+        EntryState::Submitted as EntryState,
+        entry_a,
     )
-    .bind(entry_a)
     .execute(&pool)
     .await
     .unwrap();
 
     // Create approval record
     let approval_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO approvals (id, org_id, user_id, period_start, period_end, state) \
-         VALUES ($1, $2, $3, $4, $5, 'submitted'::entry_state)",
+         VALUES ($1, $2, $3, $4, $5, $6)",
+        approval_id,
+        org_id,
+        user_id,
+        period_start as chrono::NaiveDate,
+        period_end as chrono::NaiveDate,
+        EntryState::Submitted as EntryState,
     )
-    .bind(approval_id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(period_start)
-    .bind(period_end)
     .execute(&pool)
     .await
     .unwrap();
 
     // Manager approves: transition entries + approval
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
-         SET state = 'approved'::entry_state, updated_at = now() \
-         WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = 'submitted'::entry_state",
+         SET state = $1, updated_at = now() \
+         WHERE user_id = $2 AND spent_date BETWEEN $3 AND $4 AND state = $5",
+        EntryState::Approved as EntryState,
+        user_id,
+        period_start as chrono::NaiveDate,
+        period_end as chrono::NaiveDate,
+        EntryState::Submitted as EntryState,
     )
-    .bind(user_id)
-    .bind(period_start)
-    .bind(period_end)
     .execute(&pool)
     .await
     .unwrap();
 
-    sqlx::query(
+    sqlx::query!(
         "UPDATE approvals \
-         SET state = 'approved'::entry_state, approved_by = $1, approved_at = now() \
-         WHERE id = $2",
+         SET state = $1, approved_by = $2, approved_at = now() \
+         WHERE id = $3",
+        EntryState::Approved as EntryState,
+        manager_id,
+        approval_id,
     )
-    .bind(manager_id)
-    .bind(approval_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Verify entry and approval states
-    let (entry_state,): (String,) =
-        sqlx::query_as("SELECT state::text FROM time_entries WHERE id = $1")
-            .bind(entry_a)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(entry_state, "approved");
+    let row = sqlx::query!(
+        "SELECT state::text FROM time_entries WHERE id = $1",
+        entry_a,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.state.unwrap_or_default(), "approved");
 
-    let (approval_state, approver): (String, Option<Uuid>) =
-        sqlx::query_as("SELECT state::text, approved_by FROM approvals WHERE id = $1")
-            .bind(approval_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(approval_state, "approved");
-    assert_eq!(approver, Some(manager_id));
+    let row = sqlx::query!(
+        "SELECT state::text, approved_by FROM approvals WHERE id = $1",
+        approval_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.state.unwrap_or_default(), "approved");
+    assert_eq!(row.approved_by, Some(manager_id));
 
     // --- Reject path ---
 
     // Create a new entry, submit, then reject (reopen entries + delete approval)
     let entry_b = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO time_entries \
            (id, org_id, user_id, project_id, task_id, spent_date, \
             minutes, billable, is_running, state) \
          VALUES ($1, $2, $3, $4, $5, '2026-07-14', \
-                 45, true, false, 'open'::entry_state)",
+                 45, true, false, $6)",
+        entry_b,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_b)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
     .execute(&pool)
     .await
     .unwrap();
@@ -641,65 +679,71 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
     let period2_end = NaiveDate::from_ymd_opt(2026, 7, 14).unwrap();
 
     // Submit
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
-         SET state = 'submitted'::entry_state, updated_at = now() \
-         WHERE id = $1",
+         SET state = $1, updated_at = now() \
+         WHERE id = $2",
+        EntryState::Submitted as EntryState,
+        entry_b,
     )
-    .bind(entry_b)
     .execute(&pool)
     .await
     .unwrap();
 
     let approval2_id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO approvals (id, org_id, user_id, period_start, period_end, state) \
-         VALUES ($1, $2, $3, $4, $5, 'submitted'::entry_state)",
+         VALUES ($1, $2, $3, $4, $5, $6)",
+        approval2_id,
+        org_id,
+        user_id,
+        period2_start as chrono::NaiveDate,
+        period2_end as chrono::NaiveDate,
+        EntryState::Submitted as EntryState,
     )
-    .bind(approval2_id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(period2_start)
-    .bind(period2_end)
     .execute(&pool)
     .await
     .unwrap();
 
     // Reject: reopen entries and delete the approval row
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries \
-         SET state = 'open'::entry_state, updated_at = now() \
-         WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = 'submitted'::entry_state",
+         SET state = $1, updated_at = now() \
+         WHERE user_id = $2 AND spent_date BETWEEN $3 AND $4 AND state = $5",
+        EntryState::Open as EntryState,
+        user_id,
+        period2_start as chrono::NaiveDate,
+        period2_end as chrono::NaiveDate,
+        EntryState::Submitted as EntryState,
     )
-    .bind(user_id)
-    .bind(period2_start)
-    .bind(period2_end)
     .execute(&pool)
     .await
     .unwrap();
 
-    sqlx::query("DELETE FROM approvals WHERE id = $1")
-        .bind(approval2_id)
+    sqlx::query!("DELETE FROM approvals WHERE id = $1", approval2_id)
         .execute(&pool)
         .await
         .unwrap();
 
     // Verify entry reopened
-    let (entry_b_state,): (String,) =
-        sqlx::query_as("SELECT state::text FROM time_entries WHERE id = $1")
-            .bind(entry_b)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(entry_b_state, "open");
+    let row = sqlx::query!(
+        "SELECT state::text FROM time_entries WHERE id = $1",
+        entry_b,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.state.unwrap_or_default(), "open");
 
     // Verify approval row deleted
-    let approval_exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM approvals WHERE id = $1)")
-            .bind(approval2_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let approval_exists: bool = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM approvals WHERE id = $1)",
+        approval2_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .unwrap_or(false);
     assert!(!approval_exists);
 }
 

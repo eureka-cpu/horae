@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT round_minutes, round_dir as \"round_dir: horae_core::types::RoundDir\"\n           FROM organizations WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "round_minutes",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 1,
+        "name": "round_dir: horae_core::types::RoundDir",
+        "type_info": {
+          "Custom": {
+            "name": "round_dir",
+            "kind": {
+              "Enum": [
+                "nearest",
+                "up",
+                "down"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c9091ba8ec11bc568c0c76350f05595fbb2dae099ec38c344dc0ed2cb397419e"
+}

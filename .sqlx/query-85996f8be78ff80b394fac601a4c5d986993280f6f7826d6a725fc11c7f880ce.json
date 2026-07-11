@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) FROM time_entries te\n         JOIN projects p ON p.id = te.project_id\n         WHERE te.org_id = $1\n           AND ($2::uuid IS NULL OR te.user_id = $2)\n           AND ($3::uuid IS NULL OR te.project_id = $3)\n           AND ($4::date IS NULL OR te.spent_date >= $4::date)\n           AND ($5::date IS NULL OR te.spent_date <= $5::date)\n           AND ($6::bool IS NULL OR te.is_running = $6)\n           AND ($7::timestamptz IS NULL OR te.updated_at >= $7::timestamptz)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "85996f8be78ff80b394fac601a4c5d986993280f6f7826d6a725fc11c7f880ce"
+}
