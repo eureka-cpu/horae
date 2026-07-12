@@ -64,3 +64,11 @@ Integration tests (`crates/horae/tests/integration.rs`) use `#[sqlx::test]` — 
 - Single organization for now, but every table keeps an `org_id` FK so multi-org is a later flip.
 
 `SPEC.md` is the authoritative Phase-1 build spec (schema, milestones, API contract). `DESIGN.md` is the design system (Invoicer aesthetic; tokens in `crates/horae/assets/css/horae.css`; components are one-per-file `#[component]` functions using `use_signal`/`use_resource`, with no global mutable UI state).
+
+## Conventions
+
+Project-specific rules on top of idiomatic Rust (see the `rust-best-practices` skill). These come from code review — follow them so the same notes don't recur:
+
+- **Named status codes, not integer literals.** When building `ServerFnError::ServerError { code, .. }` in `server_fns.rs`, use named constants (e.g. `NOT_FOUND`, `FORBIDDEN`) rather than bare `404`/`403`, so error paths read at a glance.
+- **Avoid `Option<bool>` parameters.** `Some(false)` is ambiguous at the call site. For a two-state flag on a server function, prefer a plainly named `bool` with an obvious default, or a small purpose-named enum.
+- **Comment only what isn't obvious.** Add a comment when the code would not be clear to a senior developer reading it — the *why*, a non-obvious constraint, an invariant, a tradeoff, or a workaround (e.g. why a query is split in two, why a value clamps). Don't restate what the code already says or narrate the mechanics; if the code is self-evident, leave it uncommented. When the reason is genuinely subtle, a longer note is fine — clarity matters more than brevity.
