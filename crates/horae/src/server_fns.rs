@@ -1502,8 +1502,15 @@ pub async fn update_org_branding(branding: OrgBranding) -> Result<OrgBranding, S
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
+/// List users. Any authenticated user can list active users (for pickers);
+/// pass `include_inactive = true` to also see deactivated accounts (admin only).
 #[server]
-pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
+pub async fn list_users(include_inactive: bool) -> Result<Vec<User>, ServerFnError> {
+    if include_inactive {
+        let _admin = require_admin().await?;
+    } else {
+        let _uid = session_user_id().await?;
+    }
     let state = crate::state::global_state().await;
 
     let users = sqlx::query_as!(
@@ -1513,14 +1520,116 @@ pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
                 cost_rate_cents, billable_rate_cents, active,
                 created_at as "created_at: chrono::DateTime<chrono::Utc>"
          FROM users
-         WHERE active = true
+         WHERE ($1::bool OR active = true)
          ORDER BY name ASC"#,
+        include_inactive,
     )
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
 
     Ok(users)
+}
+
+/// Create a new user account. Requires admin role.
+#[server]
+pub async fn create_user(email: String, name: String, role: String) -> Result<User, ServerFnError> {
+    let admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let id = uuid::Uuid::now_v7();
+    let org_role = role
+        .parse::<OrgRole>()
+        .map_err(|_| server_err("Invalid role (use admin, manager, or member)"))?;
+
+    sqlx::query_as!(
+        User,
+        r#"INSERT INTO users (id, org_id, email, name, org_role)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, org_id, email, name, oidc_subject,
+                   org_role as "org_role: OrgRole",
+                   cost_rate_cents, billable_rate_cents, active,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        admin.org_id,
+        email,
+        name,
+        org_role as OrgRole,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| {
+        if e.to_string().contains("users_email_key") {
+            ServerFnError::ServerError {
+                message: "A user with this email already exists".into(),
+                code: CONFLICT,
+                details: None,
+            }
+        } else {
+            server_err(e)
+        }
+    })
+}
+
+/// Change a user's organization role. Requires admin role.
+#[server]
+pub async fn set_user_role(user_id: String, role: String) -> Result<User, ServerFnError> {
+    let admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
+    let org_role = role
+        .parse::<OrgRole>()
+        .map_err(|_| server_err("Invalid role (use admin, manager, or member)"))?;
+
+    sqlx::query_as!(
+        User,
+        r#"UPDATE users SET org_role = $3
+         WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, email, name, oidc_subject,
+                   org_role as "org_role: OrgRole",
+                   cost_rate_cents, billable_rate_cents, active,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>""#,
+        user_id,
+        admin.org_id,
+        org_role as OrgRole,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "User not found".into(),
+        code: NOT_FOUND,
+        details: None,
+    })
+}
+
+/// Activate or deactivate a user account. Deactivated users cannot sign in
+/// but their historical time entries are preserved (FR-002).
+#[server]
+pub async fn set_user_active(user_id: String, active: bool) -> Result<User, ServerFnError> {
+    let admin = require_admin().await?;
+    let state = crate::state::global_state().await;
+    let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
+
+    sqlx::query_as!(
+        User,
+        r#"UPDATE users SET active = $3
+         WHERE id = $1 AND org_id = $2
+         RETURNING id, org_id, email, name, oidc_subject,
+                   org_role as "org_role: OrgRole",
+                   cost_rate_cents, billable_rate_cents, active,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>""#,
+        user_id,
+        admin.org_id,
+        active,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "User not found".into(),
+        code: NOT_FOUND,
+        details: None,
+    })
 }
 
 // ── Approvals (M7) ──────────────────────────────────────────────────────────

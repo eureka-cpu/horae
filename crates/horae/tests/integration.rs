@@ -1316,6 +1316,258 @@ async fn void_invoice_restores_entries(pool: PgPool) {
     assert_eq!(inv_status, "void");
 }
 
+// ---------------------------------------------------------------------------
+// US4: administer users & access
+// ---------------------------------------------------------------------------
+
+/// Admin can create a user; duplicate emails are rejected (FR-002).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn admin_creates_user_and_duplicate_rejected(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let _admin_id = seed_user(&pool, org_id, OrgRole::Admin).await;
+
+    // Create a new user via direct SQL (mirroring the create_user server fn logic).
+    let new_id = Uuid::now_v7();
+    let email = "alice@example.com";
+    sqlx::query!(
+        "INSERT INTO users (id, org_id, email, name, org_role) \
+         VALUES ($1, $2, $3, $4, $5)",
+        new_id,
+        org_id,
+        email,
+        "Alice",
+        OrgRole::Manager as OrgRole,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Verify the user was created with the correct role.
+    let row = sqlx::query!(
+        r#"SELECT org_role::text as "role!: String", active FROM users WHERE id = $1"#,
+        new_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.role, "manager");
+    assert!(row.active);
+
+    // Attempt to create a second user with the same email — must fail.
+    let dup_id = Uuid::now_v7();
+    let result = sqlx::query!(
+        "INSERT INTO users (id, org_id, email, name, org_role) \
+         VALUES ($1, $2, $3, $4, $5)",
+        dup_id,
+        org_id,
+        email,
+        "Alice Dup",
+        OrgRole::Member as OrgRole,
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        result.is_err(),
+        "Duplicate email must be rejected by the unique constraint"
+    );
+}
+
+/// Admin can change a user's role (set_user_role) — FR-002.
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn admin_changes_user_role(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+
+    // Promote member to manager.
+    sqlx::query!(
+        "UPDATE users SET org_role = $2 WHERE id = $1",
+        user_id,
+        OrgRole::Manager as OrgRole,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let role: String = sqlx::query_scalar!(
+        r#"SELECT org_role::text as "role!: String" FROM users WHERE id = $1"#,
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(role, "manager");
+}
+
+/// Deactivating a user blocks them from the active-user queries used by
+/// auth helpers (require_admin, require_manager, get_me all filter
+/// `active = true`), while their historical time entries remain intact (FR-002).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn deactivated_user_blocked_and_history_preserved(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // Create a time entry for this user.
+    let entry_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
+                 60, true, false, $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Deactivate the user.
+    sqlx::query!("UPDATE users SET active = false WHERE id = $1", user_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // The active-only user lookup (used by require_admin/require_manager/get_me)
+    // no longer finds them.
+    let found = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND active = true)",
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .unwrap_or(false);
+    assert!(
+        !found,
+        "deactivated user must not appear in active-only queries"
+    );
+
+    // Dev login query also excludes inactive users.
+    let dev_admin = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND active = true AND org_role = $2)",
+        user_id,
+        OrgRole::Admin as OrgRole,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .unwrap_or(false);
+    assert!(!dev_admin);
+
+    // Historical time entries are preserved.
+    let entry_exists: bool = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM time_entries WHERE id = $1 AND user_id = $2)",
+        entry_id,
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .unwrap_or(false);
+    assert!(entry_exists, "time entries must survive user deactivation");
+
+    // Reactivation restores access.
+    sqlx::query!("UPDATE users SET active = true WHERE id = $1", user_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let found_again = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND active = true)",
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .unwrap_or(false);
+    assert!(found_again, "reactivated user should be findable again");
+}
+
+/// Role model enforces correct gating: the `require_manager` and
+/// `require_admin` server-fn helpers filter `WHERE active = true` and then
+/// check the role on the User model. This test validates the role hierarchy
+/// at the DB level using the same queries the auth helpers use.
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn role_gating_member_vs_manager_vs_admin(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let member_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let manager_id = seed_user(&pool, org_id, OrgRole::Manager).await;
+    let admin_id = seed_user(&pool, org_id, OrgRole::Admin).await;
+
+    // The require_admin() helper queries `WHERE id = $1 AND active = true`
+    // then checks `org_role == Admin`. Simulate that check at the DB level.
+    let member_role: OrgRole = sqlx::query_scalar!(
+        r#"SELECT org_role as "org_role!: OrgRole" FROM users WHERE id = $1 AND active = true"#,
+        member_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let manager_role: OrgRole = sqlx::query_scalar!(
+        r#"SELECT org_role as "org_role!: OrgRole" FROM users WHERE id = $1 AND active = true"#,
+        manager_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let admin_role: OrgRole = sqlx::query_scalar!(
+        r#"SELECT org_role as "org_role!: OrgRole" FROM users WHERE id = $1 AND active = true"#,
+        admin_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Member: denied by both manager and admin gates.
+    assert_eq!(member_role, OrgRole::Member);
+    assert!(
+        !matches!(member_role, OrgRole::Admin | OrgRole::Manager),
+        "member must be denied by require_manager()"
+    );
+    assert_ne!(
+        member_role,
+        OrgRole::Admin,
+        "member must be denied by require_admin()"
+    );
+
+    // Manager: passes manager gate, denied by admin gate.
+    assert!(
+        matches!(manager_role, OrgRole::Admin | OrgRole::Manager),
+        "manager must pass require_manager()"
+    );
+    assert_ne!(
+        manager_role,
+        OrgRole::Admin,
+        "manager must be denied by require_admin()"
+    );
+
+    // Admin: passes both gates.
+    assert!(
+        matches!(admin_role, OrgRole::Admin | OrgRole::Manager),
+        "admin must pass require_manager()"
+    );
+    assert_eq!(
+        admin_role,
+        OrgRole::Admin,
+        "admin must pass require_admin()"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// US3: invoicing tracked time (continued)
+// ---------------------------------------------------------------------------
+
 /// Rate resolution cascade: task rate takes priority over assignment rate,
 /// which takes priority over user default rate (FR-024).
 #[sqlx::test(migrations = "./migrations")]

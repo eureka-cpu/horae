@@ -71,14 +71,54 @@ fn main() -> anyhow::Result<()> {
                 let pool = db::create_pool(&cfg.database_url).await?;
                 match action {
                     cli::UserAction::Create { email, name, role } => {
-                        tracing::info!("Creating user {} ({})", name, email);
-                        // TODO: insert user via OIDC subject or admin invite
-                        let _ = (pool, email, name, role);
+                        let org_role: horae_core::types::OrgRole =
+                            role.parse().map_err(|e: String| anyhow::anyhow!(e))?;
+
+                        let org_id = sqlx::query_scalar!("SELECT id FROM organizations LIMIT 1")
+                            .fetch_optional(&pool)
+                            .await?
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("No organization found. Run `seed` first.")
+                            })?;
+
+                        let id = uuid::Uuid::now_v7();
+                        sqlx::query!(
+                            "INSERT INTO users (id, org_id, email, name, org_role) \
+                             VALUES ($1, $2, $3, $4, $5)",
+                            id,
+                            org_id,
+                            email,
+                            name,
+                            org_role as horae_core::types::OrgRole,
+                        )
+                        .execute(&pool)
+                        .await?;
+
+                        println!("Created user: {} ({}) [{}]", name, email, role);
                     }
                     cli::UserAction::List => {
-                        // TODO: query and print users
-                        let _ = pool;
-                        println!("No users found.");
+                        let users = sqlx::query!(
+                            "SELECT name, email, org_role::text as role, active \
+                             FROM users ORDER BY name ASC"
+                        )
+                        .fetch_all(&pool)
+                        .await?;
+
+                        if users.is_empty() {
+                            println!("No users found.");
+                        } else {
+                            println!("{:<30} {:<30} {:<10} STATUS", "NAME", "EMAIL", "ROLE");
+                            for u in &users {
+                                let status = if u.active { "active" } else { "inactive" };
+                                println!(
+                                    "{:<30} {:<30} {:<10} {}",
+                                    u.name,
+                                    u.email,
+                                    u.role.as_deref().unwrap_or("?"),
+                                    status,
+                                );
+                            }
+                        }
                     }
                 }
                 anyhow::Ok(())

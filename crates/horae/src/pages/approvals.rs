@@ -21,7 +21,7 @@ pub fn Approvals() -> Element {
         async move { server_fns::list_approvals(f).await }
     });
 
-    let users = use_resource(|| async move { server_fns::list_users().await });
+    let users = use_resource(|| async move { server_fns::list_users(false).await });
 
     let user_names: HashMap<Uuid, String> = users
         .read()

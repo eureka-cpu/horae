@@ -65,7 +65,7 @@ pub enum UserAction {
         email: String,
         #[arg(long)]
         name: String,
-        #[arg(long, default_value = "user")]
+        #[arg(long, default_value = "member")]
         role: String,
     },
     /// List all users
