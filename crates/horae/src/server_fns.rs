@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 #[cfg(feature = "server")]
-use horae_core::types::{EntryState, OrgRole};
+use horae_core::types::{BudgetKind, EntryState, OrgRole, ProjectRole, ProjectType, RoundDir};
 
 use crate::models::{
     Approval, Assignment, Client, DetailedReportRow, Invoice, Project, ReportRow, Task, TimeEntry,
@@ -56,12 +56,15 @@ fn server_err(msg: impl std::fmt::Display) -> ServerFnError {
 async fn require_admin() -> Result<crate::models::User, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let user = sqlx::query_as::<_, crate::models::User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role,
-                cost_rate_cents, billable_rate_cents, active, created_at
-         FROM users WHERE id = $1 AND active = true",
+    let user = sqlx::query_as!(
+        crate::models::User,
+        r#"SELECT id, org_id, email, name, oidc_subject,
+                org_role as "org_role: OrgRole",
+                cost_rate_cents, billable_rate_cents, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM users WHERE id = $1 AND active = true"#,
+        user_id,
     )
-    .bind(user_id)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -85,12 +88,15 @@ async fn require_admin() -> Result<crate::models::User, ServerFnError> {
 async fn require_manager() -> Result<crate::models::User, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let user = sqlx::query_as::<_, crate::models::User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role,
-                cost_rate_cents, billable_rate_cents, active, created_at
-         FROM users WHERE id = $1 AND active = true",
+    let user = sqlx::query_as!(
+        crate::models::User,
+        r#"SELECT id, org_id, email, name, oidc_subject,
+                org_role as "org_role: OrgRole",
+                cost_rate_cents, billable_rate_cents, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM users WHERE id = $1 AND active = true"#,
+        user_id,
     )
-    .bind(user_id)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -141,13 +147,16 @@ pub async fn get_me() -> Result<User, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
 
-    sqlx::query_as::<_, User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role,
-                cost_rate_cents, billable_rate_cents, active, created_at
+    sqlx::query_as!(
+        User,
+        r#"SELECT id, org_id, email, name, oidc_subject,
+                org_role as "org_role: OrgRole",
+                cost_rate_cents, billable_rate_cents, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
          FROM users
-         WHERE id = $1 AND active = true",
+         WHERE id = $1 AND active = true"#,
+        user_id,
     )
-    .bind(user_id)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -191,23 +200,28 @@ pub async fn list_time_entries(
         None => None,
     };
 
-    let entries = sqlx::query_as::<_, TimeEntry>(
-        "SELECT id, org_id, user_id, project_id, task_id, spent_date,
-                minutes, rounded_minutes, notes, billable, is_running, started_at,
-                state, invoice_id, created_at, updated_at
+    let entries = sqlx::query_as!(
+        TimeEntry,
+        r#"SELECT id, org_id, user_id, project_id, task_id,
+                spent_date as "spent_date: chrono::NaiveDate",
+                minutes, rounded_minutes, notes, billable, is_running,
+                started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                state as "state: EntryState", invoice_id,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                updated_at as "updated_at: chrono::DateTime<chrono::Utc>"
          FROM time_entries
          WHERE user_id = $1
            AND ($2::uuid IS NULL OR project_id = $2)
            AND ($3::date IS NULL OR spent_date >= $3)
            AND ($4::date IS NULL OR spent_date <= $4)
          ORDER BY spent_date DESC, created_at DESC
-         LIMIT $5",
+         LIMIT $5"#,
+        session_uid,
+        project_filter,
+        date_filter as Option<chrono::NaiveDate>,
+        date_to_filter as Option<chrono::NaiveDate>,
+        limit,
     )
-    .bind(session_uid)
-    .bind(project_filter)
-    .bind(date_filter)
-    .bind(date_to_filter)
-    .bind(limit)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -231,24 +245,28 @@ pub async fn start_timer(
     let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
 
     // Get user's org_id
-    let user = sqlx::query_as::<_, User>(
-        "SELECT id, org_id, email, name, oidc_subject, org_role,
-                cost_rate_cents, billable_rate_cents, active, created_at
-         FROM users WHERE id = $1",
+    let user = sqlx::query_as!(
+        User,
+        r#"SELECT id, org_id, email, name, oidc_subject,
+                org_role as "org_role: OrgRole",
+                cost_rate_cents, billable_rate_cents, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM users WHERE id = $1"#,
+        user_id,
     )
-    .bind(user_id)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)?;
 
     // Check no timer already running
-    let existing = sqlx::query_scalar::<_, bool>(
+    let existing = sqlx::query_scalar!(
         "SELECT EXISTS(SELECT 1 FROM time_entries WHERE user_id = $1 AND is_running = true)",
+        user_id,
     )
-    .bind(user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)?;
+    .map_err(server_err)?
+    .unwrap_or(false);
 
     if existing {
         return Err(ServerFnError::ServerError {
@@ -261,21 +279,26 @@ pub async fn start_timer(
     let id = uuid::Uuid::now_v7();
     let today = chrono::Utc::now().date_naive();
 
-    sqlx::query_as::<_, TimeEntry>(
-        "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, started_at, state)
+    sqlx::query_as!(
+        TimeEntry,
+        r#"INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, started_at, state)
          VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), $8)
-         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
-                   minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state, invoice_id, created_at, updated_at",
+         RETURNING id, org_id, user_id, project_id, task_id,
+                   spent_date as "spent_date: chrono::NaiveDate",
+                   minutes, rounded_minutes, notes, billable, is_running,
+                   started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                   state as "state: EntryState", invoice_id,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                   updated_at as "updated_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        user.org_id,
+        user_id,
+        project_id,
+        task_id,
+        today as chrono::NaiveDate,
+        notes.as_deref(),
+        EntryState::Open as EntryState,
     )
-    .bind(id)
-    .bind(user.org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
-    .bind(today)
-    .bind(&notes)
-    .bind(EntryState::Open)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -293,39 +316,44 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     // Read the running entry's start time, then compute the exact elapsed
     // minutes in `horae-core` (floored to the minute, no artificial 1-minute
     // minimum) so tracked totals stay exact (FR-003/FR-023).
-    let started_at: chrono::DateTime<chrono::Utc> =
-        sqlx::query_scalar::<_, Option<chrono::DateTime<chrono::Utc>>>(
-            "SELECT started_at FROM time_entries
-             WHERE id = $1 AND user_id = $2 AND is_running = true",
-        )
-        .bind(entry_id)
-        .bind(user_id)
-        .fetch_optional(&state.db)
-        .await
-        .map_err(server_err)?
-        .flatten()
-        .ok_or_else(|| ServerFnError::ServerError {
-            message: "No running timer found for this entry".into(),
-            code: axum::http::StatusCode::NOT_FOUND.as_u16(),
-            details: None,
-        })?;
+    let started_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar!(
+        r#"SELECT started_at as "started_at: chrono::DateTime<chrono::Utc>"
+               FROM time_entries
+               WHERE id = $1 AND user_id = $2 AND is_running = true"#,
+        entry_id,
+        user_id,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .flatten()
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "No running timer found for this entry".into(),
+        code: axum::http::StatusCode::NOT_FOUND.as_u16(),
+        details: None,
+    })?;
 
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
-    sqlx::query_as::<_, TimeEntry>(
-        "UPDATE time_entries
+    sqlx::query_as!(
+        TimeEntry,
+        r#"UPDATE time_entries
          SET is_running = false,
              minutes = $3,
              started_at = NULL,
              updated_at = now()
          WHERE id = $1 AND user_id = $2 AND is_running = true
-         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
-                   minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state, invoice_id, created_at, updated_at",
+         RETURNING id, org_id, user_id, project_id, task_id,
+                   spent_date as "spent_date: chrono::NaiveDate",
+                   minutes, rounded_minutes, notes, billable, is_running,
+                   started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                   state as "state: EntryState", invoice_id,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                   updated_at as "updated_at: chrono::DateTime<chrono::Utc>""#,
+        entry_id,
+        user_id,
+        minutes,
     )
-    .bind(entry_id)
-    .bind(user_id)
-    .bind(minutes)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -342,15 +370,20 @@ pub async fn get_current_timer() -> Result<Option<TimeEntry>, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
 
-    let entry = sqlx::query_as::<_, TimeEntry>(
-        "SELECT id, org_id, user_id, project_id, task_id, spent_date,
-                minutes, rounded_minutes, notes, billable, is_running, started_at,
-                state, invoice_id, created_at, updated_at
+    let entry = sqlx::query_as!(
+        TimeEntry,
+        r#"SELECT id, org_id, user_id, project_id, task_id,
+                spent_date as "spent_date: chrono::NaiveDate",
+                minutes, rounded_minutes, notes, billable, is_running,
+                started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                state as "state: EntryState", invoice_id,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                updated_at as "updated_at: chrono::DateTime<chrono::Utc>"
          FROM time_entries
          WHERE user_id = $1 AND is_running = true
-         LIMIT 1",
+         LIMIT 1"#,
+        user_id,
     )
-    .bind(user_id)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?;
@@ -378,23 +411,25 @@ pub async fn create_time_entry(
         .parse()
         .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
 
-    let (org_id, org_role): (uuid::Uuid, OrgRole) =
-        sqlx::query_as("SELECT org_id, org_role FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_one(&state.db)
-            .await
-            .map_err(server_err)?;
+    let row = sqlx::query!(
+        r#"SELECT org_id, org_role as "org_role: OrgRole" FROM users WHERE id = $1"#,
+        user_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(server_err)?;
 
     // Check assignment (skip for admins)
-    if org_role != OrgRole::Admin {
-        let assigned: bool = sqlx::query_scalar(
+    if row.org_role != OrgRole::Admin {
+        let assigned = sqlx::query_scalar!(
             "SELECT EXISTS(SELECT 1 FROM assignments WHERE project_id = $1 AND user_id = $2)",
+            project_id,
+            user_id,
         )
-        .bind(project_id)
-        .bind(user_id)
         .fetch_one(&state.db)
         .await
-        .map_err(server_err)?;
+        .map_err(server_err)?
+        .unwrap_or(false);
 
         if !assigned {
             return Err(ServerFnError::ServerError {
@@ -407,23 +442,28 @@ pub async fn create_time_entry(
 
     let id = uuid::Uuid::now_v7();
 
-    sqlx::query_as::<_, TimeEntry>(
-        "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state)
+    sqlx::query_as!(
+        TimeEntry,
+        r#"INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10)
-         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
-                   minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state, invoice_id, created_at, updated_at",
+         RETURNING id, org_id, user_id, project_id, task_id,
+                   spent_date as "spent_date: chrono::NaiveDate",
+                   minutes, rounded_minutes, notes, billable, is_running,
+                   started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                   state as "state: EntryState", invoice_id,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                   updated_at as "updated_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        row.org_id,
+        user_id,
+        project_id,
+        task_id,
+        spent_date as chrono::NaiveDate,
+        minutes,
+        notes.as_deref(),
+        billable,
+        EntryState::Open as EntryState,
     )
-    .bind(id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(project_id)
-    .bind(task_id)
-    .bind(spent_date)
-    .bind(minutes)
-    .bind(&notes)
-    .bind(billable)
-    .bind(EntryState::Open)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -443,19 +483,25 @@ pub async fn update_time_entry(
         .parse()
         .map_err(|_| server_err("Invalid entry_id"))?;
 
-    sqlx::query_as::<_, TimeEntry>(
-        "UPDATE time_entries
+    sqlx::query_as!(
+        TimeEntry,
+        r#"UPDATE time_entries
          SET minutes = $3, notes = $4, billable = $5, updated_at = now()
-         WHERE id = $1 AND user_id = $2 AND state = 'open'
-         RETURNING id, org_id, user_id, project_id, task_id, spent_date,
-                   minutes, rounded_minutes, notes, billable, is_running, started_at,
-                   state, invoice_id, created_at, updated_at",
+         WHERE id = $1 AND user_id = $2 AND state = $6
+         RETURNING id, org_id, user_id, project_id, task_id,
+                   spent_date as "spent_date: chrono::NaiveDate",
+                   minutes, rounded_minutes, notes, billable, is_running,
+                   started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                   state as "state: EntryState", invoice_id,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                   updated_at as "updated_at: chrono::DateTime<chrono::Utc>""#,
+        entry_id,
+        user_id,
+        minutes,
+        notes.as_deref(),
+        billable,
+        EntryState::Open as EntryState,
     )
-    .bind(entry_id)
-    .bind(user_id)
-    .bind(minutes)
-    .bind(&notes)
-    .bind(billable)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -475,13 +521,15 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
         .parse()
         .map_err(|_| server_err("Invalid entry_id"))?;
 
-    let result =
-        sqlx::query("DELETE FROM time_entries WHERE id = $1 AND user_id = $2 AND state = 'open'")
-            .bind(entry_id)
-            .bind(user_id)
-            .execute(&state.db)
-            .await
-            .map_err(server_err)?;
+    let result = sqlx::query!(
+        "DELETE FROM time_entries WHERE id = $1 AND user_id = $2 AND state = $3",
+        entry_id,
+        user_id,
+        EntryState::Open as EntryState,
+    )
+    .execute(&state.db)
+    .await
+    .map_err(server_err)?;
 
     if result.rows_affected() == 0 {
         return Err(ServerFnError::ServerError {
@@ -503,13 +551,15 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
 pub async fn list_clients(include_inactive: bool) -> Result<Vec<Client>, ServerFnError> {
     let state = crate::state::global_state().await;
 
-    let clients = sqlx::query_as::<_, Client>(
-        "SELECT id, org_id, name, currency, address, tax_id, active, created_at
+    let clients = sqlx::query_as!(
+        Client,
+        r#"SELECT id, org_id, name, currency, address, tax_id, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
          FROM clients
-         WHERE ($1 OR active = true)
-         ORDER BY name ASC",
+         WHERE ($1::bool OR active = true)
+         ORDER BY name ASC"#,
+        include_inactive,
     )
-    .bind(include_inactive)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -527,17 +577,19 @@ pub async fn create_client(
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
-    sqlx::query_as::<_, Client>(
-        "INSERT INTO clients (id, org_id, name, currency, address, tax_id)
+    sqlx::query_as!(
+        Client,
+        r#"INSERT INTO clients (id, org_id, name, currency, address, tax_id)
          VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
+         RETURNING id, org_id, name, currency, address, tax_id, active,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        manager.org_id,
+        name,
+        currency,
+        address.as_deref(),
+        tax_id.as_deref(),
     )
-    .bind(id)
-    .bind(manager.org_id)
-    .bind(&name)
-    .bind(&currency)
-    .bind(&address)
-    .bind(&tax_id)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -614,17 +666,20 @@ pub async fn list_projects(
     let state = crate::state::global_state().await;
     let _ = client_id;
 
-    let projects = sqlx::query_as::<_, Project>(
-        "SELECT id, org_id, client_id, code, name,
-                project_type, currency,
-                starts_on, ends_on,
-                budget_kind,
-                budget_amount_cents, budget_minutes, active, created_at
+    let projects = sqlx::query_as!(
+        Project,
+        r#"SELECT id, org_id, client_id, code, name,
+                project_type as "project_type: ProjectType", currency,
+                starts_on as "starts_on: chrono::NaiveDate",
+                ends_on as "ends_on: chrono::NaiveDate",
+                budget_kind as "budget_kind: BudgetKind",
+                budget_amount_cents, budget_minutes, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
          FROM projects
-         WHERE ($1 OR active = true)
-         ORDER BY name ASC",
+         WHERE ($1::bool OR active = true)
+         ORDER BY name ASC"#,
+        include_inactive,
     )
-    .bind(include_inactive)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -646,29 +701,30 @@ pub async fn create_project(
     let client_id: uuid::Uuid = client_id
         .parse()
         .map_err(|_| server_err("Invalid client_id"))?;
-    sqlx::query_as::<_, Project>(
-        "INSERT INTO projects (id, org_id, client_id, name, project_type, currency, budget_kind)
+    let pt = project_type
+        .parse::<ProjectType>()
+        .map_err(|_| server_err("Invalid project_type"))?;
+    let bk = budget_kind
+        .parse::<BudgetKind>()
+        .map_err(|_| server_err("Invalid budget_kind"))?;
+    sqlx::query_as!(
+        Project,
+        r#"INSERT INTO projects (id, org_id, client_id, name, project_type, currency, budget_kind)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, org_id, client_id, code, name,
-                   project_type, currency,
-                   starts_on, ends_on,
-                   budget_kind,
-                   budget_amount_cents, budget_minutes, active, created_at",
-    )
-    .bind(id)
-    .bind(manager.org_id)
-    .bind(client_id)
-    .bind(&name)
-    .bind(
-        project_type
-            .parse::<horae_core::types::ProjectType>()
-            .map_err(|_| server_err("Invalid project_type"))?,
-    )
-    .bind(&currency)
-    .bind(
-        budget_kind
-            .parse::<horae_core::types::BudgetKind>()
-            .map_err(|_| server_err("Invalid budget_kind"))?,
+                   project_type as "project_type: ProjectType", currency,
+                   starts_on as "starts_on: chrono::NaiveDate",
+                   ends_on as "ends_on: chrono::NaiveDate",
+                   budget_kind as "budget_kind: BudgetKind",
+                   budget_amount_cents, budget_minutes, active,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        manager.org_id,
+        client_id,
+        name,
+        pt as ProjectType,
+        currency,
+        bk as BudgetKind,
     )
     .fetch_one(&state.db)
     .await
@@ -763,7 +819,8 @@ pub async fn set_project_active(
 pub async fn list_tasks() -> Result<Vec<Task>, ServerFnError> {
     let state = crate::state::global_state().await;
 
-    let tasks = sqlx::query_as::<_, Task>(
+    let tasks = sqlx::query_as!(
+        Task,
         "SELECT id, org_id, name, billable_default, default_rate_cents, active
          FROM tasks
          WHERE active = true
@@ -785,14 +842,15 @@ pub async fn list_project_tasks(project_id: String) -> Result<Vec<Task>, ServerF
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
 
-    sqlx::query_as::<_, Task>(
+    sqlx::query_as!(
+        Task,
         "SELECT t.id, t.org_id, t.name, t.billable_default, t.default_rate_cents, t.active
          FROM tasks t
          JOIN project_tasks pt ON t.id = pt.task_id
          WHERE pt.project_id = $1 AND t.active = true
          ORDER BY t.name",
+        project_id,
     )
-    .bind(project_id)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)
@@ -803,15 +861,16 @@ pub async fn create_task(name: String, billable_default: bool) -> Result<Task, S
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
-    sqlx::query_as::<_, Task>(
+    sqlx::query_as!(
+        Task,
         "INSERT INTO tasks (id, org_id, name, billable_default)
          VALUES ($1, $2, $3, $4)
          RETURNING id, org_id, name, billable_default, default_rate_cents, active",
+        id,
+        manager.org_id,
+        name,
+        billable_default,
     )
-    .bind(id)
-    .bind(manager.org_id)
-    .bind(&name)
-    .bind(billable_default)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)
@@ -931,11 +990,13 @@ pub async fn list_assignments(project_id: String) -> Result<Vec<Assignment>, Ser
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
-    sqlx::query_as::<_, Assignment>(
-        "SELECT id, project_id, user_id, role, rate_cents, created_at
-         FROM assignments WHERE project_id = $1 ORDER BY created_at",
+    sqlx::query_as!(
+        Assignment,
+        r#"SELECT id, project_id, user_id, role as "role: ProjectRole", rate_cents,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
+         FROM assignments WHERE project_id = $1 ORDER BY created_at"#,
+        project_id,
     )
-    .bind(project_id)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)
@@ -954,17 +1015,19 @@ pub async fn create_assignment(
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
     let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
-    sqlx::query_as::<_, Assignment>(
-        "INSERT INTO assignments (id, project_id, user_id, role)
+    let pr = role
+        .parse::<ProjectRole>()
+        .map_err(|_| server_err("Invalid role"))?;
+    sqlx::query_as!(
+        Assignment,
+        r#"INSERT INTO assignments (id, project_id, user_id, role)
          VALUES ($1, $2, $3, $4)
-         RETURNING id, project_id, user_id, role, rate_cents, created_at",
-    )
-    .bind(id)
-    .bind(project_id)
-    .bind(user_id)
-    .bind(
-        role.parse::<horae_core::types::ProjectRole>()
-            .map_err(|_| server_err("Invalid role"))?,
+         RETURNING id, project_id, user_id, role as "role: ProjectRole", rate_cents,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        project_id,
+        user_id,
+        pr as ProjectRole,
     )
     .fetch_one(&state.db)
     .await
@@ -978,8 +1041,7 @@ pub async fn delete_assignment(assignment_id: String) -> Result<(), ServerFnErro
     let id: uuid::Uuid = assignment_id
         .parse()
         .map_err(|_| server_err("Invalid assignment_id"))?;
-    sqlx::query("DELETE FROM assignments WHERE id = $1")
-        .bind(id)
+    sqlx::query!("DELETE FROM assignments WHERE id = $1", id)
         .execute(&state.db)
         .await
         .map_err(server_err)?;
@@ -1001,13 +1063,15 @@ pub async fn list_invoices(status: Option<String>) -> Result<Vec<Invoice>, Serve
 pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
     let state = crate::state::global_state().await;
 
-    let users = sqlx::query_as::<_, User>(
-        "SELECT id, org_id, email, name, oidc_subject,
-                org_role,
-                cost_rate_cents, billable_rate_cents, active, created_at
+    let users = sqlx::query_as!(
+        User,
+        r#"SELECT id, org_id, email, name, oidc_subject,
+                org_role as "org_role: OrgRole",
+                cost_rate_cents, billable_rate_cents, active,
+                created_at as "created_at: chrono::DateTime<chrono::Utc>"
          FROM users
          WHERE active = true
-         ORDER BY name ASC",
+         ORDER BY name ASC"#,
     )
     .fetch_all(&state.db)
     .await
@@ -1032,48 +1096,55 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     let we = ws + chrono::Duration::days(6);
 
     // Get user's org_id
-    let (org_id,): (uuid::Uuid,) = sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
-        .bind(user_id)
+    let user_row = sqlx::query!("SELECT org_id FROM users WHERE id = $1", user_id)
         .fetch_one(&state.db)
         .await
         .map_err(server_err)?;
+    let org_id = user_row.org_id;
 
     // Fetch org rounding config
-    let (round_min, round_dir): (i16, horae_core::types::RoundDir) =
-        sqlx::query_as("SELECT round_minutes, round_dir FROM organizations WHERE id = $1")
-            .bind(org_id)
-            .fetch_one(&state.db)
-            .await
-            .map_err(server_err)?;
+    let org_row = sqlx::query!(
+        r#"SELECT round_minutes, round_dir as "round_dir: RoundDir" FROM organizations WHERE id = $1"#,
+        org_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(server_err)?;
+    let round_min = org_row.round_minutes;
+    let round_dir = org_row.round_dir;
 
     // Apply rounding per entry if rounding is configured
     if round_min > 0 {
-        let entries: Vec<(uuid::Uuid, i32)> = sqlx::query_as(
+        let entries = sqlx::query!(
             "SELECT id, minutes FROM time_entries
-             WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = 'open'",
+             WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3 AND state = $4",
+            user_id,
+            ws as chrono::NaiveDate,
+            we as chrono::NaiveDate,
+            EntryState::Open as EntryState,
         )
-        .bind(user_id)
-        .bind(ws)
-        .bind(we)
         .fetch_all(&state.db)
         .await
         .map_err(server_err)?;
 
-        for (eid, mins) in &entries {
+        for entry in &entries {
             let rounded =
-                horae_core::rounding::round(*mins as u32, round_min as u32, round_dir) as i32;
-            sqlx::query("UPDATE time_entries SET rounded_minutes = $1 WHERE id = $2")
-                .bind(rounded)
-                .bind(eid)
-                .execute(&state.db)
-                .await
-                .map_err(server_err)?;
+                horae_core::rounding::round(entry.minutes as u32, round_min as u32, round_dir)
+                    as i32;
+            sqlx::query!(
+                "UPDATE time_entries SET rounded_minutes = $1 WHERE id = $2",
+                rounded,
+                entry.id,
+            )
+            .execute(&state.db)
+            .await
+            .map_err(server_err)?;
         }
     }
 
     // Transition open entries to submitted, using COALESCE so entries without
     // explicit rounding (round_min=0) still get rounded_minutes set to minutes
-    let result = sqlx::query(
+    let result = sqlx::query!(
         "UPDATE time_entries
          SET state = $4,
              rounded_minutes = COALESCE(rounded_minutes, minutes),
@@ -1081,12 +1152,12 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3
            AND state = $5",
+        user_id,
+        ws as chrono::NaiveDate,
+        we as chrono::NaiveDate,
+        EntryState::Submitted as EntryState,
+        EntryState::Open as EntryState,
     )
-    .bind(user_id)
-    .bind(ws)
-    .bind(we)
-    .bind(EntryState::Submitted)
-    .bind(EntryState::Open)
     .execute(&state.db)
     .await
     .map_err(server_err)?;
@@ -1101,20 +1172,26 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
 
     // Create approval row
     let id = uuid::Uuid::now_v7();
-    let approval = sqlx::query_as::<_, Approval>(
-        "INSERT INTO approvals (id, org_id, user_id, period_start, period_end, state)
+    let approval = sqlx::query_as!(
+        Approval,
+        r#"INSERT INTO approvals (id, org_id, user_id, period_start, period_end, state)
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (user_id, period_start) DO UPDATE
            SET state = $6, submitted_at = now()
-         RETURNING id, org_id, user_id, period_start, period_end,
-                   state, submitted_at, approved_by, approved_at",
+         RETURNING id, org_id, user_id,
+                   period_start as "period_start: chrono::NaiveDate",
+                   period_end as "period_end: chrono::NaiveDate",
+                   state as "state: EntryState",
+                   submitted_at as "submitted_at: chrono::DateTime<chrono::Utc>",
+                   approved_by,
+                   approved_at as "approved_at: chrono::DateTime<chrono::Utc>""#,
+        id,
+        org_id,
+        user_id,
+        ws as chrono::NaiveDate,
+        we as chrono::NaiveDate,
+        EntryState::Submitted as EntryState,
     )
-    .bind(id)
-    .bind(org_id)
-    .bind(user_id)
-    .bind(ws)
-    .bind(we)
-    .bind(EntryState::Submitted)
     .fetch_one(&state.db)
     .await
     .map_err(server_err)?;
@@ -1135,14 +1212,20 @@ pub async fn list_approvals(status: Option<String>) -> Result<Vec<Approval>, Ser
         })
         .transpose()?;
 
-    let approvals = sqlx::query_as::<_, Approval>(
-        "SELECT id, org_id, user_id, period_start, period_end,
-                state, submitted_at, approved_by, approved_at
+    let approvals = sqlx::query_as!(
+        Approval,
+        r#"SELECT id, org_id, user_id,
+                period_start as "period_start: chrono::NaiveDate",
+                period_end as "period_end: chrono::NaiveDate",
+                state as "state: EntryState",
+                submitted_at as "submitted_at: chrono::DateTime<chrono::Utc>",
+                approved_by,
+                approved_at as "approved_at: chrono::DateTime<chrono::Utc>"
          FROM approvals
-         WHERE ($1 IS NULL OR state = $1)
-         ORDER BY period_start DESC",
+         WHERE ($1::entry_state IS NULL OR state = $1)
+         ORDER BY period_start DESC"#,
+        state_filter as Option<EntryState>,
     )
-    .bind(state_filter)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -1173,19 +1256,25 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
         .map_err(|_| server_err("Invalid approval_id"))?;
 
     // Update approval row
-    let approval = sqlx::query_as::<_, Approval>(
-        "UPDATE approvals
+    let approval = sqlx::query_as!(
+        Approval,
+        r#"UPDATE approvals
          SET state = $3,
              approved_by = $2,
              approved_at = now()
          WHERE id = $1 AND state = $4
-         RETURNING id, org_id, user_id, period_start, period_end,
-                   state, submitted_at, approved_by, approved_at",
+         RETURNING id, org_id, user_id,
+                   period_start as "period_start: chrono::NaiveDate",
+                   period_end as "period_end: chrono::NaiveDate",
+                   state as "state: EntryState",
+                   submitted_at as "submitted_at: chrono::DateTime<chrono::Utc>",
+                   approved_by,
+                   approved_at as "approved_at: chrono::DateTime<chrono::Utc>""#,
+        approval_id,
+        manager.id,
+        EntryState::Approved as EntryState,
+        EntryState::Submitted as EntryState,
     )
-    .bind(approval_id)
-    .bind(manager.id)
-    .bind(EntryState::Approved)
-    .bind(EntryState::Submitted)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -1196,18 +1285,18 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     })?;
 
     // Transition corresponding time entries to approved
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries
          SET state = $4, updated_at = now()
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3
            AND state = $5",
+        approval.user_id,
+        approval.period_start as chrono::NaiveDate,
+        approval.period_end as chrono::NaiveDate,
+        EntryState::Approved as EntryState,
+        EntryState::Submitted as EntryState,
     )
-    .bind(approval.user_id)
-    .bind(approval.period_start)
-    .bind(approval.period_end)
-    .bind(EntryState::Approved)
-    .bind(EntryState::Submitted)
     .execute(&state.db)
     .await
     .map_err(server_err)?;
@@ -1236,12 +1325,18 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
         .map_err(|_| server_err("Invalid approval_id"))?;
 
     // Fetch the approval to know user + period
-    let approval = sqlx::query_as::<_, Approval>(
-        "SELECT id, org_id, user_id, period_start, period_end,
-                state, submitted_at, approved_by, approved_at
-         FROM approvals WHERE id = $1",
+    let approval = sqlx::query_as!(
+        Approval,
+        r#"SELECT id, org_id, user_id,
+                period_start as "period_start: chrono::NaiveDate",
+                period_end as "period_end: chrono::NaiveDate",
+                state as "state: EntryState",
+                submitted_at as "submitted_at: chrono::DateTime<chrono::Utc>",
+                approved_by,
+                approved_at as "approved_at: chrono::DateTime<chrono::Utc>"
+         FROM approvals WHERE id = $1"#,
+        approval_id,
     )
-    .bind(approval_id)
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
@@ -1252,25 +1347,24 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     })?;
 
     // Reopen entries
-    sqlx::query(
+    sqlx::query!(
         "UPDATE time_entries
          SET state = $4, rounded_minutes = NULL, updated_at = now()
          WHERE user_id = $1
            AND spent_date BETWEEN $2 AND $3
            AND state = $5",
+        approval.user_id,
+        approval.period_start as chrono::NaiveDate,
+        approval.period_end as chrono::NaiveDate,
+        EntryState::Open as EntryState,
+        EntryState::Submitted as EntryState,
     )
-    .bind(approval.user_id)
-    .bind(approval.period_start)
-    .bind(approval.period_end)
-    .bind(EntryState::Open)
-    .bind(EntryState::Submitted)
     .execute(&state.db)
     .await
     .map_err(server_err)?;
 
     // Delete the approval row (per schema: "reject deletes the row")
-    sqlx::query("DELETE FROM approvals WHERE id = $1")
-        .bind(approval_id)
+    sqlx::query!("DELETE FROM approvals WHERE id = $1", approval_id)
         .execute(&state.db)
         .await
         .map_err(server_err)?;
@@ -1298,18 +1392,20 @@ pub async fn report_time(
         .map_err(|_| server_err("Invalid to date (use YYYY-MM-DD)"))?;
 
     // Fetch detailed rows and group in Rust for flexibility
-    let entries = sqlx::query_as::<_, DetailedReportRow>(
-        "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
+    let entries = sqlx::query_as!(
+        DetailedReportRow,
+        r#"SELECT te.spent_date as "spent_date: chrono::NaiveDate",
+                p.name AS project_name, t.name AS task_name,
                 u.name AS user_name, te.minutes, te.rounded_minutes, te.billable, te.notes
          FROM time_entries te
          JOIN projects p ON te.project_id = p.id
          JOIN tasks t ON te.task_id = t.id
          JOIN users u ON te.user_id = u.id
          WHERE te.spent_date BETWEEN $1 AND $2
-         ORDER BY te.spent_date",
+         ORDER BY te.spent_date"#,
+        from_date as chrono::NaiveDate,
+        to_date as chrono::NaiveDate,
     )
-    .bind(from_date)
-    .bind(to_date)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;
@@ -1361,18 +1457,20 @@ pub async fn report_detailed(
         .parse()
         .map_err(|_| server_err("Invalid to date (use YYYY-MM-DD)"))?;
 
-    let entries = sqlx::query_as::<_, DetailedReportRow>(
-        "SELECT te.spent_date, p.name AS project_name, t.name AS task_name,
+    let entries = sqlx::query_as!(
+        DetailedReportRow,
+        r#"SELECT te.spent_date as "spent_date: chrono::NaiveDate",
+                p.name AS project_name, t.name AS task_name,
                 u.name AS user_name, te.minutes, te.rounded_minutes, te.billable, te.notes
          FROM time_entries te
          JOIN projects p ON te.project_id = p.id
          JOIN tasks t ON te.task_id = t.id
          JOIN users u ON te.user_id = u.id
          WHERE te.spent_date BETWEEN $1 AND $2
-         ORDER BY te.spent_date, p.name, t.name",
+         ORDER BY te.spent_date, p.name, t.name"#,
+        from_date as chrono::NaiveDate,
+        to_date as chrono::NaiveDate,
     )
-    .bind(from_date)
-    .bind(to_date)
     .fetch_all(&state.db)
     .await
     .map_err(server_err)?;

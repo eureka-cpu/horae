@@ -29,15 +29,14 @@ impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
 
         // Look up the user's org.
         let state = crate::state::global_state().await;
-        let row: (Uuid,) = sqlx::query_as("SELECT org_id FROM users WHERE id = $1")
-            .bind(user_id)
+        let row = sqlx::query!("SELECT org_id FROM users WHERE id = $1", user_id)
             .fetch_one(&state.db)
             .await
             .map_err(|_| (StatusCode::UNAUTHORIZED, "User not found"))?;
 
         Ok(AuthUser {
             user_id,
-            org_id: row.0,
+            org_id: row.org_id,
         })
     }
 }

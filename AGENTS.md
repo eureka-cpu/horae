@@ -41,6 +41,27 @@ nix fmt                                         # treefmt: rustfmt, taplo, nixpk
 
 Integration tests (`crates/horae/tests/integration.rs`) use `#[sqlx::test]` — each spins up a throwaway database, so the DB role needs `CREATEDB` — and are marked `#[serial]`. `nix build` builds the package; `nix flake check` runs the formatting check plus a full NixOS e2e test.
 
+### sqlx query cache
+
+All SQL queries use compile-time checked macros (`sqlx::query!`, `sqlx::query_as!`, `sqlx::query_scalar!`). These validate SQL against the database schema at compile time, catching typos, type mismatches, and schema drift before the code runs.
+
+At compile time, macros need either `DATABASE_URL` pointing to a live DB with migrations applied, or `SQLX_OFFLINE=true` with the `.sqlx/` cache committed to the repo. Nix builds use `SQLX_OFFLINE=true`.
+
+After changing any `query!`/`query_as!`/`query_scalar!` macro or migration, regenerate the cache:
+
+```sh
+cargo sqlx prepare --workspace -- --features server --all-targets   # requires live DB with migrations applied
+git add .sqlx/                                        # commit the updated cache
+```
+
+**Important:** the `--features server` flag is required because all sqlx query macros live behind `#[cfg(feature = "server")]`. Without it, `cargo sqlx prepare` finds zero queries and **deletes** the entire cache.
+
+For custom PostgreSQL enum types, use type overrides in the SQL:
+
+- **Columns**: `state as "state: EntryState"` in SELECT
+- **Parameters**: `EntryState::Open as EntryState` in macro arguments
+- **Optional filters**: `($N::type IS NULL OR column = $N)` pattern with `Option<T>` parameters
+
 ## Architecture
 
 **One app crate (`crates/horae/`), two build targets, feature-gated.** `crates/horae/src/main.rs` defines three `main()`s behind `cfg`: `server` (Axum + Tokio + the CLI), `web` (`dioxus::launch`, compiled to WASM), and a stub that errors if neither feature is set. Server-only modules (`auth`, `cli`, `config`, `db`, `harvest`, `reports`, `seed`, `state`) are `#[cfg(feature = "server")]`; the shared UI modules (`app`, `route`, `pages`, `components`, `server_fns`, `models`, `error`) compile for both targets. This is why a bare `cargo build`/`test` (empty default features) won't do what you expect.

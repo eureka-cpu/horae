@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT te.spent_date as \"spent_date: chrono::NaiveDate\",\n                p.name AS project_name, t.name AS task_name,\n                u.name AS user_name, te.minutes, te.rounded_minutes, te.billable, te.notes\n         FROM time_entries te\n         JOIN projects p ON te.project_id = p.id\n         JOIN tasks t ON te.task_id = t.id\n         JOIN users u ON te.user_id = u.id\n         WHERE te.spent_date BETWEEN $1 AND $2\n         ORDER BY te.spent_date",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "spent_date: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "task_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "rounded_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "billable",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "notes",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "5dc99580843582b4304360dd1bed255db90a961130052cc83604098b0500984e"
+}

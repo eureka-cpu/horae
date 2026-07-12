@@ -1,0 +1,168 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT te.id,\n               te.spent_date as \"spent_date: chrono::NaiveDate\",\n               te.minutes, te.rounded_minutes, te.notes,\n               te.billable, te.is_running,\n               te.started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n               te.state::text AS \"state!: String\", te.invoice_id,\n               te.created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n               te.updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\",\n               te.user_id, u.name AS user_name,\n               te.project_id, p.name AS project_name, p.code AS project_code,\n               te.task_id, t.name AS task_name,\n               p.client_id, c.name AS client_name,\n               u.billable_rate_cents AS user_billable_rate_cents,\n               u.cost_rate_cents AS user_cost_rate_cents,\n               p.budget_kind::text AS \"budget_kind!: String\"\n         FROM time_entries te\n         JOIN users u ON u.id = te.user_id\n         JOIN projects p ON p.id = te.project_id\n         JOIN tasks t ON t.id = te.task_id\n         JOIN clients c ON c.id = p.client_id\n         WHERE te.org_id = $1\n           AND ($2::uuid IS NULL OR te.user_id = $2)\n           AND ($3::uuid IS NULL OR te.project_id = $3)\n           AND ($4::date IS NULL OR te.spent_date >= $4::date)\n           AND ($5::date IS NULL OR te.spent_date <= $5::date)\n           AND ($6::bool IS NULL OR te.is_running = $6)\n           AND ($7::timestamptz IS NULL OR te.updated_at >= $7::timestamptz)\n         ORDER BY te.spent_date DESC, te.created_at DESC\n         LIMIT $8 OFFSET $9",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "spent_date: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 2,
+        "name": "minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "rounded_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "billable",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_running",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "started_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "state!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "invoice_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 13,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 15,
+        "name": "project_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "project_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "task_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 18,
+        "name": "task_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "client_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 20,
+        "name": "client_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
+        "name": "user_billable_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 22,
+        "name": "user_cost_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 23,
+        "name": "budget_kind!: String",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date",
+        "Bool",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      null,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "e7dc666d5cefa860b4e340126e45d57af573bfcd2eb218380c155f65257b3d14"
+}

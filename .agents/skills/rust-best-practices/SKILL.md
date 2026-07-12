@@ -82,6 +82,15 @@ impl Connection<Connected> {
 }
 ```
 
+### sqlx Compile-Time Query Macros
+
+- **Always** use `sqlx::query!`, `sqlx::query_as!`, `sqlx::query_scalar!` — never the runtime variants
+- For custom PG enum columns in SELECT, use type overrides: `state as "state: EntryState"`
+- For enum parameters, use type hints: `EntryState::Open as EntryState`
+- For optional filters, use `($N::type IS NULL OR column = $N)` with `Option<T>` parameters
+- After adding/changing any query macro or migration, regenerate: `cargo sqlx prepare --workspace`
+- The `.sqlx/` directory must be committed to the repo; Nix builds use `SQLX_OFFLINE=true`
+
 ### Documentation
 
 - `//` comments explain *why* (safety, workarounds, design rationale)

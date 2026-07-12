@@ -6,7 +6,6 @@
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect};
 use tower_sessions::Session;
-use uuid::Uuid;
 
 use crate::auth::session::{clear_session, set_session_user_id};
 
@@ -78,16 +77,19 @@ pub async fn dev_login_post(
 ) -> Result<impl IntoResponse, (StatusCode, &'static str)> {
     let state = crate::state::global_state().await;
 
-    let user_id: Option<(Uuid,)> =
-        sqlx::query_as("SELECT id FROM users WHERE org_role = 'admin' AND active = true LIMIT 1")
-            .fetch_optional(&state.db)
-            .await
-            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "DB query failed"))?;
+    let row = sqlx::query!(
+        "SELECT id FROM users WHERE org_role = $1 AND active = true LIMIT 1",
+        horae_core::types::OrgRole::Admin as horae_core::types::OrgRole,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "DB query failed"))?;
 
-    let (id,) = user_id.ok_or((
+    let row = row.ok_or((
         StatusCode::INTERNAL_SERVER_ERROR,
         "No admin user found — run `horae seed` first.",
     ))?;
+    let id = row.id;
 
     set_session_user_id(&session, id)
         .await

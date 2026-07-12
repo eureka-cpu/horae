@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO clients (id, org_id, name, currency)\n         VALUES ($1, $2, 'Acme Corp', 'EUR')\n         ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0c2f074e9d13644d622b80bc6a245516b43f2caa82ad56bdf0a3ed0e111b682c"
+}

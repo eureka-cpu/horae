@@ -32,6 +32,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
   cargoLock.lockFile = finalAttrs.src + "/Cargo.lock";
   doCheck = false;
 
+  # Compile-time sqlx macros (query!, query_as!, …) resolve from the
+  # .sqlx/ cache instead of requiring a live database connection.
+  SQLX_OFFLINE = "true";
+
   nativeBuildInputs = with buildPkgs; [
     dioxus-cli
     wasm-pack
