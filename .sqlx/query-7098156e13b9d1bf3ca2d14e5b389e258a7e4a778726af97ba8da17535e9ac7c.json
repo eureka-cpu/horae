@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, org_id, email, name, oidc_subject,\n                org_role as \"org_role: OrgRole\",\n                cost_rate_cents, billable_rate_cents, active,\n                created_at as \"created_at: chrono::DateTime<chrono::Utc>\"\n         FROM users\n         WHERE active = true\n         ORDER BY name ASC",
+  "query": "SELECT id, org_id, email, name, oidc_subject,\n                org_role as \"org_role: OrgRole\",\n                cost_rate_cents, billable_rate_cents, active,\n                created_at as \"created_at: chrono::DateTime<chrono::Utc>\"\n         FROM users\n         WHERE ($1::bool OR active = true)\n         ORDER BY name ASC",
   "describe": {
     "columns": [
       {
@@ -66,7 +66,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Bool"
+      ]
     },
     "nullable": [
       false,
@@ -81,5 +83,5 @@
       false
     ]
   },
-  "hash": "23dd1324dc0c193bc00169d62ef906308514b16b2fa95ab9ef92722efd1c12e0"
+  "hash": "7098156e13b9d1bf3ca2d14e5b389e258a7e4a778726af97ba8da17535e9ac7c"
 }

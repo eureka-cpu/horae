@@ -261,7 +261,7 @@ pub fn ProjectDetail(id: Uuid) -> Element {
         let pid = id.to_string();
         async move { server_fns::list_assignments(pid).await }
     });
-    let users_res = use_resource(|| async move { server_fns::list_users().await });
+    let users_res = use_resource(|| async move { server_fns::list_users(false).await });
 
     let mut show_assign_form = use_signal(|| false);
     let mut assign_user_id = use_signal(String::new);

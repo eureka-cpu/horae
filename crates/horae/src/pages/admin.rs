@@ -4,8 +4,14 @@ use crate::server_fns;
 
 #[component]
 pub fn AdminUsers() -> Element {
-    let users = use_resource(|| async move { server_fns::list_users().await });
+    let mut users = use_resource(|| async move { server_fns::list_users(true).await });
     let mut tasks = use_resource(|| async move { server_fns::list_tasks().await });
+
+    let mut show_user_form = use_signal(|| false);
+    let mut user_email = use_signal(String::new);
+    let mut user_name = use_signal(String::new);
+    let mut user_role = use_signal(|| "member".to_string());
+    let mut user_error = use_signal(|| None::<String>);
 
     let mut show_task_form = use_signal(|| false);
     let mut task_name = use_signal(String::new);
@@ -18,12 +24,84 @@ pub fn AdminUsers() -> Element {
             div { class: "page-header",
                 h1 { class: "page-title", "User Management" }
                 div { class: "page-actions",
-                    button { class: "btn btn-primary", "Invite User" }
+                    button {
+                        class: "btn btn-primary",
+                        onclick: move |_| show_user_form.set(!show_user_form()),
+                        if show_user_form() { "Cancel" } else { "Invite User" }
+                    }
                 }
             }
+
+            if show_user_form() {
+                div { class: "card",
+                    div { style: "padding: 1.25rem;",
+                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);", "New User" }
+                        if let Some(err) = &*user_error.read() {
+                            div { class: "alert alert-danger", "{err}" }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "user-email", "Email" }
+                            input {
+                                class: "form-input",
+                                id: "user-email",
+                                r#type: "email",
+                                placeholder: "user@example.com",
+                                value: "{user_email}",
+                                oninput: move |e| user_email.set(e.value()),
+                            }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "user-name", "Name" }
+                            input {
+                                class: "form-input",
+                                id: "user-name",
+                                r#type: "text",
+                                placeholder: "Full name",
+                                value: "{user_name}",
+                                oninput: move |e| user_name.set(e.value()),
+                            }
+                        }
+                        div { class: "form-group",
+                            label { class: "form-label", r#for: "user-role", "Role" }
+                            select {
+                                class: "form-input",
+                                id: "user-role",
+                                value: "{user_role}",
+                                onchange: move |e| user_role.set(e.value()),
+                                option { value: "member", "Member" }
+                                option { value: "manager", "Manager" }
+                                option { value: "admin", "Admin" }
+                            }
+                        }
+                        button {
+                            class: "btn btn-primary",
+                            onclick: move |_| {
+                                let e = user_email();
+                                let n = user_name();
+                                let r = user_role();
+                                spawn(async move {
+                                    match server_fns::create_user(e, n, r).await {
+                                        Ok(_) => {
+                                            user_email.set(String::new());
+                                            user_name.set(String::new());
+                                            user_role.set("member".to_string());
+                                            user_error.set(None);
+                                            show_user_form.set(false);
+                                            users.restart();
+                                        }
+                                        Err(e) => user_error.set(Some(e.to_string())),
+                                    }
+                                });
+                            },
+                            "Create User"
+                        }
+                    }
+                }
+            }
+
             div { class: "card",
                 match &*users.read() {
-                    Some(Ok(users)) => rsx! {
+                    Some(Ok(user_list)) => rsx! {
                         div { class: "table-container",
                             table {
                                 thead {
@@ -36,20 +114,62 @@ pub fn AdminUsers() -> Element {
                                     }
                                 }
                                 tbody {
-                                    for user in users.iter() {
-                                        tr { key: "{user.id}",
-                                            td { "{user.name}" }
-                                            td { "{user.email}" }
-                                            td { "{user.org_role}" }
-                                            td {
-                                                if user.active {
-                                                    span { class: "badge badge-success", "Active" }
-                                                } else {
-                                                    span { class: "badge badge-neutral", "Inactive" }
+                                    for user in user_list.iter() {
+                                        {
+                                            let uid = user.id.to_string();
+                                            let uid2 = uid.clone();
+                                            let current_role = user.org_role.to_string();
+                                            let is_active = user.active;
+                                            rsx! {
+                                                tr { key: "{uid}",
+                                                    td { "{user.name}" }
+                                                    td { "{user.email}" }
+                                                    td {
+                                                        select {
+                                                            class: "form-input",
+                                                            style: "width: auto; padding: 0.25rem 0.5rem; font-size: 0.8125rem;",
+                                                            value: "{current_role}",
+                                                            onchange: {
+                                                                let uid = uid.clone();
+                                                                move |e: Event<FormData>| {
+                                                                    let uid = uid.clone();
+                                                                    let new_role = e.value();
+                                                                    spawn(async move {
+                                                                        let _ = server_fns::set_user_role(uid, new_role).await;
+                                                                        users.restart();
+                                                                    });
+                                                                }
+                                                            },
+                                                            option { value: "member", "Member" }
+                                                            option { value: "manager", "Manager" }
+                                                            option { value: "admin", "Admin" }
+                                                        }
+                                                    }
+                                                    td {
+                                                        if is_active {
+                                                            span { class: "badge badge-success", "Active" }
+                                                        } else {
+                                                            span { class: "badge badge-neutral", "Inactive" }
+                                                        }
+                                                    }
+                                                    td {
+                                                        button {
+                                                            class: if is_active { "btn btn-secondary btn-sm" } else { "btn btn-primary btn-sm" },
+                                                            onclick: {
+                                                                let uid = uid2.clone();
+                                                                move |_| {
+                                                                    let uid = uid.clone();
+                                                                    let new_active = !is_active;
+                                                                    spawn(async move {
+                                                                        let _ = server_fns::set_user_active(uid, new_active).await;
+                                                                        users.restart();
+                                                                    });
+                                                                }
+                                                            },
+                                                            if is_active { "Deactivate" } else { "Activate" }
+                                                        }
+                                                    }
                                                 }
-                                            }
-                                            td {
-                                                button { class: "btn btn-secondary btn-sm", "Edit" }
                                             }
                                         }
                                     }
