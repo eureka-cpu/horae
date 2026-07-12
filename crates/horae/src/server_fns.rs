@@ -1455,21 +1455,7 @@ pub async fn get_org_branding() -> Result<OrgBranding, ServerFnError> {
 }
 
 #[server]
-#[allow(clippy::too_many_arguments)]
-pub async fn update_org_branding(
-    provider_name: Option<String>,
-    provider_address: Option<String>,
-    provider_tax_id: Option<String>,
-    provider_email: Option<String>,
-    provider_phone: Option<String>,
-    bank_name: Option<String>,
-    bank_iban: Option<String>,
-    bank_bic: Option<String>,
-    bank_routing: Option<String>,
-    bank_account: Option<String>,
-    invoice_notes: Option<String>,
-    invoice_payment_terms: Option<String>,
-) -> Result<OrgBranding, ServerFnError> {
+pub async fn update_org_branding(branding: OrgBranding) -> Result<OrgBranding, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
 
@@ -1494,18 +1480,18 @@ pub async fn update_org_branding(
                      bank_name, bank_iban, bank_bic, bank_routing, bank_account,
                      invoice_notes, invoice_payment_terms"#,
         manager.org_id,
-        provider_name,
-        provider_address,
-        provider_tax_id,
-        provider_email,
-        provider_phone,
-        bank_name,
-        bank_iban,
-        bank_bic,
-        bank_routing,
-        bank_account,
-        invoice_notes,
-        invoice_payment_terms,
+        branding.provider_name,
+        branding.provider_address,
+        branding.provider_tax_id,
+        branding.provider_email,
+        branding.provider_phone,
+        branding.bank_name,
+        branding.bank_iban,
+        branding.bank_bic,
+        branding.bank_routing,
+        branding.bank_account,
+        branding.invoice_notes,
+        branding.invoice_payment_terms,
     )
     .fetch_one(&state.db)
     .await
