@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!: i64\" FROM invoices\n           WHERE org_id = $1 AND number LIKE $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "81403535a4672e457acf8dd719d32667a6e7aa5388387df5012253956a9fb30c"
+}

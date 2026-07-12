@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n             te.id as entry_id,\n             te.minutes,\n             p.name as project_name,\n             t.name as task_name,\n             te.notes,\n             te.spent_date as \"spent_date: chrono::NaiveDate\",\n             pt.rate_cents as task_rate_cents,\n             a.rate_cents as assignment_rate_cents,\n             u.billable_rate_cents as user_rate_cents\n           FROM time_entries te\n           JOIN projects p ON p.id = te.project_id\n           JOIN tasks t ON t.id = te.task_id\n           LEFT JOIN project_tasks pt ON pt.project_id = te.project_id AND pt.task_id = te.task_id\n           LEFT JOIN assignments a ON a.project_id = te.project_id AND a.user_id = te.user_id\n           JOIN users u ON u.id = te.user_id\n           WHERE te.org_id = $1\n             AND p.client_id = $2\n             AND te.billable = true\n             AND te.invoice_id IS NULL\n             AND te.state = 'open'\n             AND te.spent_date >= $3\n             AND te.spent_date <= $4\n           ORDER BY te.spent_date, te.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "entry_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "task_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "spent_date: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "task_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "assignment_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_rate_cents",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "3ac85b53c8eaddd76045cb644b6dc5a90a8db762f80c564854dc64e613104ced"
+}

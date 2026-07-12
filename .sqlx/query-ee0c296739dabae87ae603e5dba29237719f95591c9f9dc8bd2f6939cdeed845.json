@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!: i64\" FROM time_entries\n           WHERE org_id = $1\n             AND project_id IN (SELECT id FROM projects WHERE client_id = $2)\n             AND billable = true\n             AND invoice_id IS NULL\n             AND state = 'open'\n             AND spent_date >= $3\n             AND spent_date <= $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ee0c296739dabae87ae603e5dba29237719f95591c9f9dc8bd2f6939cdeed845"
+}

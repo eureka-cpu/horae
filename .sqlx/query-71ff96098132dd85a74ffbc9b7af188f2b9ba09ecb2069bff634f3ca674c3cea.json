@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, invoice_id, time_entry_id, description,\n                  minutes, rate_cents, amount_cents\n           FROM invoice_line_items\n           WHERE invoice_id = $1\n           ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "invoice_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "time_entry_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "amount_cents",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "71ff96098132dd85a74ffbc9b7af188f2b9ba09ecb2069bff634f3ca674c3cea"
+}

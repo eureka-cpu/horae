@@ -126,22 +126,24 @@ pub async fn run(pool: &PgPool) -> anyhow::Result<()> {
         .await?;
     }
 
-    // Enable tasks on each project
-    for (proj_id, task_id, billable) in [
-        (PROJ_ACME_ID, TASK_DEV_ID, true),
-        (PROJ_ACME_ID, TASK_DESIGN_ID, true),
-        (PROJ_ACME_ID, TASK_MEETING_ID, false),
-        (PROJ_TECH_ID, TASK_DEV_ID, true),
-        (PROJ_TECH_ID, TASK_REVIEW_ID, true),
-        (PROJ_TECH_ID, TASK_MEETING_ID, false),
+    // Enable tasks on each project (rate_cents overrides the cascade for billing)
+    for (proj_id, task_id, billable, rate_cents) in [
+        (PROJ_ACME_ID, TASK_DEV_ID, true, Some(12000i64)),
+        (PROJ_ACME_ID, TASK_DESIGN_ID, true, Some(10000i64)),
+        (PROJ_ACME_ID, TASK_MEETING_ID, false, None),
+        (PROJ_TECH_ID, TASK_DEV_ID, true, Some(15000i64)),
+        (PROJ_TECH_ID, TASK_REVIEW_ID, true, Some(11000i64)),
+        (PROJ_TECH_ID, TASK_MEETING_ID, false, None),
     ] {
         sqlx::query!(
-            "INSERT INTO project_tasks (project_id, task_id, billable)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (project_id, task_id) DO NOTHING",
+            "INSERT INTO project_tasks (project_id, task_id, billable, rate_cents)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (project_id, task_id) DO UPDATE
+             SET rate_cents = EXCLUDED.rate_cents",
             proj_id,
             task_id,
             billable,
+            rate_cents,
         )
         .execute(pool)
         .await?;

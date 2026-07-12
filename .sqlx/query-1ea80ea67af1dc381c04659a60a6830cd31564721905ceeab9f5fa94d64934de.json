@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE invoices SET status = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "invoice_status",
+            "kind": {
+              "Enum": [
+                "draft",
+                "sent",
+                "paid",
+                "void"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1ea80ea67af1dc381c04659a60a6830cd31564721905ceeab9f5fa94d64934de"
+}

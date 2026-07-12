@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE time_entries\n               SET invoice_id = NULL, state = 'open', updated_at = now()\n               WHERE invoice_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "262a95441718d8b0cc2ef243b53449b9a694ed3c7139438b84b81aead3e59920"
+}

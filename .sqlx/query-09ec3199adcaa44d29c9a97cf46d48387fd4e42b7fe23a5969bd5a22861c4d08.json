@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n             pt.rate_cents as task_rate_cents,\n             a.rate_cents as assignment_rate_cents,\n             u.billable_rate_cents as user_rate_cents\n           FROM project_tasks pt\n           LEFT JOIN assignments a ON a.project_id = pt.project_id AND a.user_id = $3\n           JOIN users u ON u.id = $3\n           WHERE pt.project_id = $1 AND pt.task_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "task_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "assignment_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_rate_cents",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "09ec3199adcaa44d29c9a97cf46d48387fd4e42b7fe23a5969bd5a22861c4d08"
+}

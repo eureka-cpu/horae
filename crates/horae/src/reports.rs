@@ -3,7 +3,7 @@
 // These are plain Axum routes (not `#[server]` functions) because they
 // return binary file data with custom Content-Type headers.
 
-use axum::extract::Query;
+use axum::extract::{Path, Query};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
@@ -157,6 +157,151 @@ pub async fn export_xlsx(
             (
                 axum::http::header::CONTENT_DISPOSITION,
                 "attachment; filename=\"timesheet.xlsx\"",
+            ),
+        ],
+        data,
+    ))
+}
+
+// ── Invoice export ────────────────────────────────────────────────────────────
+
+async fn fetch_invoice_lines(
+    invoice_id: uuid::Uuid,
+) -> Result<(crate::models::Invoice, Vec<crate::models::InvoiceLine>), StatusCode> {
+    use horae_core::types::InvoiceStatus;
+
+    let state = crate::state::global_state().await;
+    let invoice = sqlx::query_as!(
+        crate::models::Invoice,
+        r#"SELECT id, org_id, client_id, number,
+                  status as "status: InvoiceStatus",
+                  issued_on as "issued_on: chrono::NaiveDate",
+                  due_on as "due_on: chrono::NaiveDate",
+                  currency, total_cents, notes,
+                  created_at as "created_at: chrono::DateTime<chrono::Utc>"
+           FROM invoices WHERE id = $1"#,
+        invoice_id,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    let lines = sqlx::query_as!(
+        crate::models::InvoiceLine,
+        r#"SELECT id, invoice_id, time_entry_id, description,
+                  minutes, rate_cents, amount_cents
+           FROM invoice_line_items
+           WHERE invoice_id = $1
+           ORDER BY id"#,
+        invoice_id,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok((invoice, lines))
+}
+
+pub async fn export_invoice_csv(
+    Path(invoice_id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let (invoice, lines) = fetch_invoice_lines(invoice_id).await?;
+
+    let mut wtr = csv::Writer::from_writer(vec![]);
+    wtr.write_record(["Description", "Hours", "Rate", "Amount"])
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    for line in &lines {
+        wtr.write_record(&[
+            line.description.clone(),
+            format!("{:.2}", line.minutes as f64 / 60.0),
+            format!("{:.2}", line.rate_cents as f64 / 100.0),
+            format!("{:.2}", line.amount_cents as f64 / 100.0),
+        ])
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+
+    // Total row
+    wtr.write_record(&[
+        "Total".to_string(),
+        String::new(),
+        String::new(),
+        format!("{:.2}", invoice.total_cents as f64 / 100.0),
+    ])
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let data = wtr
+        .into_inner()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let filename = format!("invoice-{}.csv", invoice.number);
+    Ok((
+        [
+            (axum::http::header::CONTENT_TYPE, "text/csv".to_string()),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{filename}\""),
+            ),
+        ],
+        data,
+    ))
+}
+
+pub async fn export_invoice_xlsx(
+    Path(invoice_id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let (invoice, lines) = fetch_invoice_lines(invoice_id).await?;
+
+    let mut workbook = rust_xlsxwriter::Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    let headers = ["Description", "Hours", "Rate", "Amount"];
+    for (col, h) in headers.iter().enumerate() {
+        worksheet
+            .write_string(0, col as u16, *h)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+
+    for (row, line) in lines.iter().enumerate() {
+        let r = (row + 1) as u32;
+        worksheet
+            .write_string(r, 0, &line.description)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        worksheet
+            .write_number(r, 1, line.minutes as f64 / 60.0)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        worksheet
+            .write_number(r, 2, line.rate_cents as f64 / 100.0)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        worksheet
+            .write_number(r, 3, line.amount_cents as f64 / 100.0)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+
+    // Total row
+    let total_row = (lines.len() + 1) as u32;
+    worksheet
+        .write_string(total_row, 0, "Total")
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    worksheet
+        .write_number(total_row, 3, invoice.total_cents as f64 / 100.0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let data = workbook
+        .save_to_buffer()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let filename = format!("invoice-{}.xlsx", invoice.number);
+    Ok((
+        [
+            (
+                axum::http::header::CONTENT_TYPE,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string(),
+            ),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{filename}\""),
             ),
         ],
         data,

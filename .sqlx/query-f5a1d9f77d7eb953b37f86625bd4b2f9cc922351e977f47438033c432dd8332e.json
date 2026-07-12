@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, org_id, client_id, number,\n                  status as \"status: InvoiceStatus\",\n                  issued_on as \"issued_on: chrono::NaiveDate\",\n                  due_on as \"due_on: chrono::NaiveDate\",\n                  currency, total_cents, notes,\n                  created_at as \"created_at: chrono::DateTime<chrono::Utc>\"\n           FROM invoices\n           WHERE id = $1 AND org_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "client_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "number",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status: InvoiceStatus",
+        "type_info": {
+          "Custom": {
+            "name": "invoice_status",
+            "kind": {
+              "Enum": [
+                "draft",
+                "sent",
+                "paid",
+                "void"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "issued_on: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "due_on: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 7,
+        "name": "currency",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "total_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f5a1d9f77d7eb953b37f86625bd4b2f9cc922351e977f47438033c432dd8332e"
+}

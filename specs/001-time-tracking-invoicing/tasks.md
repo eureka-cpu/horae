@@ -72,21 +72,21 @@ ______________________________________________________________________
 
 **Independent test**: With billable time, generate a draft invoice for a period; line items/total match the entries; mark sent→paid; export matches on-screen.
 
-- [ ] T024 [US3] Add invoices schema in `crates/horae/migrations/` (new migration): `invoices` (+ status `draft|sent|paid|void`, number, issue/due dates, currency, total_cents) and invoice line items referencing time (data-model.md). *(invoices table does not exist yet)*
-- [ ] T025 [P] [US3] `Invoice` (+ line item) model in `crates/horae/src/models/invoice.rs`.
-- [ ] T026 [US3] `generate_invoice(client_id, period)` server function in `crates/horae/src/server_fns.rs`: select billable, un-invoiced entries; build lines and an exact total via `crates/core`; mark entries `invoiced` (FR-012/FR-013/FR-023).
-- [ ] T026a [US3] Implement FR-024 rate resolution (task → assignment override → project → user default) in the invoice-line computation in `crates/core` and `crates/horae/src/server_fns.rs`.
-- [ ] T027 [US3] `list_invoices` (replace the current empty stub) and `get_invoice` in `crates/horae/src/server_fns.rs` (contracts note the stub).
-- [ ] T028 [US3] `update_invoice_status` in `crates/horae/src/server_fns.rs` enforcing the invoice state machine, including `void` returning entries to un-invoiced (data-model.md state machine, FR-014).
-- [ ] T029 [US3] Prevent double-billing and editing invoiced time at the query/mutation layer (`crates/horae/src/server_fns.rs`) (FR-013/FR-015).
-- [ ] T030 [P] [US3] Invoice export handler in `crates/horae/src/reports.rs` (reuse CSV/XLSX; add invoice document) so exported amounts match on-screen (FR-016/SC-007).
+- [x] T024 [US3] Add invoices schema in `crates/horae/migrations/` (new migration): `invoices` (+ status `draft|sent|paid|void`, number, issue/due dates, currency, total_cents) and invoice line items referencing time (data-model.md). *(invoices table does not exist yet)*
+- [x] T025 [P] [US3] `Invoice` (+ line item) model in `crates/horae/src/models/invoice.rs`.
+- [x] T026 [US3] `generate_invoice(client_id, period)` server function in `crates/horae/src/server_fns.rs`: select billable, un-invoiced entries; build lines and an exact total via `crates/core`; mark entries `invoiced` (FR-012/FR-013/FR-023).
+- [x] T026a [US3] Implement FR-024 rate resolution (task → assignment override → project → user default) in the invoice-line computation in `crates/core` and `crates/horae/src/server_fns.rs`.
+- [x] T027 [US3] `list_invoices` (replace the current empty stub) and `get_invoice` in `crates/horae/src/server_fns.rs` (contracts note the stub).
+- [x] T028 [US3] `update_invoice_status` in `crates/horae/src/server_fns.rs` enforcing the invoice state machine, including `void` returning entries to un-invoiced (data-model.md state machine, FR-014).
+- [x] T029 [US3] Prevent double-billing and editing invoiced time at the query/mutation layer (`crates/horae/src/server_fns.rs`) (FR-013/FR-015).
+- [x] T030 [P] [US3] Invoice export handler in `crates/horae/src/reports.rs` (reuse CSV/XLSX; add invoice document) so exported amounts match on-screen (FR-016/SC-007).
 - [ ] T030a [US3] Add the Typst rendering toolchain (Cargo dep or `typst` CLI) and wire nixpkgs fonts into the dev shell / package for reproducible typography (`crates/horae/Cargo.toml`, `nix/`).
 - [ ] T030b [P] [US3] Author the invoice Typst template in `crates/horae/templates/invoice.typ` (branding, line items, totals, provider/bank details).
 - [ ] T030c [US3] Implement deterministic invoice PDF rendering (invoice data + branding → Typst → PDF) in `crates/horae/src/reports.rs` / a render module, reconciling exactly (FR-025/SC-007); see [contracts/invoice-rendering.md](./contracts/invoice-rendering.md).
 - [ ] T030d [P] [US3] Editable-fields review UI before finalize/send (provider identity, bank details, notes) in `crates/horae/src/pages/invoices.rs` (FR-025).
 - [ ] T030e [US3] Store per-organization invoice-branding settings (provider identity, bank details, logo, default template) in `crates/horae/migrations/` + `crates/horae/src/models/organization.rs`.
-- [ ] T031 [P] [US3] Invoice list + detail UI in `crates/horae/src/pages/invoices.rs`.
-- [ ] T032 [US3] Integration tests in `crates/horae/tests/integration.rs`: generated invoice total equals summed entries; entries become invoiced and cannot be re-billed; void restores entries.
+- [x] T031 [P] [US3] Invoice list + detail UI in `crates/horae/src/pages/invoices.rs`.
+- [x] T032 [US3] Integration tests in `crates/horae/tests/integration.rs`: generated invoice total equals summed entries; entries become invoiced and cannot be re-billed; void restores entries.
 
 ______________________________________________________________________
 
