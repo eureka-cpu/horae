@@ -7,8 +7,8 @@ use horae_core::types::{
 #[cfg(feature = "server")]
 use crate::models::InvoiceLine;
 use crate::models::{
-    Approval, Assignment, Client, DetailedReportRow, Invoice, InvoiceWithLines, Project, ReportRow,
-    Task, TimeEntry, User,
+    Approval, Assignment, Client, DetailedReportRow, Invoice, InvoiceWithLines, OrgBranding,
+    Project, ReportRow, Task, TimeEntry, User,
 };
 
 // HTTP status codes for `ServerFnError::ServerError { code, .. }` — named so
@@ -1429,6 +1429,89 @@ pub async fn update_invoice_status(
     .map_err(server_err)?;
 
     Ok(invoice)
+}
+
+// ── Organization branding ─────────────────────────────────────────────────────
+
+#[server]
+pub async fn get_org_branding() -> Result<OrgBranding, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+
+    let branding = sqlx::query_as!(
+        OrgBranding,
+        r#"SELECT provider_name, provider_address, provider_tax_id,
+                  provider_email, provider_phone,
+                  bank_name, bank_iban, bank_bic, bank_routing, bank_account,
+                  invoice_notes, invoice_payment_terms
+           FROM organizations WHERE id = $1"#,
+        manager.org_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    Ok(branding)
+}
+
+#[server]
+#[allow(clippy::too_many_arguments)]
+pub async fn update_org_branding(
+    provider_name: Option<String>,
+    provider_address: Option<String>,
+    provider_tax_id: Option<String>,
+    provider_email: Option<String>,
+    provider_phone: Option<String>,
+    bank_name: Option<String>,
+    bank_iban: Option<String>,
+    bank_bic: Option<String>,
+    bank_routing: Option<String>,
+    bank_account: Option<String>,
+    invoice_notes: Option<String>,
+    invoice_payment_terms: Option<String>,
+) -> Result<OrgBranding, ServerFnError> {
+    let manager = require_manager().await?;
+    let state = crate::state::global_state().await;
+
+    let branding = sqlx::query_as!(
+        OrgBranding,
+        r#"UPDATE organizations SET
+             provider_name = $2,
+             provider_address = $3,
+             provider_tax_id = $4,
+             provider_email = $5,
+             provider_phone = $6,
+             bank_name = $7,
+             bank_iban = $8,
+             bank_bic = $9,
+             bank_routing = $10,
+             bank_account = $11,
+             invoice_notes = $12,
+             invoice_payment_terms = $13
+           WHERE id = $1
+           RETURNING provider_name, provider_address, provider_tax_id,
+                     provider_email, provider_phone,
+                     bank_name, bank_iban, bank_bic, bank_routing, bank_account,
+                     invoice_notes, invoice_payment_terms"#,
+        manager.org_id,
+        provider_name,
+        provider_address,
+        provider_tax_id,
+        provider_email,
+        provider_phone,
+        bank_name,
+        bank_iban,
+        bank_bic,
+        bank_routing,
+        bank_account,
+        invoice_notes,
+        invoice_payment_terms,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    Ok(branding)
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

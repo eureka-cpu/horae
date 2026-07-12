@@ -307,3 +307,61 @@ pub async fn export_invoice_xlsx(
         data,
     ))
 }
+
+pub async fn export_invoice_pdf(
+    Path(invoice_id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let (invoice, lines) = fetch_invoice_lines(invoice_id).await?;
+    let state = crate::state::global_state().await;
+
+    // Fetch client name and address.
+    let client = sqlx::query!(
+        "SELECT name, address, tax_id FROM clients WHERE id = $1",
+        invoice.client_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Fetch org branding.
+    let branding = sqlx::query_as!(
+        crate::models::OrgBranding,
+        r#"SELECT provider_name, provider_address, provider_tax_id,
+                  provider_email, provider_phone,
+                  bank_name, bank_iban, bank_bic, bank_routing, bank_account,
+                  invoice_notes, invoice_payment_terms
+           FROM organizations WHERE id = $1"#,
+        invoice.org_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let pdf_bytes = crate::render::render_invoice_pdf(
+        &invoice,
+        &lines,
+        &client.name,
+        client.address.as_deref(),
+        client.tax_id.as_deref(),
+        &branding,
+    )
+    .map_err(|e| {
+        tracing::error!("PDF rendering failed: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let filename = format!("invoice-{}.pdf", invoice.number);
+    Ok((
+        [
+            (
+                axum::http::header::CONTENT_TYPE,
+                "application/pdf".to_string(),
+            ),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{filename}\""),
+            ),
+        ],
+        pdf_bytes,
+    ))
+}

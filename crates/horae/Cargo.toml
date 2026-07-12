@@ -22,6 +22,10 @@ server = [
   "dep:openidconnect",
   "dep:csv",
   "dep:rust_xlsxwriter",
+  "dep:typst",
+  "dep:typst-as-lib",
+  "dep:typst-pdf",
+  "dep:typst-layout",
 ]
 web = ["dioxus/web", "dep:gloo-timers"]
 
@@ -67,6 +71,13 @@ tracing-subscriber = { version = "0.3", features = [
 openidconnect = { version = "3", optional = true }
 csv = { version = "1", optional = true }
 rust_xlsxwriter = { version = "0.80", optional = true }
+typst = { version = "0.15", optional = true }
+typst-as-lib = { version = "0.16", features = [
+  "typst-kit-fonts",
+  "typst-kit-embed-fonts",
+], optional = true }
+typst-pdf = { version = "0.15", optional = true }
+typst-layout = { version = "0.15", optional = true }
 
 # web-only
 gloo-timers = { version = "0.3", features = ["futures"], optional = true }

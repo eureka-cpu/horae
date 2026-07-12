@@ -6,6 +6,7 @@ pkgs.mkShell {
     sqlx-cli
     postgresql
     nil
+    typst
   ];
   shellHook = ''
     # Use the port forwarded and postgres user created by the VM
