@@ -760,7 +760,7 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
 #[serial]
 async fn new_task_becomes_loggable_on_project(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "manager").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Manager).await;
     let (project_id, _existing_task, _) =
         seed_project_with_assignment(&pool, org_id, user_id).await;
 
@@ -850,7 +850,7 @@ async fn new_task_becomes_loggable_on_project(pool: PgPool) {
 #[serial]
 async fn inactive_project_hidden_from_picker_but_kept_on_history(pool: PgPool) {
     let org_id = seed_org(&pool).await;
-    let user_id = seed_user(&pool, org_id, "member").await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
     // Log a completed entry against the project.

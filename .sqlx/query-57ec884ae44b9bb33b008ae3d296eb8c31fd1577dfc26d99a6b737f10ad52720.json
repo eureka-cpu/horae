@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, org_id, client_id, code, name,\n                project_type as \"project_type: ProjectType\", currency,\n                starts_on as \"starts_on: chrono::NaiveDate\",\n                ends_on as \"ends_on: chrono::NaiveDate\",\n                budget_kind as \"budget_kind: BudgetKind\",\n                budget_amount_cents, budget_minutes, active,\n                created_at as \"created_at: chrono::DateTime<chrono::Utc>\"\n         FROM projects\n         WHERE ($1::bool IS NULL OR active = $1)\n         ORDER BY name ASC",
+  "query": "SELECT id, org_id, client_id, code, name,\n                project_type as \"project_type: ProjectType\", currency,\n                starts_on as \"starts_on: chrono::NaiveDate\",\n                ends_on as \"ends_on: chrono::NaiveDate\",\n                budget_kind as \"budget_kind: BudgetKind\",\n                budget_amount_cents, budget_minutes, active,\n                created_at as \"created_at: chrono::DateTime<chrono::Utc>\"\n         FROM projects\n         WHERE ($1::bool OR active = true)\n         ORDER BY name ASC",
   "describe": {
     "columns": [
       {
@@ -119,5 +119,5 @@
       false
     ]
   },
-  "hash": "671b068617bbd53eb28ecb8e6415fdcffdbca805ceaf6b4c6d55338ba6f2a5a3"
+  "hash": "57ec884ae44b9bb33b008ae3d296eb8c31fd1577dfc26d99a6b737f10ad52720"
 }
