@@ -8,7 +8,7 @@ use crate::server_fns;
 #[component]
 pub fn InvoiceList() -> Element {
     let invoices = use_resource(|| async move { server_fns::list_invoices(None).await });
-    let clients = use_resource(|| async move { server_fns::list_clients().await });
+    let clients = use_resource(|| async move { server_fns::list_clients(false).await });
 
     let client_names: HashMap<Uuid, String> = clients
         .read()

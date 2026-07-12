@@ -702,3 +702,158 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
             .unwrap();
     assert!(!approval_exists);
 }
+
+// ---------------------------------------------------------------------------
+// US2: organizing clients, projects, tasks
+// ---------------------------------------------------------------------------
+
+/// A newly created org task is not loggable on a project until it is linked
+/// (mirrors `link_project_task`); once linked it appears on the project's task
+/// picker and a time entry can be recorded against it.
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn new_task_becomes_loggable_on_project(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, "manager").await;
+    let (project_id, _existing_task, _) =
+        seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // A manager adds a brand-new org-level task.
+    let new_task = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO tasks (id, org_id, name, billable_default) VALUES ($1, $2, 'Review', true)",
+    )
+    .bind(new_task)
+    .bind(org_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Before linking, the task is not offered on the project's picker.
+    let before: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM tasks t \
+         JOIN project_tasks pt ON t.id = pt.task_id \
+         WHERE pt.project_id = $1 AND t.id = $2 AND t.active = true",
+    )
+    .bind(project_id)
+    .bind(new_task)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        before, 0,
+        "unlinked task must not appear on the project picker"
+    );
+
+    // Link it (the project-task link inherits the task's billable default).
+    sqlx::query(
+        "INSERT INTO project_tasks (project_id, task_id, billable, rate_cents) \
+         SELECT p.id, t.id, t.billable_default, t.default_rate_cents \
+         FROM projects p JOIN tasks t ON t.org_id = p.org_id \
+         WHERE p.id = $1 AND t.id = $2 \
+         ON CONFLICT (project_id, task_id) DO NOTHING",
+    )
+    .bind(project_id)
+    .bind(new_task)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Now it shows up on the project's task picker.
+    let after: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM tasks t \
+         JOIN project_tasks pt ON t.id = pt.task_id \
+         WHERE pt.project_id = $1 AND t.id = $2 AND t.active = true",
+    )
+    .bind(project_id)
+    .bind(new_task)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(after, 1, "linked task must be loggable on the project");
+
+    // And a time entry can be recorded against it.
+    let entry_id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
+                 30, true, false, 'open'::entry_state)",
+    )
+    .bind(entry_id)
+    .bind(org_id)
+    .bind(user_id)
+    .bind(project_id)
+    .bind(new_task)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let logged: i64 = sqlx::query_scalar("SELECT count(*) FROM time_entries WHERE id = $1")
+        .bind(entry_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(logged, 1);
+}
+
+/// Deactivating a project removes it from new-entry pickers (which filter
+/// `active = true`) but leaves existing time entries linked to it (FR-011).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn inactive_project_hidden_from_picker_but_kept_on_history(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, "member").await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // Log a completed entry against the project.
+    let entry_id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, \
+                 60, true, false, 'open'::entry_state)",
+    )
+    .bind(entry_id)
+    .bind(org_id)
+    .bind(user_id)
+    .bind(project_id)
+    .bind(task_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Manager deactivates the project (set_project_active(.., false)).
+    sqlx::query("UPDATE projects SET active = false WHERE id = $1 AND org_id = $2")
+        .bind(project_id)
+        .bind(org_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // The active-only picker no longer offers the project.
+    let in_picker: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM projects WHERE id = $1 AND active = true")
+            .bind(project_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        in_picker, 0,
+        "inactive project must be hidden from the picker"
+    );
+
+    // But the existing entry keeps its link and still appears in history.
+    let (hist_project,): (Uuid,) =
+        sqlx::query_as("SELECT project_id FROM time_entries WHERE id = $1")
+            .bind(entry_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        hist_project, project_id,
+        "history must retain the project link"
+    );
+}

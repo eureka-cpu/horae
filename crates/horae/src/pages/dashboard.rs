@@ -18,7 +18,7 @@ pub fn Dashboard() -> Element {
         server_fns::list_time_entries(None, None, Some(week_start.to_string()), None, Some(200))
             .await
     });
-    let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
+    let projects = use_resource(|| async move { server_fns::list_projects(None, false).await });
 
     let project_names: HashMap<Uuid, String> = projects
         .read()

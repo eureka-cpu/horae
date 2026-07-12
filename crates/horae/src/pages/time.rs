@@ -12,7 +12,7 @@ pub fn TimeList() -> Element {
     let mut entries = use_resource(|| async move {
         server_fns::list_time_entries(None, None, None, None, Some(50)).await
     });
-    let projects = use_resource(|| async move { server_fns::list_projects(None, None).await });
+    let projects = use_resource(|| async move { server_fns::list_projects(None, false).await });
     let tasks = use_resource(|| async move { server_fns::list_tasks().await });
 
     // "Log Time" form visibility

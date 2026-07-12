@@ -81,19 +81,18 @@ ______________________________________________________________________
 
 | Function | Inputs | Output | Errors | Required role |
 |---|---|---|---|---|
-| `list_clients` | — | `Vec<Client>` (active only) | `ServerFnError` (`500`) | member |
-| `create_client` | `name: String`, `currency: String`, `address: Option<String>`, `tax_id: Option<String>` | `Client` | `ServerFnError` (`403` non-admin) | admin |
-| `update_client` **(planned)** | `client_id: Uuid`, `name: String`, `currency: String`, `address: Option<String>`, `tax_id: Option<String>` | `Client` | `ServerFnError` (`403`, `404`) | manager |
-| `set_client_active` **(planned)** | `client_id: Uuid`, `active: bool` | `Client` | `ServerFnError` (`403`, `404`) | manager |
+| `list_clients` | `include_inactive: bool` | `Vec<Client>` | `ServerFnError` (`500`) | member |
+| `create_client` | `name: String`, `currency: String`, `address: Option<String>`, `tax_id: Option<String>` | `Client` | `ServerFnError` (`403` non-manager) | manager |
+| `update_client` | `client_id: Uuid`, `name: String`, `currency: String`, `address: Option<String>`, `tax_id: Option<String>` | `Client` | `ServerFnError` (`403`, `404`) | manager |
+| `set_client_active` | `client_id: Uuid`, `active: bool` | `Client` | `ServerFnError` (`403`, `404`) | manager |
 
 Notes:
 
-1. `list_clients` returns only `active = true` rows so inactive clients are not
-   selectable for new work (FR-011).
-1. **(planned)**: The spec (FR-008) grants **managers** client edit/deactivate; the
-   current code exposes only `create_client` and gates it at **admin**. Edit and
-   activate/deactivate are not yet implemented, and the manager-vs-admin role for
-   client mutation should be reconciled during implementation.
+1. `list_clients` returns only `active = true` rows by default so inactive clients
+   are not selectable for new work (FR-011); the management view passes
+   `include_inactive = true` to also list deactivated clients for reactivation.
+1. Per FR-008 client create/edit/deactivate are gated at **manager** (managers or
+   admins).
 
 ______________________________________________________________________
 
@@ -101,19 +100,20 @@ ______________________________________________________________________
 
 | Function | Inputs | Output | Errors | Required role |
 |---|---|---|---|---|
-| `list_projects` | `client_id: Option<Uuid>` (reserved; not yet filtered), `active_only: Option<bool>` (default true) | `Vec<Project>` | `ServerFnError` (`500`) | member |
-| `create_project` | `client_id: Uuid`, `name: String`, `project_type: String`, `currency: String`, `budget_kind: String` | `Project` | `ServerFnError` (`403` non-admin) | admin |
-| `update_project` **(planned)** | `project_id: Uuid`, name/type/currency/budget/rate fields | `Project` | `ServerFnError` (`403`, `404`) | manager |
-| `set_project_active` **(planned)** | `project_id: Uuid`, `active: bool` | `Project` | `ServerFnError` (`403`, `404`) | manager |
+| `list_projects` | `client_id: Option<Uuid>` (reserved; not yet filtered), `include_inactive: bool` | `Vec<Project>` | `ServerFnError` (`500`) | member |
+| `create_project` | `client_id: Uuid`, `name: String`, `project_type: String`, `currency: String`, `budget_kind: String` | `Project` | `ServerFnError` (`403` non-manager) | manager |
+| `update_project` | `project_id: Uuid`, `name: String`, `project_type: String`, `currency: String`, `budget_kind: String` | `Project` | `ServerFnError` (`403`, `404`) | manager |
+| `set_project_active` | `project_id: Uuid`, `active: bool` | `Project` | `ServerFnError` (`403`, `404`) | manager |
 
 Notes:
 
 1. `project_type` and `budget_kind` are Postgres enums bound as text; the billing
    method / budget rate fields of FR-009 map onto these plus `budget_amount_cents`
    / `budget_minutes` on the row.
-1. **(planned)**: FR-009 grants **managers** project management; current code gates
-   `create_project` at **admin** and does not yet expose edit or activate/deactivate.
-   The `client_id` filter argument on `list_projects` is accepted but not yet applied.
+1. Per FR-009 project create/edit/deactivate are gated at **manager**. The
+   management view passes `include_inactive = true` to `list_projects` to include
+   inactive projects for reactivation. The `client_id` filter argument on
+   `list_projects` is accepted but not yet applied.
 
 ______________________________________________________________________
 
@@ -123,18 +123,19 @@ ______________________________________________________________________
 |---|---|---|---|---|
 | `list_tasks` | `project_id: Option<Uuid>` (accepted for back-compat; tasks are org-level) | `Vec<Task>` (active only) | `ServerFnError` (`500`) | member |
 | `list_project_tasks` | `project_id: Uuid` | `Vec<Task>` (linked via `project_tasks`) | `ServerFnError` (`401`, `500`) | member |
-| `create_task` | `name: String`, `billable_default: bool` | `Task` | `ServerFnError` (`403` non-admin) | admin |
-| `update_task` **(planned)** | `task_id: Uuid`, `name: String`, `billable_default: bool`, `default_rate_cents: Option<i64>` | `Task` | `ServerFnError` (`403`, `404`) | manager |
-| `set_task_active` **(planned)** | `task_id: Uuid`, `active: bool` | `Task` | `ServerFnError` (`403`, `404`) | manager |
-| `link_project_task` **(planned)** | `project_id: Uuid`, `task_id: Uuid` | `()` | `ServerFnError` (`403`, `404`) | manager |
+| `create_task` | `name: String`, `billable_default: bool` | `Task` | `ServerFnError` (`403` non-manager) | manager |
+| `update_task` | `task_id: Uuid`, `name: String`, `billable_default: bool`, `default_rate_cents: Option<i64>` | `Task` | `ServerFnError` (`403`, `404`) | manager |
+| `set_task_active` | `task_id: Uuid`, `active: bool` | `Task` | `ServerFnError` (`403`, `404`) | manager |
+| `link_project_task` | `project_id: Uuid`, `task_id: Uuid` | `()` | `ServerFnError` (`403`, `404`) | manager |
 
 Notes:
 
 1. Tasks are **org-level** in the current schema; the per-project relationship is
    the `project_tasks` join table surfaced by `list_project_tasks`.
-1. **(planned)**: FR-010 grants **managers** task management with an optional rate;
-   current code exposes only `create_task` (admin, no rate arg). Per-task rate,
-   edit, deactivate, and project linking are not yet implemented.
+1. Per FR-010 task create/edit/deactivate and project linking are gated at
+   **manager**. `link_project_task` inherits the task's `billable_default` /
+   `default_rate_cents` onto the new `project_tasks` row and is idempotent
+   (`ON CONFLICT DO NOTHING`).
 
 ______________________________________________________________________
 

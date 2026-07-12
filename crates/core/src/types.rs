@@ -38,7 +38,7 @@ pub enum EntryState {
 #[serde(rename_all = "snake_case")]
 pub enum BudgetKind {
     Hours,
-    Money,
+    Amount,
     None,
 }
 
@@ -93,7 +93,7 @@ impl_display!(EntryState,
 
 impl_display!(BudgetKind,
     BudgetKind::Hours => "hours",
-    BudgetKind::Money => "money",
+    BudgetKind::Amount => "amount",
     BudgetKind::None  => "none",
 );
 
@@ -147,7 +147,7 @@ from_str!(EntryState,
 
 from_str!(BudgetKind,
     "hours"  => BudgetKind::Hours,
-    "money"  => BudgetKind::Money,
+    "amount" => BudgetKind::Amount,
     "none"   => BudgetKind::None,
 );
 
@@ -239,7 +239,7 @@ mod sqlx_impls {
 
     pg_enum!(BudgetKind, "budget_kind",
         BudgetKind::Hours => "hours",
-        BudgetKind::Money => "money",
+        BudgetKind::Amount => "amount",
         BudgetKind::None  => "none",
     );
 
@@ -248,4 +248,21 @@ mod sqlx_impls {
         ProjectRole::Freelancer => "freelancer",
         ProjectRole::Admin      => "admin",
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn budget_kind_wire_strings_match_db_enum() {
+        for (kind, s) in [
+            (BudgetKind::None, "none"),
+            (BudgetKind::Amount, "amount"),
+            (BudgetKind::Hours, "hours"),
+        ] {
+            assert_eq!(kind.to_string(), s);
+            assert_eq!(s.parse::<BudgetKind>().unwrap(), kind);
+        }
+    }
 }

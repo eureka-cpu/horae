@@ -32,8 +32,7 @@ pub fn TimerWidget() -> Element {
     let mut timer_resource = use_resource(|| async move { server_fns::get_current_timer().await });
 
     // Fetch projects for the picker
-    let projects =
-        use_resource(|| async move { server_fns::list_projects(None, Some(true)).await });
+    let projects = use_resource(|| async move { server_fns::list_projects(None, false).await });
 
     // Form state for project/task selection
     let mut selected_project = use_signal(String::new);
