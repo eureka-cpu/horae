@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT provider_name, provider_address, provider_tax_id,\n                  provider_email, provider_phone,\n                  bank_name, bank_iban, bank_bic, bank_routing, bank_account,\n                  invoice_notes, invoice_payment_terms\n           FROM organizations WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "provider_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "provider_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "provider_tax_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "provider_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "provider_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "bank_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "bank_iban",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "bank_bic",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "bank_routing",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "bank_account",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "invoice_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "invoice_payment_terms",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "04990ea4cc9fd2437f8b5444d07efa340d364126c6e63beafa6a992d5e85c8bb"
+}

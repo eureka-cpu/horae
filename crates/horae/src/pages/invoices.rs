@@ -292,6 +292,13 @@ pub fn InvoiceDetail(id: Uuid) -> Element {
                                     },
                                     _ => rsx! {},
                                 }
+                                a {
+                                    class: "btn btn-secondary",
+                                    style: "margin-left: 0.5rem;",
+                                    href: "/api/invoices/{inv.id}/export/pdf",
+                                    target: "_blank",
+                                    "Download PDF"
+                                }
                             }
                         }
 

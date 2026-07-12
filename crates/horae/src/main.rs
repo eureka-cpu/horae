@@ -13,6 +13,8 @@ mod db;
 #[cfg(feature = "server")]
 mod harvest;
 #[cfg(feature = "server")]
+mod render;
+#[cfg(feature = "server")]
 mod reports;
 #[cfg(feature = "server")]
 mod seed;
@@ -137,6 +139,10 @@ fn main() -> anyhow::Result<()> {
                     .route(
                         "/api/invoices/{id}/export/xlsx",
                         get(reports::export_invoice_xlsx),
+                    )
+                    .route(
+                        "/api/invoices/{id}/export/pdf",
+                        get(reports::export_invoice_pdf),
                     )
                     .merge(auth::router())
                     .merge(harvest::router())
