@@ -1,7 +1,7 @@
 #![cfg(feature = "server")]
 
 use chrono::NaiveDate;
-use horae_core::types::{EntryState, OrgRole, ProjectRole, RoundDir};
+use horae_core::types::{EntryState, InvoiceStatus, OrgRole, ProjectRole, RoundDir};
 use serial_test::serial;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -901,5 +901,569 @@ async fn inactive_project_hidden_from_picker_but_kept_on_history(pool: PgPool) {
     assert_eq!(
         hist_project, project_id,
         "history must retain the project link"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// US3: invoicing tracked time
+// ---------------------------------------------------------------------------
+
+/// Generate an invoice from billable time entries. The invoice total must
+/// equal the exact sum of line item amounts, and entries must be marked
+/// invoiced with their invoice_id set (FR-012, FR-013, SC-002).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn generate_invoice_totals_match(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Manager).await;
+    let (project_id, task_id, client_id) =
+        seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // Set a task rate so line amounts are deterministic.
+    sqlx::query!(
+        "UPDATE project_tasks SET rate_cents = 12000 WHERE project_id = $1 AND task_id = $2",
+        project_id,
+        task_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert two billable entries: 60 min and 30 min.
+    let entry_a = Uuid::now_v7();
+    let entry_b = Uuid::now_v7();
+    let date = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
+
+    for (eid, mins) in [(entry_a, 60), (entry_b, 30)] {
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, true, false, $8)",
+            eid,
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            date as NaiveDate,
+            mins,
+            EntryState::Open as EntryState,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    // Generate the invoice via the same logic as the server fn:
+    // fetch entries, resolve rates, compute amounts, insert.
+    let period_from = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
+    let period_to = NaiveDate::from_ymd_opt(2026, 7, 31).unwrap();
+
+    #[allow(dead_code)]
+    struct EntryWithRates {
+        entry_id: Uuid,
+        minutes: i32,
+        project_name: String,
+        task_name: String,
+        notes: Option<String>,
+        spent_date: NaiveDate,
+        task_rate_cents: Option<i64>,
+        assignment_rate_cents: Option<i64>,
+        user_rate_cents: Option<i64>,
+    }
+
+    let entries = sqlx::query_as!(
+        EntryWithRates,
+        r#"SELECT
+             te.id as entry_id,
+             te.minutes,
+             p.name as project_name,
+             t.name as task_name,
+             te.notes,
+             te.spent_date as "spent_date: chrono::NaiveDate",
+             pt.rate_cents as task_rate_cents,
+             a.rate_cents as assignment_rate_cents,
+             u.billable_rate_cents as user_rate_cents
+           FROM time_entries te
+           JOIN projects p ON p.id = te.project_id
+           JOIN tasks t ON t.id = te.task_id
+           LEFT JOIN project_tasks pt ON pt.project_id = te.project_id AND pt.task_id = te.task_id
+           LEFT JOIN assignments a ON a.project_id = te.project_id AND a.user_id = te.user_id
+           JOIN users u ON u.id = te.user_id
+           WHERE te.org_id = $1
+             AND p.client_id = $2
+             AND te.billable = true
+             AND te.invoice_id IS NULL
+             AND te.state = 'open'
+             AND te.spent_date >= $3
+             AND te.spent_date <= $4
+           ORDER BY te.spent_date, te.id"#,
+        org_id,
+        client_id,
+        period_from as NaiveDate,
+        period_to as NaiveDate,
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+
+    assert_eq!(entries.len(), 2, "should find both billable entries");
+
+    let invoice_id = Uuid::now_v7();
+    let mut total_cents: i64 = 0;
+
+    // Compute line items first to know the total.
+    struct LineData {
+        id: Uuid,
+        entry_id: Uuid,
+        desc: String,
+        minutes: i32,
+        rate: i64,
+        amount: i64,
+    }
+    let mut line_data = Vec::new();
+
+    for e in &entries {
+        let rate = horae_core::invoice::resolve_rate(
+            e.task_rate_cents,
+            e.assignment_rate_cents,
+            e.user_rate_cents,
+        )
+        .unwrap_or(0);
+        let amount = horae_core::invoice::line_amount_cents(rate, e.minutes);
+        total_cents += amount;
+        line_data.push(LineData {
+            id: Uuid::now_v7(),
+            entry_id: e.entry_id,
+            desc: format!("{} — {} ({})", e.spent_date, e.project_name, e.task_name),
+            minutes: e.minutes,
+            rate,
+            amount,
+        });
+    }
+
+    // $120/hr × 60min = $120.00 (12000), $120/hr × 30min = $60.00 (6000)
+    assert_eq!(total_cents, 18000, "total must be 12000 + 6000");
+
+    // Insert invoice first (line items reference it via FK).
+    sqlx::query!(
+        "INSERT INTO invoices (id, org_id, client_id, number, status, issued_on, due_on, currency, total_cents) \
+         VALUES ($1, $2, $3, 'INV-202607-001', 'draft', '2026-07-11', '2026-08-10', 'EUR', $4)",
+        invoice_id,
+        org_id,
+        client_id,
+        total_cents,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert line items.
+    for ld in &line_data {
+        sqlx::query!(
+            "INSERT INTO invoice_line_items (id, invoice_id, time_entry_id, description, minutes, rate_cents, amount_cents) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            ld.id,
+            invoice_id,
+            ld.entry_id,
+            ld.desc,
+            ld.minutes,
+            ld.rate,
+            ld.amount,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    // Mark entries as invoiced.
+    let entry_ids = vec![entry_a, entry_b];
+    sqlx::query!(
+        "UPDATE time_entries SET invoice_id = $1, state = 'invoiced', updated_at = now() \
+         WHERE id = ANY($2)",
+        invoice_id,
+        &entry_ids,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Verify: total equals sum of line amounts.
+    let line_sum: i64 = sqlx::query_scalar!(
+        r#"SELECT COALESCE(SUM(amount_cents), 0)::bigint as "sum!: i64"
+           FROM invoice_line_items WHERE invoice_id = $1"#,
+        invoice_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        line_sum, total_cents,
+        "line item sum must equal invoice total"
+    );
+
+    // Verify: entries are marked invoiced.
+    for eid in &entry_ids {
+        let state: String = sqlx::query_scalar!(
+            r#"SELECT state::text as "state!: String" FROM time_entries WHERE id = $1"#,
+            eid,
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(state, "invoiced");
+
+        let inv_id: Option<Uuid> =
+            sqlx::query_scalar!("SELECT invoice_id FROM time_entries WHERE id = $1", eid)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(inv_id, Some(invoice_id));
+    }
+}
+
+/// After invoicing, the same entries cannot be billed again — a second
+/// generate for the same period should find nothing (FR-013).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn invoiced_entries_cannot_be_rebilled(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Manager).await;
+    let (project_id, task_id, client_id) =
+        seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    let date = NaiveDate::from_ymd_opt(2026, 7, 5).unwrap();
+    let entry_id = Uuid::now_v7();
+
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state) \
+         VALUES ($1, $2, $3, $4, $5, $6, 60, true, false, $7)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        date as NaiveDate,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Invoice the entry.
+    let invoice_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO invoices (id, org_id, client_id, number, status, issued_on, due_on, currency, total_cents) \
+         VALUES ($1, $2, $3, 'INV-001', 'draft', '2026-07-11', '2026-08-10', 'EUR', 0)",
+        invoice_id,
+        org_id,
+        client_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        "UPDATE time_entries SET invoice_id = $1, state = 'invoiced', updated_at = now() \
+         WHERE id = $2",
+        invoice_id,
+        entry_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Try to find billable un-invoiced entries — should be zero.
+    let period_from = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
+    let period_to = NaiveDate::from_ymd_opt(2026, 7, 31).unwrap();
+
+    let count: i64 = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) as "count!: i64" FROM time_entries
+           WHERE org_id = $1
+             AND project_id IN (SELECT id FROM projects WHERE client_id = $2)
+             AND billable = true
+             AND invoice_id IS NULL
+             AND state = 'open'
+             AND spent_date >= $3
+             AND spent_date <= $4"#,
+        org_id,
+        client_id,
+        period_from as NaiveDate,
+        period_to as NaiveDate,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    assert_eq!(
+        count, 0,
+        "invoiced entries must not be available for re-billing"
+    );
+}
+
+/// Voiding an invoice restores its entries to open / un-invoiced state,
+/// allowing them to be billed again (data-model.md state machine).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn void_invoice_restores_entries(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Manager).await;
+    let (project_id, task_id, client_id) =
+        seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    let date = NaiveDate::from_ymd_opt(2026, 7, 3).unwrap();
+    let entry_id = Uuid::now_v7();
+
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state) \
+         VALUES ($1, $2, $3, $4, $5, $6, 45, true, false, $7)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        date as NaiveDate,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Create and mark invoiced.
+    let invoice_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO invoices (id, org_id, client_id, number, status, issued_on, due_on, currency, total_cents) \
+         VALUES ($1, $2, $3, 'INV-V01', 'draft', '2026-07-11', '2026-08-10', 'EUR', 0)",
+        invoice_id,
+        org_id,
+        client_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        "INSERT INTO invoice_line_items (id, invoice_id, time_entry_id, description, minutes, rate_cents, amount_cents) \
+         VALUES ($1, $2, $3, 'test line', 45, 10000, 7500)",
+        Uuid::now_v7(),
+        invoice_id,
+        entry_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        "UPDATE time_entries SET invoice_id = $1, state = 'invoiced', updated_at = now() \
+         WHERE id = $2",
+        invoice_id,
+        entry_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Void the invoice: restore entries, update status.
+    sqlx::query!(
+        "UPDATE time_entries SET invoice_id = NULL, state = 'open', updated_at = now() \
+         WHERE invoice_id = $1",
+        invoice_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        "UPDATE invoices SET status = $2 WHERE id = $1",
+        invoice_id,
+        InvoiceStatus::Void as InvoiceStatus,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Verify entry is back to open with no invoice_id.
+    let state: String = sqlx::query_scalar!(
+        r#"SELECT state::text as "state!: String" FROM time_entries WHERE id = $1"#,
+        entry_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(state, "open", "voided invoice must restore entry to open");
+
+    let inv_id: Option<Uuid> = sqlx::query_scalar!(
+        "SELECT invoice_id FROM time_entries WHERE id = $1",
+        entry_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(inv_id.is_none(), "entry's invoice_id must be cleared");
+
+    // Verify invoice status is void.
+    let inv_status: String = sqlx::query_scalar!(
+        r#"SELECT status::text as "status!: String" FROM invoices WHERE id = $1"#,
+        invoice_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(inv_status, "void");
+}
+
+/// Rate resolution cascade: task rate takes priority over assignment rate,
+/// which takes priority over user default rate (FR-024).
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn rate_resolution_cascade(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Manager).await;
+    let (project_id, task_id, _client_id) =
+        seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // Set rates at all three levels:
+    // - Task rate: $150/hr (15000 cents)
+    // - Assignment rate: $120/hr (12000 cents)
+    // - User default rate: $100/hr (10000 cents)
+    sqlx::query!(
+        "UPDATE project_tasks SET rate_cents = 15000 WHERE project_id = $1 AND task_id = $2",
+        project_id,
+        task_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        "UPDATE assignments SET rate_cents = 12000 WHERE project_id = $1 AND user_id = $2",
+        project_id,
+        user_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        "UPDATE users SET billable_rate_cents = 10000 WHERE id = $1",
+        user_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Fetch the rates the same way the server fn does.
+    struct RateRow {
+        task_rate_cents: Option<i64>,
+        assignment_rate_cents: Option<i64>,
+        user_rate_cents: Option<i64>,
+    }
+
+    let rates = sqlx::query_as!(
+        RateRow,
+        r#"SELECT
+             pt.rate_cents as task_rate_cents,
+             a.rate_cents as assignment_rate_cents,
+             u.billable_rate_cents as user_rate_cents
+           FROM project_tasks pt
+           LEFT JOIN assignments a ON a.project_id = pt.project_id AND a.user_id = $3
+           JOIN users u ON u.id = $3
+           WHERE pt.project_id = $1 AND pt.task_id = $2"#,
+        project_id,
+        task_id,
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Task rate (15000) should win.
+    let resolved = horae_core::invoice::resolve_rate(
+        rates.task_rate_cents,
+        rates.assignment_rate_cents,
+        rates.user_rate_cents,
+    );
+    assert_eq!(resolved, Some(15000), "task rate should take priority");
+
+    // Remove task rate — assignment should win.
+    sqlx::query!(
+        "UPDATE project_tasks SET rate_cents = NULL WHERE project_id = $1 AND task_id = $2",
+        project_id,
+        task_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let rates = sqlx::query_as!(
+        RateRow,
+        r#"SELECT
+             pt.rate_cents as task_rate_cents,
+             a.rate_cents as assignment_rate_cents,
+             u.billable_rate_cents as user_rate_cents
+           FROM project_tasks pt
+           LEFT JOIN assignments a ON a.project_id = pt.project_id AND a.user_id = $3
+           JOIN users u ON u.id = $3
+           WHERE pt.project_id = $1 AND pt.task_id = $2"#,
+        project_id,
+        task_id,
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let resolved = horae_core::invoice::resolve_rate(
+        rates.task_rate_cents,
+        rates.assignment_rate_cents,
+        rates.user_rate_cents,
+    );
+    assert_eq!(
+        resolved,
+        Some(12000),
+        "assignment rate should win when no task rate"
+    );
+
+    // Remove assignment rate — user default should win.
+    sqlx::query!(
+        "UPDATE assignments SET rate_cents = NULL WHERE project_id = $1 AND user_id = $2",
+        project_id,
+        user_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let rates = sqlx::query_as!(
+        RateRow,
+        r#"SELECT
+             pt.rate_cents as task_rate_cents,
+             a.rate_cents as assignment_rate_cents,
+             u.billable_rate_cents as user_rate_cents
+           FROM project_tasks pt
+           LEFT JOIN assignments a ON a.project_id = pt.project_id AND a.user_id = $3
+           JOIN users u ON u.id = $3
+           WHERE pt.project_id = $1 AND pt.task_id = $2"#,
+        project_id,
+        task_id,
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let resolved = horae_core::invoice::resolve_rate(
+        rates.task_rate_cents,
+        rates.assignment_rate_cents,
+        rates.user_rate_cents,
+    );
+    assert_eq!(
+        resolved,
+        Some(10000),
+        "user default rate should be the fallback"
     );
 }

@@ -130,6 +130,14 @@ fn main() -> anyhow::Result<()> {
                     )
                     .route("/api/reports/export/csv", get(reports::export_csv))
                     .route("/api/reports/export/xlsx", get(reports::export_xlsx))
+                    .route(
+                        "/api/invoices/{id}/export/csv",
+                        get(reports::export_invoice_csv),
+                    )
+                    .route(
+                        "/api/invoices/{id}/export/xlsx",
+                        get(reports::export_invoice_xlsx),
+                    )
                     .merge(auth::router())
                     .merge(harvest::router())
                     .layer(session_layer);

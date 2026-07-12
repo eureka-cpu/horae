@@ -44,6 +44,15 @@ pub enum BudgetKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum InvoiceStatus {
+    Draft,
+    Sent,
+    Paid,
+    Void,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RoundDir {
     Up,
     Down,
@@ -95,6 +104,13 @@ impl_display!(BudgetKind,
     BudgetKind::Hours => "hours",
     BudgetKind::Amount => "amount",
     BudgetKind::None  => "none",
+);
+
+impl_display!(InvoiceStatus,
+    InvoiceStatus::Draft => "draft",
+    InvoiceStatus::Sent  => "sent",
+    InvoiceStatus::Paid  => "paid",
+    InvoiceStatus::Void  => "void",
 );
 
 impl_display!(RoundDir,
@@ -149,6 +165,13 @@ from_str!(BudgetKind,
     "hours"  => BudgetKind::Hours,
     "amount" => BudgetKind::Amount,
     "none"   => BudgetKind::None,
+);
+
+from_str!(InvoiceStatus,
+    "draft" => InvoiceStatus::Draft,
+    "sent"  => InvoiceStatus::Sent,
+    "paid"  => InvoiceStatus::Paid,
+    "void"  => InvoiceStatus::Void,
 );
 
 from_str!(RoundDir,
@@ -241,6 +264,13 @@ mod sqlx_impls {
         BudgetKind::Hours => "hours",
         BudgetKind::Amount => "amount",
         BudgetKind::None  => "none",
+    );
+
+    pg_enum!(InvoiceStatus, "invoice_status",
+        InvoiceStatus::Draft => "draft",
+        InvoiceStatus::Sent  => "sent",
+        InvoiceStatus::Paid  => "paid",
+        InvoiceStatus::Void  => "void",
     );
 
     pg_enum!(ProjectRole, "project_role",
