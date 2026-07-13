@@ -163,6 +163,71 @@ async fn dispatch_time_entry_event(entry: &crate::models::TimeEntry, event_name:
     state.plugins.dispatch(event);
 }
 
+#[cfg(feature = "server")]
+fn time_entry_payload(e: &crate::models::TimeEntry) -> crate::plugin::event::TimeEntryPayload {
+    crate::plugin::event::TimeEntryPayload {
+        id: e.id,
+        user_id: e.user_id,
+        project_id: e.project_id,
+        task_id: e.task_id,
+        spent_date: e.spent_date,
+        minutes: e.minutes,
+        billable: e.billable,
+        is_running: e.is_running,
+        notes: e.notes.clone(),
+        started_at: e.started_at,
+    }
+}
+
+#[cfg(feature = "server")]
+fn invoice_payload(inv: &crate::models::Invoice) -> crate::plugin::event::InvoicePayload {
+    crate::plugin::event::InvoicePayload {
+        id: inv.id,
+        client_id: inv.client_id,
+        invoice_number: inv.number.clone(),
+        status: inv.status.to_string(),
+        issue_date: inv.issued_on,
+        due_date: inv.due_on,
+        currency: inv.currency.clone(),
+        total_cents: inv.total_cents,
+    }
+}
+
+#[cfg(feature = "server")]
+fn submission_payload(
+    a: &crate::models::Approval,
+    total_minutes: i32,
+) -> crate::plugin::event::SubmissionPayload {
+    crate::plugin::event::SubmissionPayload {
+        id: a.id,
+        user_id: a.user_id,
+        week_start: a.period_start,
+        status: a.state.to_string(),
+        total_minutes,
+    }
+}
+
+/// Sum of tracked minutes for a user across a period, for submission events.
+#[cfg(feature = "server")]
+async fn week_total_minutes(
+    db: &sqlx::PgPool,
+    user_id: uuid::Uuid,
+    start: chrono::NaiveDate,
+    end: chrono::NaiveDate,
+) -> Result<i32, ServerFnError> {
+    sqlx::query_scalar!(
+        r#"SELECT COALESCE(SUM(minutes), 0)::int as "total!"
+           FROM time_entries
+           WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3"#,
+        user_id,
+        start as chrono::NaiveDate,
+        end as chrono::NaiveDate,
+    )
+    .fetch_one(db)
+    .await
+    .map_err(server_err)
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 /// Stub login — the real auth flows go through Axum routes at `/auth/login`.
@@ -539,7 +604,19 @@ pub async fn update_time_entry(
         .parse()
         .map_err(|_| server_err("Invalid entry_id"))?;
 
-    sqlx::query_as!(
+    // Read current values first so a no-op update emits no event (FR-012).
+    let before = sqlx::query!(
+        r#"SELECT minutes, notes, billable FROM time_entries
+           WHERE id = $1 AND user_id = $2 AND state = $3"#,
+        entry_id,
+        user_id,
+        EntryState::Open as EntryState,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    let entry = sqlx::query_as!(
         TimeEntry,
         r#"UPDATE time_entries
          SET minutes = $3, notes = $4, billable = $5, updated_at = now()
@@ -565,7 +642,22 @@ pub async fn update_time_entry(
         message: "Entry not found or is locked (not in 'open' state)".into(),
         code: CONFLICT,
         details: None,
-    })
+    })?;
+
+    let changed = before.is_none_or(|b| {
+        b.minutes != minutes || b.notes.as_deref() != notes.as_deref() || b.billable != billable
+    });
+    if changed {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::TimeEntryUpdated {
+                occurred_at: chrono::Utc::now(),
+                org_id: entry.org_id,
+                time_entry: time_entry_payload(&entry),
+            });
+    }
+
+    Ok(entry)
 }
 
 /// Delete a time entry. Only allowed while the entry state is 'open'.
@@ -577,23 +669,40 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
         .parse()
         .map_err(|_| server_err("Invalid entry_id"))?;
 
-    let result = sqlx::query!(
-        "DELETE FROM time_entries WHERE id = $1 AND user_id = $2 AND state = $3",
+    // Delete and capture the row in one statement so the "only open entries"
+    // guard holds atomically (no TOCTOU) and the event carries the removed
+    // entry's details.
+    let entry = sqlx::query_as!(
+        TimeEntry,
+        r#"DELETE FROM time_entries
+           WHERE id = $1 AND user_id = $2 AND state = $3
+           RETURNING id, org_id, user_id, project_id, task_id,
+                     spent_date as "spent_date: chrono::NaiveDate",
+                     minutes, rounded_minutes, notes, billable, is_running,
+                     started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                     state as "state: EntryState", invoice_id,
+                     created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                     updated_at as "updated_at: chrono::DateTime<chrono::Utc>""#,
         entry_id,
         user_id,
         EntryState::Open as EntryState,
     )
-    .execute(&state.db)
+    .fetch_optional(&state.db)
     .await
-    .map_err(server_err)?;
+    .map_err(server_err)?
+    .ok_or_else(|| ServerFnError::ServerError {
+        message: "Entry not found or is locked (not in 'open' state)".into(),
+        code: CONFLICT,
+        details: None,
+    })?;
 
-    if result.rows_affected() == 0 {
-        return Err(ServerFnError::ServerError {
-            message: "Entry not found or is locked (not in 'open' state)".into(),
-            code: CONFLICT,
-            details: None,
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::TimeEntryDeleted {
+            occurred_at: chrono::Utc::now(),
+            org_id: entry.org_id,
+            time_entry: time_entry_payload(&entry),
         });
-    }
 
     Ok(())
 }
@@ -1519,6 +1628,24 @@ pub async fn update_invoice_status(
             });
     }
 
+    if target == InvoiceStatus::Paid {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::InvoicePaid {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                invoice: invoice_payload(&invoice),
+            });
+    } else if target == InvoiceStatus::Void {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::InvoiceVoided {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                invoice: invoice_payload(&invoice),
+            });
+    }
+
     Ok(invoice)
 }
 
@@ -1839,6 +1966,15 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     .await
     .map_err(server_err)?;
 
+    let total_minutes = week_total_minutes(&state.db, user_id, ws, we).await?;
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::TimesheetSubmitted {
+            occurred_at: chrono::Utc::now(),
+            org_id,
+            submission: submission_payload(&approval, total_minutes),
+        });
+
     Ok(approval)
 }
 
@@ -1944,6 +2080,21 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     .await
     .map_err(server_err)?;
 
+    let total_minutes = week_total_minutes(
+        &state.db,
+        approval.user_id,
+        approval.period_start,
+        approval.period_end,
+    )
+    .await?;
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::SubmissionApproved {
+            occurred_at: chrono::Utc::now(),
+            org_id: approval.org_id,
+            submission: submission_payload(&approval, total_minutes),
+        });
+
     Ok(approval)
 }
 
@@ -2011,6 +2162,21 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
         .execute(&state.db)
         .await
         .map_err(server_err)?;
+
+    let total_minutes = week_total_minutes(
+        &state.db,
+        approval.user_id,
+        approval.period_start,
+        approval.period_end,
+    )
+    .await?;
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::SubmissionRejected {
+            occurred_at: chrono::Utc::now(),
+            org_id: approval.org_id,
+            submission: submission_payload(&approval, total_minutes),
+        });
 
     Ok(())
 }
