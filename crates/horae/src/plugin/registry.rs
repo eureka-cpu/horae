@@ -103,6 +103,7 @@ impl PluginRegistry {
 
         let idx = self.plugins.len();
         let name = manifest.name.clone();
+        let version = manifest.version.clone();
         let hooks = manifest.hooks.clone();
 
         self.plugins.push(Arc::new(LoadedPlugin {
@@ -114,7 +115,12 @@ impl PluginRegistry {
             self.hook_index.entry(hook.clone()).or_default().push(idx);
         }
 
-        tracing::info!("loaded plugin '{}' for hooks: {}", name, hooks.join(", "));
+        tracing::info!(
+            "loaded plugin '{}' v{} for hooks: {}",
+            name,
+            version,
+            hooks.join(", ")
+        );
         Ok(())
     }
 
@@ -193,6 +199,7 @@ impl PluginRegistry {
         widgets
     }
 
+    #[cfg(test)]
     pub fn plugin_count(&self) -> usize {
         self.plugins.len()
     }
