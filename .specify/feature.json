@@ -1,1 +1,3 @@
-{"feature_directory":"specs/001-time-tracking-invoicing"}
+{
+  "feature_directory": "specs/002-additional-plugin-events"
+}
