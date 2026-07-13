@@ -76,7 +76,7 @@ ______________________________________________________________________
 - [ ] T016 [US2] Add the US2 `AppEvent` variants + `hook_name()` arms and `ClientPayload`/`ProjectPayload`/`TaskPayload`/`AssignmentPayload`/`OrgBrandingPayload` (and `previous_role`) in `crates/horae/src/plugin/event.rs`.
 - [ ] T017 [US2] Dispatch client events in `create_client`/`update_client`/`set_client_active` in `crates/horae/src/server_fns.rs` (no-op + flip suppression).
 - [ ] T018 [US2] Dispatch project events in `create_project`/`update_project`/`set_project_active` in `crates/horae/src/server_fns.rs`.
-- [ ] T019 [US2] Dispatch task events in `create_task`/`update_task` (and `set_task_active` if a task-active event is added) in `crates/horae/src/server_fns.rs`.
+- [ ] T019 [US2] Dispatch task events in `create_task`/`update_task`/`set_task_active` in `crates/horae/src/server_fns.rs` (`task_deactivated`/`task_reactivated` only on active flip).
 - [ ] T020 [US2] Dispatch `user_created` in `create_user`, `user_role_changed` (reading the prior role before the update) in `set_user_role`, and `user_deactivated` in `set_user_active` in `crates/horae/src/server_fns.rs`.
 - [ ] T021 [US2] Dispatch `user_logged_out` in the logout path in `crates/horae/src/auth/` (mirroring where `user_logged_in` is dispatched).
 - [ ] T022 [US2] Dispatch `user_assigned_to_project`/`assignment_removed` in `create_assignment`/`delete_assignment` in `crates/horae/src/server_fns.rs`.

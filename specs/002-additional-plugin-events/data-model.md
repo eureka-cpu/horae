@@ -24,6 +24,7 @@ one payload. Hook name = the serde tag.
 | `project_created` / `project_updated` | `ProjectPayload` | |
 | `project_deactivated` / `project_reactivated` | `ProjectPayload` | only on active flip |
 | `task_created` / `task_updated` | `TaskPayload` | |
+| `task_deactivated` / `task_reactivated` | `TaskPayload` | only on active flip |
 | `user_created` | `UserPayload` (existing) | reused |
 | `user_role_changed` | `UserPayload` + `previous_role: String` | carries prior role |
 | `user_deactivated` | `UserPayload` | only on active flip to inactive |

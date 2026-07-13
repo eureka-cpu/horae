@@ -36,6 +36,7 @@ Each fires immediately after the named server mutation commits. No event fires o
 | `project_created` / `project_updated` | `create_project` / `update_project` | `project` |
 | `project_deactivated` / `project_reactivated` | `set_project_active` (on flip) | `project` |
 | `task_created` / `task_updated` | `create_task` / `update_task` | `task` |
+| `task_deactivated` / `task_reactivated` | `set_task_active` (on flip) | `task` |
 | `user_created` | `create_user` | `user` |
 | `user_role_changed` | `set_user_role` | `user` + `previous_role` |
 | `user_deactivated` | `set_user_active` → inactive | `user` |
