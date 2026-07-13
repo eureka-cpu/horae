@@ -13,6 +13,8 @@ mod db;
 #[cfg(feature = "server")]
 mod harvest;
 #[cfg(feature = "server")]
+mod plugin;
+#[cfg(feature = "server")]
 mod render;
 #[cfg(feature = "server")]
 mod reports;
@@ -157,7 +159,11 @@ fn main() -> anyhow::Result<()> {
                 // Initialise DB + migrations eagerly so auth and server fns share the pool.
                 let pool = db::create_pool(&cfg.database_url).await?;
                 db::run_migrations(&pool).await?;
-                state::init_state(pool.clone()).await;
+
+                // Load plugins from the configured directory (FR-018).
+                let plugins_dir = std::path::Path::new(&cfg.plugins_dir);
+                let registry = std::sync::Arc::new(plugin::PluginRegistry::load(plugins_dir));
+                state::init_state(pool.clone(), registry).await;
 
                 // Session middleware (Postgres-backed, idempotent migrate).
                 let session_layer = auth::make_session_layer(pool.clone()).await?;

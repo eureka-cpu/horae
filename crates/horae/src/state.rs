@@ -1,26 +1,31 @@
+use std::sync::Arc;
+
 use sqlx::PgPool;
 use tokio::sync::OnceCell;
+
+use crate::plugin::PluginRegistry;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
+    pub plugins: Arc<PluginRegistry>,
 }
 
 impl AppState {
-    pub fn new(db: PgPool) -> Self {
-        Self { db }
+    pub fn new(db: PgPool, plugins: Arc<PluginRegistry>) -> Self {
+        Self { db, plugins }
     }
 }
 
 // Async-aware singleton: initialised exactly once, inside dioxus's tokio runtime.
 static GLOBAL_STATE: OnceCell<AppState> = OnceCell::const_new();
 
-/// Pre-initialise the global state with an already-created pool.
+/// Pre-initialise the global state with an already-created pool and plugin registry.
 /// Call this in `main` before starting the Axum server so that session and
 /// auth handlers share the same pool as server functions.
-pub async fn init_state(pool: sqlx::PgPool) {
+pub async fn init_state(pool: sqlx::PgPool, plugins: Arc<PluginRegistry>) {
     GLOBAL_STATE
-        .get_or_init(|| async { AppState::new(pool) })
+        .get_or_init(|| async { AppState::new(pool, plugins) })
         .await;
 }
 
@@ -53,7 +58,7 @@ pub async fn global_state() -> &'static AppState {
                 std::process::exit(1);
             }
 
-            AppState::new(pool)
+            AppState::new(pool, Arc::new(PluginRegistry::empty()))
         })
         .await
 }

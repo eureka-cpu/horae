@@ -120,6 +120,49 @@ async fn require_manager() -> Result<crate::models::User, ServerFnError> {
     Ok(user)
 }
 
+// ── Plugin event dispatch helpers ────────────────────────────────────────────
+// Fire-and-forget: spawn dispatch so the core action is never blocked (FR-021).
+
+#[cfg(feature = "server")]
+async fn dispatch_time_entry_event(entry: &crate::models::TimeEntry, event_name: &str) {
+    let state = crate::state::global_state().await;
+    let event = match event_name {
+        "time_entry_created" => crate::plugin::AppEvent::TimeEntryCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: entry.org_id,
+            time_entry: crate::plugin::event::TimeEntryPayload {
+                id: entry.id,
+                user_id: entry.user_id,
+                project_id: entry.project_id,
+                task_id: entry.task_id,
+                spent_date: entry.spent_date,
+                minutes: entry.minutes,
+                billable: entry.billable,
+                is_running: entry.is_running,
+                notes: entry.notes.clone(),
+                started_at: entry.started_at,
+            },
+        },
+        _ => crate::plugin::AppEvent::TimeEntryStopped {
+            occurred_at: chrono::Utc::now(),
+            org_id: entry.org_id,
+            time_entry: crate::plugin::event::TimeEntryPayload {
+                id: entry.id,
+                user_id: entry.user_id,
+                project_id: entry.project_id,
+                task_id: entry.task_id,
+                spent_date: entry.spent_date,
+                minutes: entry.minutes,
+                billable: entry.billable,
+                is_running: entry.is_running,
+                notes: entry.notes.clone(),
+                started_at: entry.started_at,
+            },
+        },
+    };
+    state.plugins.dispatch(event);
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 /// Stub login — the real auth flows go through Axum routes at `/auth/login`.
@@ -283,7 +326,7 @@ pub async fn start_timer(
     let id = uuid::Uuid::now_v7();
     let today = chrono::Utc::now().date_naive();
 
-    sqlx::query_as!(
+    let entry = sqlx::query_as!(
         TimeEntry,
         r#"INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, started_at, state)
          VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), $8)
@@ -305,7 +348,10 @@ pub async fn start_timer(
     )
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)
+    .map_err(server_err)?;
+
+    dispatch_time_entry_event(&entry, "time_entry_created").await;
+    Ok(entry)
 }
 
 /// Stop a running timer and record elapsed minutes.
@@ -339,7 +385,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
 
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
-    sqlx::query_as!(
+    let entry = sqlx::query_as!(
         TimeEntry,
         r#"UPDATE time_entries
          SET is_running = false,
@@ -365,7 +411,10 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
         message: "No running timer found for this entry".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    dispatch_time_entry_event(&entry, "time_entry_stopped").await;
+    Ok(entry)
 }
 
 /// Return the currently running timer for the authenticated user, if any.
@@ -446,7 +495,7 @@ pub async fn create_time_entry(
 
     let id = uuid::Uuid::now_v7();
 
-    sqlx::query_as!(
+    let entry = sqlx::query_as!(
         TimeEntry,
         r#"INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10)
@@ -470,7 +519,10 @@ pub async fn create_time_entry(
     )
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)
+    .map_err(server_err)?;
+
+    dispatch_time_entry_event(&entry, "time_entry_created").await;
+    Ok(entry)
 }
 
 /// Update a time entry. Only allowed while the entry state is 'open'.
@@ -1336,7 +1388,7 @@ pub async fn generate_invoice(
         id: invoice_id,
         org_id: manager.org_id,
         client_id,
-        number: invoice_number,
+        number: invoice_number.clone(),
         status: InvoiceStatus::Draft,
         issued_on,
         due_on,
@@ -1345,6 +1397,25 @@ pub async fn generate_invoice(
         notes: None,
         created_at: now,
     };
+
+    // Dispatch invoice_created event (FR-019).
+    let state = crate::state::global_state().await;
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::InvoiceCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            invoice: crate::plugin::event::InvoicePayload {
+                id: invoice_id,
+                client_id,
+                invoice_number,
+                status: "draft".into(),
+                issue_date: issued_on,
+                due_date: due_on,
+                currency: invoice.currency.clone(),
+                total_cents,
+            },
+        });
 
     Ok(InvoiceWithLines { invoice, lines })
 }
@@ -1427,6 +1498,26 @@ pub async fn update_invoice_status(
     .fetch_one(&state.db)
     .await
     .map_err(server_err)?;
+
+    // Dispatch invoice_sent event when transitioning to Sent (FR-019).
+    if target == InvoiceStatus::Sent {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::InvoiceSent {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                invoice: crate::plugin::event::InvoicePayload {
+                    id: invoice.id,
+                    client_id: invoice.client_id,
+                    invoice_number: invoice.number.clone(),
+                    status: "sent".into(),
+                    issue_date: invoice.issued_on,
+                    due_date: invoice.due_on,
+                    currency: invoice.currency.clone(),
+                    total_cents: invoice.total_cents,
+                },
+            });
+    }
 
     Ok(invoice)
 }
@@ -2028,4 +2119,29 @@ pub async fn report_detailed(
     .map_err(server_err)?;
 
     Ok(entries)
+}
+
+// ── Plugins ────────────────────────────────────────────────────────────────
+
+/// Collect dashboard widgets from all loaded plugins (FR-022).
+#[server]
+pub async fn get_plugin_widgets() -> Result<Vec<PluginWidget>, ServerFnError> {
+    let state = crate::state::global_state().await;
+    let widgets = state.plugins.collect_widgets().await;
+    Ok(widgets
+        .into_iter()
+        .map(|w| PluginWidget {
+            plugin_name: w.plugin_name,
+            title: w.title,
+            body: w.body,
+        })
+        .collect())
+}
+
+/// A dashboard widget contributed by a plugin, serializable for the SPA.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PluginWidget {
+    pub plugin_name: String,
+    pub title: String,
+    pub body: String,
 }

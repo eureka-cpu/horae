@@ -93,6 +93,8 @@ pub fn Dashboard() -> Element {
 
             TimerWidget {}
 
+            PluginWidgets {}
+
             div { class: "card mt-4",
                 h2 { class: "card-title", "Recent Time Entries" }
                 if recent_entries.is_empty() {
@@ -135,5 +137,25 @@ pub fn Dashboard() -> Element {
                 }
             }
         }
+    }
+}
+
+/// Renders dashboard widgets contributed by loaded plugins (FR-022).
+#[component]
+fn PluginWidgets() -> Element {
+    let widgets = use_resource(|| async move { server_fns::get_plugin_widgets().await });
+
+    match &*widgets.read() {
+        Some(Ok(ws)) if !ws.is_empty() => rsx! {
+            div { class: "grid-stats", style: "margin-top: 1rem;",
+                for w in ws.iter() {
+                    div { class: "stat-card", key: "{w.plugin_name}",
+                        div { class: "stat-label", "{w.title}" }
+                        div { class: "text-sm", style: "white-space: pre-wrap;", "{w.body}" }
+                    }
+                }
+            }
+        },
+        _ => rsx! {},
     }
 }

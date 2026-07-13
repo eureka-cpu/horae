@@ -26,6 +26,8 @@ server = [
   "dep:typst-as-lib",
   "dep:typst-pdf",
   "dep:typst-layout",
+  "dep:extism",
+  "dep:toml",
 ]
 web = ["dioxus/web", "dep:gloo-timers"]
 
@@ -78,9 +80,12 @@ typst-as-lib = { version = "0.16", features = [
 ], optional = true }
 typst-pdf = { version = "0.15", optional = true }
 typst-layout = { version = "0.15", optional = true }
+extism = { version = "1", optional = true }
+toml = { version = "0.8", optional = true }
 
 # web-only
 gloo-timers = { version = "0.3", features = ["futures"], optional = true }
 
 [dev-dependencies]
 serial_test = "3"
+tempfile = "3"

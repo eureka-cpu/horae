@@ -1,5 +1,6 @@
 [workspace]
 members = ["crates/horae", "crates/core"]
+exclude = ["crates/test-plugins/echo-plugin", "crates/test-plugins/fail-plugin"]
 resolver = "2"
 
 [profile.release]

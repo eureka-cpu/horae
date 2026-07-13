@@ -10,6 +10,8 @@ pub struct AppConfig {
     pub dev_login: bool,
     /// Secret for signing session cookies (set `SESSION_SECRET` in prod).
     pub session_secret: String,
+    /// Directory containing plugin subdirectories (each with plugin.toml + *.wasm).
+    pub plugins_dir: String,
 }
 
 impl AppConfig {
@@ -28,6 +30,7 @@ impl AppConfig {
                 .unwrap_or(false),
             session_secret: std::env::var("SESSION_SECRET")
                 .unwrap_or_else(|_| "dev-secret-change-me-in-production".into()),
+            plugins_dir: std::env::var("HORAE_PLUGINS_DIR").unwrap_or_else(|_| "plugins".into()),
         })
     }
 }

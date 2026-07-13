@@ -78,7 +78,9 @@ pub async fn dev_login_post(
     let state = crate::state::global_state().await;
 
     let row = sqlx::query!(
-        "SELECT id FROM users WHERE org_role = $1 AND active = true LIMIT 1",
+        r#"SELECT id, org_id, email, name,
+                  org_role::text as "org_role!: String"
+           FROM users WHERE org_role = $1 AND active = true LIMIT 1"#,
         horae_core::types::OrgRole::Admin as horae_core::types::OrgRole,
     )
     .fetch_optional(&state.db)
@@ -89,11 +91,25 @@ pub async fn dev_login_post(
         StatusCode::INTERNAL_SERVER_ERROR,
         "No admin user found — run `horae seed` first.",
     ))?;
-    let id = row.id;
 
-    set_session_user_id(&session, id)
+    set_session_user_id(&session, row.id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to write session"))?;
+
+    // Dispatch user_logged_in event (FR-019).
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::UserLoggedIn {
+            occurred_at: chrono::Utc::now(),
+            org_id: row.org_id,
+            user: crate::plugin::event::UserPayload {
+                id: row.id,
+                email: row.email,
+                name: row.name,
+                org_role: row.org_role,
+                method: "dev".into(),
+            },
+        });
 
     Ok(Redirect::to("/"))
 }
