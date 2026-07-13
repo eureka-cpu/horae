@@ -1,0 +1,4 @@
+[plugin]
+name = "fail-plugin"
+version = "0.1.0"
+hooks = ["time_entry_created"]
