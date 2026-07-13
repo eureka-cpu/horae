@@ -1400,20 +1400,22 @@ pub async fn generate_invoice(
 
     // Dispatch invoice_created event (FR-019).
     let state = crate::state::global_state().await;
-    state.plugins.dispatch(crate::plugin::AppEvent::InvoiceCreated {
-        occurred_at: chrono::Utc::now(),
-        org_id: manager.org_id,
-        invoice: crate::plugin::event::InvoicePayload {
-            id: invoice_id,
-            client_id,
-            invoice_number,
-            status: "draft".into(),
-            issue_date: issued_on,
-            due_date: due_on,
-            currency: invoice.currency.clone(),
-            total_cents,
-        },
-    });
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::InvoiceCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            invoice: crate::plugin::event::InvoicePayload {
+                id: invoice_id,
+                client_id,
+                invoice_number,
+                status: "draft".into(),
+                issue_date: issued_on,
+                due_date: due_on,
+                currency: invoice.currency.clone(),
+                total_cents,
+            },
+        });
 
     Ok(InvoiceWithLines { invoice, lines })
 }
@@ -1499,20 +1501,22 @@ pub async fn update_invoice_status(
 
     // Dispatch invoice_sent event when transitioning to Sent (FR-019).
     if target == InvoiceStatus::Sent {
-        state.plugins.dispatch(crate::plugin::AppEvent::InvoiceSent {
-            occurred_at: chrono::Utc::now(),
-            org_id: manager.org_id,
-            invoice: crate::plugin::event::InvoicePayload {
-                id: invoice.id,
-                client_id: invoice.client_id,
-                invoice_number: invoice.number.clone(),
-                status: "sent".into(),
-                issue_date: invoice.issued_on,
-                due_date: invoice.due_on,
-                currency: invoice.currency.clone(),
-                total_cents: invoice.total_cents,
-            },
-        });
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::InvoiceSent {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                invoice: crate::plugin::event::InvoicePayload {
+                    id: invoice.id,
+                    client_id: invoice.client_id,
+                    invoice_number: invoice.number.clone(),
+                    status: "sent".into(),
+                    issue_date: invoice.issued_on,
+                    due_date: invoice.due_on,
+                    currency: invoice.currency.clone(),
+                    total_cents: invoice.total_cents,
+                },
+            });
     }
 
     Ok(invoice)

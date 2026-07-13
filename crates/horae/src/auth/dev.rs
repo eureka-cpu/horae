@@ -97,17 +97,19 @@ pub async fn dev_login_post(
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to write session"))?;
 
     // Dispatch user_logged_in event (FR-019).
-    state.plugins.dispatch(crate::plugin::AppEvent::UserLoggedIn {
-        occurred_at: chrono::Utc::now(),
-        org_id: row.org_id,
-        user: crate::plugin::event::UserPayload {
-            id: row.id,
-            email: row.email,
-            name: row.name,
-            org_role: row.org_role,
-            method: "dev".into(),
-        },
-    });
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::UserLoggedIn {
+            occurred_at: chrono::Utc::now(),
+            org_id: row.org_id,
+            user: crate::plugin::event::UserPayload {
+                id: row.id,
+                email: row.email,
+                name: row.name,
+                org_role: row.org_role,
+                method: "dev".into(),
+            },
+        });
 
     Ok(Redirect::to("/"))
 }

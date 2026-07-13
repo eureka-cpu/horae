@@ -13,13 +13,13 @@ mod db;
 #[cfg(feature = "server")]
 mod harvest;
 #[cfg(feature = "server")]
+mod plugin;
+#[cfg(feature = "server")]
 mod render;
 #[cfg(feature = "server")]
 mod reports;
 #[cfg(feature = "server")]
 mod seed;
-#[cfg(feature = "server")]
-mod plugin;
 #[cfg(feature = "server")]
 mod state;
 
@@ -162,9 +162,7 @@ fn main() -> anyhow::Result<()> {
 
                 // Load plugins from the configured directory (FR-018).
                 let plugins_dir = std::path::Path::new(&cfg.plugins_dir);
-                let registry = std::sync::Arc::new(
-                    plugin::PluginRegistry::load(plugins_dir),
-                );
+                let registry = std::sync::Arc::new(plugin::PluginRegistry::load(plugins_dir));
                 state::init_state(pool.clone(), registry).await;
 
                 // Session middleware (Postgres-backed, idempotent migrate).

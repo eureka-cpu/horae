@@ -38,7 +38,10 @@ impl PluginRegistry {
         let mut registry = Self::empty();
 
         if !plugins_dir.exists() {
-            tracing::info!("plugins directory does not exist: {}", plugins_dir.display());
+            tracing::info!(
+                "plugins directory does not exist: {}",
+                plugins_dir.display()
+            );
             return registry;
         }
 
@@ -57,10 +60,7 @@ impl PluginRegistry {
             }
 
             if let Err(e) = registry.load_plugin(&path) {
-                tracing::warn!(
-                    "skipping plugin at {}: {e}",
-                    path.display()
-                );
+                tracing::warn!("skipping plugin at {}: {e}", path.display());
             }
         }
 
@@ -82,8 +82,8 @@ impl PluginRegistry {
 
         // Build extism manifest for this plugin
         let wasm = extism::Wasm::file(&wasm_path);
-        let extism_manifest = extism::Manifest::new([wasm])
-            .with_timeout(std::time::Duration::from_secs(5));
+        let extism_manifest =
+            extism::Manifest::new([wasm]).with_timeout(std::time::Duration::from_secs(5));
 
         let host_functions = super::host::host_functions();
 
@@ -111,10 +111,7 @@ impl PluginRegistry {
         }));
 
         for hook in &hooks {
-            self.hook_index
-                .entry(hook.clone())
-                .or_default()
-                .push(idx);
+            self.hook_index.entry(hook.clone()).or_default().push(idx);
         }
 
         tracing::info!("loaded plugin '{}' for hooks: {}", name, hooks.join(", "));
@@ -139,37 +136,22 @@ impl PluginRegistry {
 
             tokio::spawn(async move {
                 let name = plugin.manifest.name.clone();
-                let result = tokio::time::timeout(
-                    std::time::Duration::from_secs(5),
-                    async {
-                        let mut p = plugin.plugin.lock().await;
-                        // Use () output — we don't need the plugin's return value for events.
-                        p.call::<_, ()>(&hook_name, payload.as_bytes())
-                    },
-                )
+                let result = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                    let mut p = plugin.plugin.lock().await;
+                    // Use () output — we don't need the plugin's return value for events.
+                    p.call::<_, ()>(&hook_name, payload.as_bytes())
+                })
                 .await;
 
                 match result {
                     Ok(Ok(())) => {
-                        tracing::debug!(
-                            "plugin '{}' handled '{}' successfully",
-                            name,
-                            hook_name
-                        );
+                        tracing::debug!("plugin '{}' handled '{}' successfully", name, hook_name);
                     }
                     Ok(Err(e)) => {
-                        tracing::warn!(
-                            "plugin '{}' failed on '{}': {e}",
-                            name,
-                            hook_name
-                        );
+                        tracing::warn!("plugin '{}' failed on '{}': {e}", name, hook_name);
                     }
                     Err(_) => {
-                        tracing::warn!(
-                            "plugin '{}' timed out on '{}'",
-                            name,
-                            hook_name
-                        );
+                        tracing::warn!("plugin '{}' timed out on '{}'", name, hook_name);
                     }
                 }
             });

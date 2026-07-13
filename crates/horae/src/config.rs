@@ -30,8 +30,7 @@ impl AppConfig {
                 .unwrap_or(false),
             session_secret: std::env::var("SESSION_SECRET")
                 .unwrap_or_else(|_| "dev-secret-change-me-in-production".into()),
-            plugins_dir: std::env::var("HORAE_PLUGINS_DIR")
-                .unwrap_or_else(|_| "plugins".into()),
+            plugins_dir: std::env::var("HORAE_PLUGINS_DIR").unwrap_or_else(|_| "plugins".into()),
         })
     }
 }
