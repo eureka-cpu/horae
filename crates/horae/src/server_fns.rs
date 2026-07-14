@@ -228,6 +228,60 @@ async fn week_total_minutes(
     .map_err(server_err)
 }
 
+#[cfg(feature = "server")]
+fn client_payload(c: &crate::models::Client) -> crate::plugin::event::ClientPayload {
+    crate::plugin::event::ClientPayload {
+        id: c.id,
+        name: c.name.clone(),
+        currency: c.currency.clone(),
+        active: c.active,
+    }
+}
+
+#[cfg(feature = "server")]
+fn project_payload(p: &crate::models::Project) -> crate::plugin::event::ProjectPayload {
+    crate::plugin::event::ProjectPayload {
+        id: p.id,
+        client_id: p.client_id,
+        name: p.name.clone(),
+        project_type: p.project_type.to_string(),
+        budget_kind: p.budget_kind.to_string(),
+        active: p.active,
+    }
+}
+
+#[cfg(feature = "server")]
+fn task_payload(t: &crate::models::Task) -> crate::plugin::event::TaskPayload {
+    crate::plugin::event::TaskPayload {
+        id: t.id,
+        name: t.name.clone(),
+        billable_default: t.billable_default,
+        default_rate_cents: t.default_rate_cents,
+        active: t.active,
+    }
+}
+
+#[cfg(feature = "server")]
+fn assignment_payload(a: &crate::models::Assignment) -> crate::plugin::event::AssignmentPayload {
+    crate::plugin::event::AssignmentPayload {
+        id: a.id,
+        project_id: a.project_id,
+        user_id: a.user_id,
+        role: a.role.to_string(),
+    }
+}
+
+#[cfg(feature = "server")]
+fn user_payload(u: &crate::models::User) -> crate::plugin::event::UserPayload {
+    crate::plugin::event::UserPayload {
+        id: u.id,
+        email: u.email.clone(),
+        name: u.name.clone(),
+        org_role: u.org_role.to_string(),
+        method: None,
+    }
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 /// Stub login — the real auth flows go through Axum routes at `/auth/login`.
@@ -742,7 +796,7 @@ pub async fn create_client(
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
-    sqlx::query_as!(
+    let client = sqlx::query_as!(
         Client,
         r#"INSERT INTO clients (id, org_id, name, currency, address, tax_id)
          VALUES ($1, $2, $3, $4, $5, $6)
@@ -757,7 +811,16 @@ pub async fn create_client(
     )
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)
+    .map_err(server_err)?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::ClientCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            client: client_payload(&client),
+        });
+    Ok(client)
 }
 
 #[server]
@@ -773,7 +836,7 @@ pub async fn update_client(
     let client_id: uuid::Uuid = client_id
         .parse()
         .map_err(|_| server_err("Invalid client_id"))?;
-    sqlx::query_as::<_, Client>(
+    let client = sqlx::query_as::<_, Client>(
         "UPDATE clients SET name = $3, currency = $4, address = $5, tax_id = $6
          WHERE id = $1 AND org_id = $2
          RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
@@ -791,7 +854,16 @@ pub async fn update_client(
         message: "Client not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::ClientUpdated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            client: client_payload(&client),
+        });
+    Ok(client)
 }
 
 /// Activate or deactivate a client. Deactivated clients are hidden from
@@ -803,7 +875,16 @@ pub async fn set_client_active(client_id: String, active: bool) -> Result<Client
     let client_id: uuid::Uuid = client_id
         .parse()
         .map_err(|_| server_err("Invalid client_id"))?;
-    sqlx::query_as::<_, Client>(
+    // Detect a real flip so a no-op set emits nothing (FR-012).
+    let was_active: Option<bool> =
+        sqlx::query_scalar::<_, bool>("SELECT active FROM clients WHERE id = $1 AND org_id = $2")
+            .bind(client_id)
+            .bind(manager.org_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(server_err)?;
+
+    let client = sqlx::query_as::<_, Client>(
         "UPDATE clients SET active = $3
          WHERE id = $1 AND org_id = $2
          RETURNING id, org_id, name, currency, address, tax_id, active, created_at",
@@ -818,7 +899,26 @@ pub async fn set_client_active(client_id: String, active: bool) -> Result<Client
         message: "Client not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    if was_active == Some(!active) {
+        let occurred_at = chrono::Utc::now();
+        let client = client_payload(&client);
+        state.plugins.dispatch(if active {
+            crate::plugin::AppEvent::ClientReactivated {
+                occurred_at,
+                org_id: manager.org_id,
+                client,
+            }
+        } else {
+            crate::plugin::AppEvent::ClientDeactivated {
+                occurred_at,
+                org_id: manager.org_id,
+                client,
+            }
+        });
+    }
+    Ok(client)
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────
@@ -872,7 +972,7 @@ pub async fn create_project(
     let bk = budget_kind
         .parse::<BudgetKind>()
         .map_err(|_| server_err("Invalid budget_kind"))?;
-    sqlx::query_as!(
+    let project = sqlx::query_as!(
         Project,
         r#"INSERT INTO projects (id, org_id, client_id, name, project_type, currency, budget_kind)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -893,7 +993,16 @@ pub async fn create_project(
     )
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)
+    .map_err(server_err)?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::ProjectCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            project: project_payload(&project),
+        });
+    Ok(project)
 }
 
 #[server]
@@ -909,7 +1018,7 @@ pub async fn update_project(
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
-    sqlx::query_as::<_, Project>(
+    let project = sqlx::query_as::<_, Project>(
         "UPDATE projects
             SET name = $3, project_type = $4, currency = $5, budget_kind = $6
           WHERE id = $1 AND org_id = $2
@@ -940,7 +1049,16 @@ pub async fn update_project(
         message: "Project not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::ProjectUpdated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            project: project_payload(&project),
+        });
+    Ok(project)
 }
 
 /// Activate or deactivate a project. Deactivated projects are hidden from
@@ -955,7 +1073,16 @@ pub async fn set_project_active(
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
-    sqlx::query_as::<_, Project>(
+    // Detect a real flip so a no-op set emits nothing (FR-012).
+    let was_active: Option<bool> =
+        sqlx::query_scalar::<_, bool>("SELECT active FROM projects WHERE id = $1 AND org_id = $2")
+            .bind(project_id)
+            .bind(manager.org_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(server_err)?;
+
+    let project = sqlx::query_as::<_, Project>(
         "UPDATE projects SET active = $3
           WHERE id = $1 AND org_id = $2
          RETURNING id, org_id, client_id, code, name,
@@ -974,7 +1101,26 @@ pub async fn set_project_active(
         message: "Project not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    if was_active == Some(!active) {
+        let occurred_at = chrono::Utc::now();
+        let project = project_payload(&project);
+        state.plugins.dispatch(if active {
+            crate::plugin::AppEvent::ProjectReactivated {
+                occurred_at,
+                org_id: manager.org_id,
+                project,
+            }
+        } else {
+            crate::plugin::AppEvent::ProjectDeactivated {
+                occurred_at,
+                org_id: manager.org_id,
+                project,
+            }
+        });
+    }
+    Ok(project)
 }
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
@@ -1026,7 +1172,7 @@ pub async fn create_task(name: String, billable_default: bool) -> Result<Task, S
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
-    sqlx::query_as!(
+    let task = sqlx::query_as!(
         Task,
         "INSERT INTO tasks (id, org_id, name, billable_default)
          VALUES ($1, $2, $3, $4)
@@ -1038,7 +1184,16 @@ pub async fn create_task(name: String, billable_default: bool) -> Result<Task, S
     )
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)
+    .map_err(server_err)?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::TaskCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            task: task_payload(&task),
+        });
+    Ok(task)
 }
 
 #[server]
@@ -1051,7 +1206,7 @@ pub async fn update_task(
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
-    sqlx::query_as::<_, Task>(
+    let task = sqlx::query_as::<_, Task>(
         "UPDATE tasks
             SET name = $3, billable_default = $4, default_rate_cents = $5
           WHERE id = $1 AND org_id = $2
@@ -1069,7 +1224,16 @@ pub async fn update_task(
         message: "Task not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::TaskUpdated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            task: task_payload(&task),
+        });
+    Ok(task)
 }
 
 /// Activate or deactivate an org-level task. Deactivated tasks are hidden from
@@ -1079,7 +1243,16 @@ pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, Serv
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
-    sqlx::query_as::<_, Task>(
+    // Detect a real flip so a no-op set emits nothing (FR-012).
+    let was_active: Option<bool> =
+        sqlx::query_scalar::<_, bool>("SELECT active FROM tasks WHERE id = $1 AND org_id = $2")
+            .bind(task_id)
+            .bind(manager.org_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(server_err)?;
+
+    let task = sqlx::query_as::<_, Task>(
         "UPDATE tasks SET active = $3
           WHERE id = $1 AND org_id = $2
          RETURNING id, org_id, name, billable_default, default_rate_cents, active",
@@ -1094,7 +1267,26 @@ pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, Serv
         message: "Task not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    if was_active == Some(!active) {
+        let occurred_at = chrono::Utc::now();
+        let task = task_payload(&task);
+        state.plugins.dispatch(if active {
+            crate::plugin::AppEvent::TaskReactivated {
+                occurred_at,
+                org_id: manager.org_id,
+                task,
+            }
+        } else {
+            crate::plugin::AppEvent::TaskDeactivated {
+                occurred_at,
+                org_id: manager.org_id,
+                task,
+            }
+        });
+    }
+    Ok(task)
 }
 
 /// Enable an org-level task on a project so it becomes loggable there. The
@@ -1173,7 +1365,7 @@ pub async fn create_assignment(
     user_id: String,
     role: String,
 ) -> Result<Assignment, ServerFnError> {
-    let _admin = require_admin().await?;
+    let admin = require_admin().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
     let project_id: uuid::Uuid = project_id
@@ -1183,7 +1375,7 @@ pub async fn create_assignment(
     let pr = role
         .parse::<ProjectRole>()
         .map_err(|_| server_err("Invalid role"))?;
-    sqlx::query_as!(
+    let assignment = sqlx::query_as!(
         Assignment,
         r#"INSERT INTO assignments (id, project_id, user_id, role)
          VALUES ($1, $2, $3, $4)
@@ -1196,20 +1388,45 @@ pub async fn create_assignment(
     )
     .fetch_one(&state.db)
     .await
-    .map_err(server_err)
+    .map_err(server_err)?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::UserAssignedToProject {
+            occurred_at: chrono::Utc::now(),
+            org_id: admin.org_id,
+            assignment: assignment_payload(&assignment),
+        });
+    Ok(assignment)
 }
 
 #[server]
 pub async fn delete_assignment(assignment_id: String) -> Result<(), ServerFnError> {
-    let _admin = require_admin().await?;
+    let admin = require_admin().await?;
     let state = crate::state::global_state().await;
     let id: uuid::Uuid = assignment_id
         .parse()
         .map_err(|_| server_err("Invalid assignment_id"))?;
-    sqlx::query!("DELETE FROM assignments WHERE id = $1", id)
-        .execute(&state.db)
-        .await
-        .map_err(server_err)?;
+    // Delete and capture the row atomically so the event carries its details
+    // and a concurrent delete cannot double-notify.
+    let removed = sqlx::query_as::<_, crate::models::Assignment>(
+        "DELETE FROM assignments WHERE id = $1
+         RETURNING id, project_id, user_id, role, rate_cents, created_at",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    if let Some(a) = removed {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::AssignmentRemoved {
+                occurred_at: chrono::Utc::now(),
+                org_id: admin.org_id,
+                assignment: assignment_payload(&a),
+            });
+    }
     Ok(())
 }
 
@@ -1715,6 +1932,16 @@ pub async fn update_org_branding(branding: OrgBranding) -> Result<OrgBranding, S
     .await
     .map_err(server_err)?;
 
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::OrgBrandingUpdated {
+            occurred_at: chrono::Utc::now(),
+            org_id: manager.org_id,
+            org: crate::plugin::event::OrgBrandingPayload {
+                org_id: manager.org_id,
+                provider_name: branding.provider_name.clone(),
+            },
+        });
     Ok(branding)
 }
 
@@ -1759,7 +1986,7 @@ pub async fn create_user(email: String, name: String, role: String) -> Result<Us
         .parse::<OrgRole>()
         .map_err(|_| server_err("Invalid role (use admin, manager, or member)"))?;
 
-    sqlx::query_as!(
+    let user = sqlx::query_as!(
         User,
         r#"INSERT INTO users (id, org_id, email, name, org_role)
          VALUES ($1, $2, $3, $4, $5)
@@ -1785,7 +2012,16 @@ pub async fn create_user(email: String, name: String, role: String) -> Result<Us
         } else {
             server_err(e)
         }
-    })
+    })?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::UserCreated {
+            occurred_at: chrono::Utc::now(),
+            org_id: admin.org_id,
+            user: user_payload(&user),
+        });
+    Ok(user)
 }
 
 /// Change a user's organization role. Requires admin role.
@@ -1798,7 +2034,18 @@ pub async fn set_user_role(user_id: String, role: String) -> Result<User, Server
         .parse::<OrgRole>()
         .map_err(|_| server_err("Invalid role (use admin, manager, or member)"))?;
 
-    sqlx::query_as!(
+    // Read the prior role so the event reports the transition (and a no-op
+    // role change emits nothing, FR-012).
+    let previous: Option<OrgRole> = sqlx::query_scalar::<_, OrgRole>(
+        "SELECT org_role FROM users WHERE id = $1 AND org_id = $2",
+    )
+    .bind(user_id)
+    .bind(admin.org_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    let user = sqlx::query_as!(
         User,
         r#"UPDATE users SET org_role = $3
          WHERE id = $1 AND org_id = $2
@@ -1817,7 +2064,19 @@ pub async fn set_user_role(user_id: String, role: String) -> Result<User, Server
         message: "User not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    if let Some(prev) = previous.filter(|p| *p != user.org_role) {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::UserRoleChanged {
+                occurred_at: chrono::Utc::now(),
+                org_id: admin.org_id,
+                user: user_payload(&user),
+                previous_role: prev.to_string(),
+            });
+    }
+    Ok(user)
 }
 
 /// Activate or deactivate a user account. Deactivated users cannot sign in
@@ -1828,7 +2087,15 @@ pub async fn set_user_active(user_id: String, active: bool) -> Result<User, Serv
     let state = crate::state::global_state().await;
     let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
 
-    sqlx::query_as!(
+    let was_active: Option<bool> =
+        sqlx::query_scalar::<_, bool>("SELECT active FROM users WHERE id = $1 AND org_id = $2")
+            .bind(user_id)
+            .bind(admin.org_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(server_err)?;
+
+    let user = sqlx::query_as!(
         User,
         r#"UPDATE users SET active = $3
          WHERE id = $1 AND org_id = $2
@@ -1847,7 +2114,19 @@ pub async fn set_user_active(user_id: String, active: bool) -> Result<User, Serv
         message: "User not found".into(),
         code: NOT_FOUND,
         details: None,
-    })
+    })?;
+
+    // FR-005 defines only a deactivation event (no user_reactivated).
+    if was_active == Some(true) && !active {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::UserDeactivated {
+                occurred_at: chrono::Utc::now(),
+                org_id: admin.org_id,
+                user: user_payload(&user),
+            });
+    }
+    Ok(user)
 }
 
 // ── Approvals (M7) ──────────────────────────────────────────────────────────

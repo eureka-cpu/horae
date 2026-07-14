@@ -339,7 +339,7 @@ mod tests {
                 email: "test@example.com".into(),
                 name: "Test".into(),
                 org_role: "member".into(),
-                method: "dev".into(),
+                method: Some("dev".into()),
             },
         };
 
