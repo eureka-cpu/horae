@@ -85,7 +85,7 @@ impl PluginRegistry {
         let extism_manifest =
             extism::Manifest::new([wasm]).with_timeout(std::time::Duration::from_secs(5));
 
-        let host_functions = super::host::host_functions();
+        let host_functions = super::host::host_functions(manifest.config.clone());
 
         let plugin = extism::Plugin::new(&extism_manifest, host_functions, true)
             .map_err(|e| anyhow::anyhow!("failed to load WASM {}: {e}", wasm_path.display()))?;

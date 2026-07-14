@@ -29,6 +29,13 @@ pub async fn init_state(pool: sqlx::PgPool, plugins: Arc<PluginRegistry>) {
         .await;
 }
 
+/// The global pool if it is already initialised, without awaiting. Used by the
+/// synchronous plugin host functions, which cannot await and must not trigger the
+/// lazy initialisation in `global_state`. Returns `None` before startup wiring.
+pub fn try_pool() -> Option<PgPool> {
+    GLOBAL_STATE.get().map(|s| s.db.clone())
+}
+
 /// Returns a reference to the global AppState.
 /// Falls back to lazy initialisation if `init_state` was not called (e.g. in tests).
 pub async fn global_state() -> &'static AppState {

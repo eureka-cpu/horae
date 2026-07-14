@@ -112,7 +112,7 @@ ______________________________________________________________________
 - [ ] T037 [US5] Add the `extism` dependency (server feature) in `crates/horae/Cargo.toml`.
 - [ ] T038 [P] [US5] `plugin.toml` manifest parsing in `crates/horae/src/plugin/manifest.rs` (name, version, hooks).
 - [ ] T039 [P] [US5] `AppEvent` enum + JSON payloads in `crates/horae/src/plugin/event.rs` (time_entry_created/stopped, invoice_created/sent, user_logged_in).
-- [ ] T040 [P] [US5] extism host functions in `crates/horae/src/plugin/host.rs`: `horae_log`, read-only `horae_db_query`, `horae_http_post`, `horae_config_get` (FR-020).
+- [x] T040 [P] [US5] extism host functions in `crates/horae/src/plugin/host.rs`: `horae_log`, read-only `horae_db_query`, `horae_http_post`, `horae_config_get` (FR-020).
 - [ ] T041 [US5] `PluginRegistry` in `crates/horae/src/plugin/registry.rs`: scan `{dataDir}/plugins/`, load `*.wasm`, index by subscribed hook (FR-018); expose `dispatch(event)` with concurrent, time-bounded, failure-isolated calls (FR-021/SC-006).
 - [ ] T042 [US5] Hold `plugins: Arc<PluginRegistry>` in `AppState` (`crates/horae/src/state.rs`) and load at startup (`crates/horae/src/main.rs`).
 - [ ] T043 [US5] Dispatch events after the relevant DB writes in `crates/horae/src/server_fns.rs` (time entry created/stopped, invoice created/sent, user signed in) (FR-019).
