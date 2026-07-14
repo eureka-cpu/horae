@@ -19,8 +19,8 @@ ______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirm the US5 plugin subsystem is present and builds: `cargo build -p horae --features server` compiles `crates/horae/src/plugin/` (`AppEvent`, `PluginRegistry`, `dispatch`) and the fixture plugins under `crates/horae/tests/fixtures/plugins/` load.
-- [ ] T002 [P] Confirm the offline query cache workflow: `SQLX_OFFLINE=true` build is green and `.sqlx/` is current (baseline before adding queries).
+- [x] T001 Confirm the US5 plugin subsystem is present and builds: `cargo build -p horae --features server` compiles `crates/horae/src/plugin/` (`AppEvent`, `PluginRegistry`, `dispatch`) and the fixture plugins under `crates/horae/tests/fixtures/plugins/` load.
+- [x] T002 [P] Confirm the offline query cache workflow: `SQLX_OFFLINE=true` build is green and `.sqlx/` is current (baseline before adding queries).
 
 ______________________________________________________________________
 
@@ -48,12 +48,12 @@ ______________________________________________________________________
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add the US1 `AppEvent` variants and `hook_name()` arms plus `SubmissionPayload` in `crates/horae/src/plugin/event.rs` (`time_entry_updated`, `time_entry_deleted`, `timesheet_submitted`, `submission_approved`, `submission_rejected`, `invoice_paid`, `invoice_voided`).
-- [ ] T008 [US1] Dispatch `time_entry_updated` after a real change in `update_time_entry`, and `time_entry_deleted` in `delete_time_entry`, in `crates/horae/src/server_fns.rs` (suppress on no-op update).
-- [ ] T009 [US1] Dispatch `timesheet_submitted` in `submit_week` in `crates/horae/src/server_fns.rs`.
-- [ ] T010 [US1] Dispatch `submission_approved` in `approve_submission` and `submission_rejected` in `reject_submission` in `crates/horae/src/server_fns.rs`.
-- [ ] T011 [US1] Dispatch `invoice_paid` / `invoice_voided` on the matching status transitions in `update_invoice_status` in `crates/horae/src/server_fns.rs`.
-- [ ] T012 [US1] Regenerate the `.sqlx/` cache for any changed queries and run the US1 tests green.
+- [x] T007 [US1] Add the US1 `AppEvent` variants and `hook_name()` arms plus `SubmissionPayload` in `crates/horae/src/plugin/event.rs` (`time_entry_updated`, `time_entry_deleted`, `timesheet_submitted`, `submission_approved`, `submission_rejected`, `invoice_paid`, `invoice_voided`).
+- [x] T008 [US1] Dispatch `time_entry_updated` after a real change in `update_time_entry`, and `time_entry_deleted` in `delete_time_entry`, in `crates/horae/src/server_fns.rs` (suppress on no-op update).
+- [x] T009 [US1] Dispatch `timesheet_submitted` in `submit_week` in `crates/horae/src/server_fns.rs`.
+- [x] T010 [US1] Dispatch `submission_approved` in `approve_submission` and `submission_rejected` in `reject_submission` in `crates/horae/src/server_fns.rs`.
+- [x] T011 [US1] Dispatch `invoice_paid` / `invoice_voided` on the matching status transitions in `update_invoice_status` in `crates/horae/src/server_fns.rs`.
+- [x] T012 [US1] Regenerate the `.sqlx/` cache for any changed queries and run the US1 tests green.
 
 **Checkpoint**: US1 fully functional and independently testable.
 
@@ -119,7 +119,7 @@ ______________________________________________________________________
 - [ ] T036 [P] Extend the base event catalog in `specs/001-time-tracking-invoicing/contracts/plugin-interface.md` (or reference this addendum) so the full event list is discoverable in one place.
 - [ ] T037 [P] Update `crates/horae/tests/fixtures/plugins/` (or add one) so a fixture subscribes to a new hook, and add a failure-isolation test: a `fail-plugin` on `invoice_paid` does not affect the status change (FR-011 / SC-003).
 - [ ] T038 Verify the five pre-existing events are unchanged in name/envelope/payload (SC-005) — a regression assertion in `crates/horae/tests/integration.rs`.
-- [ ] T039 Run `nix fmt -- --ci` and `nix flake check`; confirm `.sqlx/` committed and green.
+- [x] T039 Run `nix fmt -- --ci` and `nix flake check`; confirm `.sqlx/` committed and green.
 - [ ] T040 Run the [quickstart.md](./quickstart.md) scenarios end-to-end and confirm all success criteria (SC-001..SC-006).
 
 ______________________________________________________________________
