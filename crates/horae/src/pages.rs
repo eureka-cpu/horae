@@ -3,6 +3,7 @@ pub mod approvals;
 pub mod auth;
 pub mod clients;
 pub mod dashboard;
+pub mod gallery;
 pub mod invoices;
 pub mod projects;
 pub mod reports;
