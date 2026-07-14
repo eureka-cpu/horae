@@ -346,7 +346,7 @@ async fn check_project_budget(state: &'static crate::state::AppState, project_id
                 client_id: row.client_id,
                 name: row.name.clone(),
                 project_type: row.project_type.to_string(),
-                budget_kind: "hours".into(),
+                budget_kind: row.budget_kind.to_string(),
                 active: row.active,
             },
             threshold_pct: band,
@@ -356,7 +356,7 @@ async fn check_project_budget(state: &'static crate::state::AppState, project_id
             budget_amount_cents: None,
         };
         let occurred_at = chrono::Utc::now();
-        let event = if band >= 100 {
+        let event = if band >= horae_core::budget::OVER_BUDGET_BAND {
             crate::plugin::AppEvent::ProjectOverBudget {
                 occurred_at,
                 org_id: row.org_id,

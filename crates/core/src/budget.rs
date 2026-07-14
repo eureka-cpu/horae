@@ -8,12 +8,17 @@
 //! not among the configured warnings, so exceeding budget is always detectable
 //! regardless of how an organization sets its warning thresholds.
 
+/// The percentage at which a budget is fully consumed; reaching it marks the
+/// project over budget. Always an effective band, even when it is not a
+/// configured warning threshold.
+pub const OVER_BUDGET_BAND: i32 = 100;
+
 /// The effective bands: the configured warning percentages plus the implicit
-/// `100` over-budget line, positive-only, sorted and de-duplicated.
+/// over-budget line, positive-only, sorted and de-duplicated.
 fn effective_bands(thresholds: &[i32]) -> Vec<i32> {
     let mut bands: Vec<i32> = thresholds.iter().copied().filter(|&b| b > 0).collect();
-    if !bands.contains(&100) {
-        bands.push(100);
+    if !bands.contains(&OVER_BUDGET_BAND) {
+        bands.push(OVER_BUDGET_BAND);
     }
     bands.sort_unstable();
     bands.dedup();
