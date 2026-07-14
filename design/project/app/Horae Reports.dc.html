@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+</style>
+</helmet>
+
+<div style="display:flex; min-height:100vh; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- ================= COMPACT RAIL ================= -->
+  <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+  <div style="width:76px; flex:0 0 76px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; align-items:center; padding:20px 12px;">
+    <div style="position:relative; width:36px; height:36px; border-radius:9px; background:#1F5C4D; overflow:hidden; margin-bottom:8px;">
+      <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:50%; bottom:9px; width:18px; height:18px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; height:11px; background:#164034;"></div>
+      <div style="position:absolute; left:0; right:0; bottom:11px; height:1px; background:#0F3D33;"></div>
+    </div>
+    <button onClick="{{ toggleRail }}" title="Expand" style="width:34px; height:30px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#A29C8D; cursor:pointer; margin-bottom:20px; font-size:14px;">»</button>
+    <button title="Start timer" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#4FB79A; color:#0d211b; border:none; border-radius:11px; cursor:pointer; margin-bottom:22px;"><span style="width:16px; height:16px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:3px; width:1.5px; height:5px; background:#0d211b; transform:translateX(-50%);"></span></span></button>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+      <a href="Horae Timesheet.dc.html" title="Timesheet" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">◷</a>
+      <a href="Horae Projects.dc.html" title="Projects" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▤</a>
+      <div title="Approvals" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">✓</div>
+      <div title="Reports" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#232019; border:1px solid #322E26; color:#4FB79A; font-size:16px;">▦</div>
+    </div>
+    <div style="flex:1;"></div>
+    <div title="Mira Kovač" style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0;">M</div>
+  </div>
+  </sc-if>
+
+  <!-- ================= LEFT RAIL ================= -->
+  <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+  <div style="width:264px; flex:0 0 264px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; padding:20px 16px;">
+    <div style="display:flex; align-items:center; gap:11px; padding:6px 8px 22px;">
+      <div style="position:relative; width:34px; height:34px; border-radius:9px; background:#1F5C4D; overflow:hidden; flex:0 0 34px;">
+        <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:50%; bottom:9px; width:17px; height:17px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:10px; background:#164034;"></div>
+        <div style="position:absolute; left:0; right:0; bottom:10px; height:1px; background:#0F3D33;"></div>
+      </div>
+      <div style="display:flex; align-items:baseline;">
+        <span style="font-family:'Newsreader',serif; font-size:25px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span>
+        <span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:5px;"></span>
+      </div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ toggleRail }}" title="Collapse" style="width:30px; height:30px; background:transparent; border:1px solid #322E26; border-radius:8px; color:#8f8676; cursor:pointer; font-size:14px;">«</button>
+    </div>
+
+    <div style="margin-bottom:26px;">
+      <button style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">
+        <span style="width:14px; height:14px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:2px; width:1.5px; height:4px; background:#0d211b; transform:translateX(-50%);"></span></span>
+        Start timer
+      </button>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Track</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Timesheet.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Timesheet</span></a>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Organize</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Projects.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:9px; height:8px; border-radius:2px; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Projects</span></a>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Review</div>
+    <div style="display:flex; flex-direction:column; gap:3px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Approvals</span></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26;"><span style="display:inline-flex; align-items:flex-end; gap:2px; height:11px;"><span style="width:2.5px; height:6px; background:#4FB79A;"></span><span style="width:2.5px; height:11px; background:#4FB79A;"></span><span style="width:2.5px; height:8px; background:#4FB79A;"></span></span><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Reports</span></div>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div style="display:flex; align-items:center; gap:11px; padding:8px; border-top:1px solid #322E26; padding-top:14px;">
+      <div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0; flex:0 0 34px;">M</div>
+      <div style="min-width:0;"><div style="font-size:13.5px; font-weight:600; color:#F6F2E9;">Mira Kovač</div><div style="font-size:12px; color:#8f8676;">Fieldstone Studio</div></div>
+      <div style="flex:1;"></div>
+      <span style="color:#6a6353; font-size:15px;">◔</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= MAIN ================= -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <div style="display:flex; align-items:center; padding:26px 40px 0;">
+      <h1 style="font-family:'Newsreader',serif; font-size:30px; font-weight:600; color:#F6F2E9; margin:0; letter-spacing:-.01em;">Reports</h1>
+    </div>
+
+    <!-- report tabs -->
+    <div style="display:flex; align-items:center; gap:28px; padding:18px 40px 0; border-bottom:1px solid #262219;">
+      <span style="padding-bottom:14px; font-size:14.5px; font-weight:600; color:#F6F2E9; border-bottom:2px solid #4FB79A;">Create a report</span>
+      <span style="padding-bottom:14px; font-size:14.5px; color:#A29C8D; cursor:pointer;">Time</span>
+      <span style="padding-bottom:14px; font-size:14.5px; color:#A29C8D; cursor:pointer;">Detailed time</span>
+      <span style="padding-bottom:14px; font-size:14.5px; color:#A29C8D; cursor:pointer;">Detailed expense</span>
+      <span style="padding-bottom:14px; font-size:14.5px; color:#A29C8D; cursor:pointer;">Saved reports</span>
+    </div>
+
+    <div style="padding:24px 40px 40px; flex:1;">
+
+      <!-- title row -->
+      <div style="display:flex; align-items:center; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:10px;"><span style="font-family:'Newsreader',serif; font-size:24px; color:#EFEAE0;">Untitled report</span><span style="color:#6a6353; font-size:14px;">✎</span></div>
+        <div style="flex:1;"></div>
+        <button style="padding:11px 26px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Save</button>
+      </div>
+
+      <!-- filter bar -->
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:24px;">
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Month <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <div style="display:flex; align-items:center; background:#1A1813; border:1px solid #322E26; border-radius:9px; overflow:hidden;">
+          <button style="width:40px; height:42px; background:transparent; border:none; border-right:1px solid #322E26; color:#A29C8D; cursor:pointer;">←</button>
+          <div style="display:flex; align-items:center; gap:9px; padding:0 16px; font-size:14px;"><span style="color:#8f8676;">▦</span><span style="color:#EFEAE0;">This month</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">01 – 31 Jul 2026</span></div>
+          <button style="width:40px; height:42px; background:transparent; border:none; border-left:1px solid #322E26; color:#A29C8D; cursor:pointer;">→</button>
+        </div>
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Client <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Project <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Role <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Department <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Teammate <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#A29C8D; font-family:inherit; font-size:14px; cursor:pointer;">⊾ Advanced</button>
+      </div>
+
+      <!-- builder: inputs + canvas -->
+      <div style="display:flex; gap:24px; align-items:stretch;">
+
+        <!-- inputs -->
+        <div style="width:320px; flex:0 0 320px; background:#1A1813; border:1px solid #322E26; border-radius:14px; padding:20px;">
+          <div style="display:flex; align-items:center; margin-bottom:20px;">
+            <span style="display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; color:#F6F2E9;"><span style="color:#8f8676;">▦</span> Inputs</span>
+            <div style="flex:1;"></div>
+            <span style="color:#8f8676; font-size:13px; cursor:pointer;">‹</span>
+          </div>
+
+          <div style="display:flex; align-items:center; margin-bottom:10px;">
+            <span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676;">Fields</span>
+            <div style="flex:1;"></div>
+            <button style="display:flex; align-items:center; gap:5px; padding:5px 11px; background:#232019; border:1px solid #3d382e; border-radius:7px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;"><span style="color:#4FB79A;">＋</span> Add</button>
+          </div>
+          <div style="font-size:12.5px; color:#8f8676; margin-bottom:8px;">Variables for grouping</div>
+          <div style="padding:14px; background:#100F0C; border:1px dashed #3d382e; border-radius:9px; font-size:13.5px; color:#5a5446; margin-bottom:24px;">Add a row to group entries.</div>
+
+          <div style="display:flex; align-items:center; margin-bottom:10px;">
+            <span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676;">Metrics</span>
+            <div style="flex:1;"></div>
+            <button style="display:flex; align-items:center; gap:5px; padding:5px 11px; background:#232019; border:1px solid #3d382e; border-radius:7px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;"><span style="color:#4FB79A;">＋</span> Add</button>
+          </div>
+          <div style="padding:14px; background:#100F0C; border:1px dashed #3d382e; border-radius:9px; font-size:13.5px; color:#5a5446;">Add a column to see values.</div>
+        </div>
+
+        <!-- canvas -->
+        <div style="flex:1; background:#1A1813; border:1px solid #322E26; border-radius:14px; padding:22px 26px; min-height:560px;">
+          <!-- toggles -->
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="display:flex; background:#100F0C; border:1px solid #322E26; border-radius:9px; padding:3px;">
+              <button style="padding:7px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;">Summary</button>
+              <button style="padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;">Detailed</button>
+            </div>
+            <div style="display:flex; background:#100F0C; border:1px solid #322E26; border-radius:9px; padding:3px;">
+              <button style="padding:7px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;">Grouped</button>
+              <button style="padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;">Ungrouped</button>
+            </div>
+            <div style="flex:1;"></div>
+            <span style="font-size:13.5px; color:#A29C8D;">Include zero values</span>
+            <span style="width:40px; height:22px; border-radius:999px; background:#322E26; position:relative; display:inline-block;"><span style="position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%; background:#8f8676;"></span></span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#6a6353; margin-top:14px;">0 groups · 0 columns · Grouped</div>
+
+          <!-- empty state -->
+          <div style="display:flex; flex-direction:column; align-items:center; padding:52px 20px 20px;">
+            <div style="font-family:'Newsreader',serif; font-size:24px; font-weight:600; color:#F6F2E9; margin-bottom:28px;">Build your first report</div>
+            <div style="display:flex; flex-direction:column; gap:22px; max-width:560px;">
+              <div style="display:flex; gap:16px;">
+                <span style="width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:#2b2413; color:#D6A24A; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;">1</span>
+                <div><div style="font-size:15px; font-weight:600; color:#F6F2E9;">Pick your fields</div><div style="font-size:14px; color:#A29C8D; margin-top:3px; line-height:1.55;">Add Fields on the left to choose how rows are grouped — by Project, Client, Date, Teammate, and more.</div></div>
+              </div>
+              <div style="display:flex; gap:16px;">
+                <span style="width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:#2b2413; color:#D6A24A; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;">2</span>
+                <div><div style="font-size:15px; font-weight:600; color:#F6F2E9;">Add metrics</div><div style="font-size:14px; color:#A29C8D; margin-top:3px; line-height:1.55;">Pick the Metrics that matter — Hours, Billable amount, Cost, Utilization — they become the columns of your report.</div></div>
+              </div>
+              <div style="display:flex; gap:16px;">
+                <span style="width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:#2b2413; color:#D6A24A; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;">3</span>
+                <div><div style="font-size:15px; font-weight:600; color:#F6F2E9;">Narrow the data</div><div style="font-size:14px; color:#A29C8D; margin-top:3px; line-height:1.55;">Set a date range and add quick or advanced filters to slice the report down to what you want to see.</div></div>
+              </div>
+              <div style="display:flex; gap:16px;">
+                <span style="width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:#2b2413; color:#D6A24A; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;">4</span>
+                <div><div style="font-size:15px; font-weight:600; color:#F6F2E9;">Save the template</div><div style="font-size:14px; color:#A29C8D; margin-top:3px; line-height:1.55;">Save to come back and re-run the report any time with up-to-date data.</div></div>
+              </div>
+            </div>
+            <button style="margin-top:30px; padding:12px 24px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Show me a tutorial</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { collapsed: false };
+  renderVals() {
+    return {
+      expanded: !this.state.collapsed,
+      collapsed: this.state.collapsed,
+      toggleRail: () => this.setState(s => ({ collapsed: !s.collapsed })),
+    };
+  }
+}
+</script>
+</body>
+</html>

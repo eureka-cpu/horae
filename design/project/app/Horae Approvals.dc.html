@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+</style>
+</helmet>
+
+<div style="display:flex; min-height:100vh; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- ================= COMPACT RAIL ================= -->
+  <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+  <div style="width:76px; flex:0 0 76px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; align-items:center; padding:20px 12px;">
+    <div style="position:relative; width:36px; height:36px; border-radius:9px; background:#1F5C4D; overflow:hidden; margin-bottom:8px;">
+      <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:50%; bottom:9px; width:18px; height:18px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; height:11px; background:#164034;"></div>
+      <div style="position:absolute; left:0; right:0; bottom:11px; height:1px; background:#0F3D33;"></div>
+    </div>
+    <button onClick="{{ toggleRail }}" title="Expand" style="width:34px; height:30px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#A29C8D; cursor:pointer; margin-bottom:20px; font-size:14px;">»</button>
+    <button title="Start timer" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#4FB79A; color:#0d211b; border:none; border-radius:11px; cursor:pointer; margin-bottom:22px;"><span style="width:16px; height:16px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:3px; width:1.5px; height:5px; background:#0d211b; transform:translateX(-50%);"></span></span></button>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+      <a href="Horae Timesheet.dc.html" title="Timesheet" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">◷</a>
+      <a href="Horae Projects.dc.html" title="Projects" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▤</a>
+      <div title="Approvals" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#232019; border:1px solid #322E26; color:#4FB79A; font-size:16px;">✓</div>
+      <a href="Horae Reports.dc.html" title="Reports" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▦</a>
+    </div>
+    <div style="flex:1;"></div>
+    <div title="Mira Kovač" style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0;">M</div>
+  </div>
+  </sc-if>
+
+  <!-- ================= LEFT RAIL ================= -->
+  <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+  <div style="width:264px; flex:0 0 264px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; padding:20px 16px;">
+    <div style="display:flex; align-items:center; gap:11px; padding:6px 8px 22px;">
+      <div style="position:relative; width:34px; height:34px; border-radius:9px; background:#1F5C4D; overflow:hidden; flex:0 0 34px;">
+        <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:50%; bottom:9px; width:17px; height:17px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:10px; background:#164034;"></div>
+        <div style="position:absolute; left:0; right:0; bottom:10px; height:1px; background:#0F3D33;"></div>
+      </div>
+      <div style="display:flex; align-items:baseline;">
+        <span style="font-family:'Newsreader',serif; font-size:25px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span>
+        <span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:5px;"></span>
+      </div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ toggleRail }}" title="Collapse" style="width:30px; height:30px; background:transparent; border:1px solid #322E26; border-radius:8px; color:#8f8676; cursor:pointer; font-size:14px;">«</button>
+    </div>
+
+    <div style="margin-bottom:26px;">
+      <button style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">
+        <span style="width:14px; height:14px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:2px; width:1.5px; height:4px; background:#0d211b; transform:translateX(-50%);"></span></span>
+        Start timer
+      </button>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Track</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Timesheet.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Timesheet</span></a>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Organize</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Projects.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:9px; height:8px; border-radius:2px; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Projects</span></a>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Review</div>
+    <div style="display:flex; flex-direction:column; gap:3px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26;"><span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Approvals</span></div>
+      <a href="Horae Reports.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="display:inline-flex; align-items:flex-end; gap:2px; height:11px;"><span style="width:2.5px; height:6px; background:#5a5446;"></span><span style="width:2.5px; height:11px; background:#5a5446;"></span><span style="width:2.5px; height:8px; background:#5a5446;"></span></span><span style="font-size:14.5px;">Reports</span></a>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div style="display:flex; align-items:center; gap:11px; padding:8px; border-top:1px solid #322E26; padding-top:14px;">
+      <div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0; flex:0 0 34px;">M</div>
+      <div style="min-width:0;"><div style="font-size:13.5px; font-weight:600; color:#F6F2E9;">Mira Kovač</div><div style="font-size:12px; color:#8f8676;">Fieldstone Studio</div></div>
+      <div style="flex:1;"></div>
+      <span style="color:#6a6353; font-size:15px;">◔</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= MAIN ================= -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <div style="display:flex; align-items:center; padding:26px 40px 0;">
+      <h1 style="font-family:'Newsreader',serif; font-size:30px; font-weight:600; color:#F6F2E9; margin:0; letter-spacing:-.01em;">Approvals</h1>
+      <div style="flex:1;"></div>
+      <button style="display:flex; align-items:center; gap:8px; padding:10px 16px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Remind team <span style="color:#8f8676;">↗</span></button>
+    </div>
+
+    <!-- filter bar -->
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:22px 40px 0;">
+      <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Week <span style="color:#8f8676; font-size:11px;">▾</span></button>
+      <div style="display:flex; align-items:center; background:#1A1813; border:1px solid #322E26; border-radius:9px; overflow:hidden;">
+        <button style="width:40px; height:42px; background:transparent; border:none; border-right:1px solid #322E26; color:#A29C8D; cursor:pointer;">←</button>
+        <div style="display:flex; align-items:center; gap:9px; padding:0 16px; font-size:14px;"><span style="color:#8f8676;">▦</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#EFEAE0;">13 – 19 Jul 2026</span></div>
+        <button style="width:40px; height:42px; background:transparent; border:none; border-left:1px solid #322E26; color:#A29C8D; cursor:pointer;">→</button>
+      </div>
+      <div style="flex:1;"></div>
+      <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Status: Pending Approval <span style="color:#8f8676; font-size:11px;">▾</span></button>
+      <button style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Group by: Person <span style="color:#8f8676; font-size:11px;">▾</span></button>
+    </div>
+
+    <!-- filter row -->
+    <div style="padding:20px 40px 0;">
+      <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353; margin-bottom:10px;">Filter</div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <button style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Client <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Project <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Role <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:#161510; border:1px solid #262219; border-radius:9px; color:#5a5446; font-family:inherit; font-size:14px; cursor:not-allowed;">Department <span style="font-size:11px;">▾</span></button>
+        <button style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Teammate <span style="color:#8f8676; font-size:11px;">▾</span></button>
+      </div>
+    </div>
+
+    <div style="padding:24px 40px 40px; flex:1;">
+
+      <!-- summary cards: total time + total expenses -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+        <div style="display:flex; align-items:center; gap:32px; background:#1A1813; border:1px solid #322E26; border-radius:13px; padding:20px 24px;">
+          <div>
+            <div style="font-size:13px; color:#A29C8D;">Total time</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:30px; font-weight:600; color:#F6F2E9; margin-top:4px;">80:30</div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px;"><span style="width:11px; height:11px; border-radius:3px; background:#4FB79A;"></span><span style="font-size:13.5px; color:#EFEAE0; flex:1;">Billable</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#F6F2E9;">72:00</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#8f8676; width:44px; text-align:right;">(89%)</span></div>
+            <div style="display:flex; align-items:center; gap:10px;"><span style="width:11px; height:11px; border-radius:3px; background:#2a6d5c;"></span><span style="font-size:13.5px; color:#EFEAE0; flex:1;">Non-billable</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#F6F2E9;">8:30</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#8f8676; width:44px; text-align:right;">(11%)</span></div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:32px; background:#1A1813; border:1px solid #322E26; border-radius:13px; padding:20px 24px;">
+          <div>
+            <div style="font-size:13px; color:#A29C8D;">Total expenses</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:30px; font-weight:600; color:#F6F2E9; margin-top:4px;">€420.00</div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px;"><span style="width:11px; height:11px; border-radius:3px; background:#D99A3C;"></span><span style="font-size:13.5px; color:#EFEAE0; flex:1;">Billable</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#F6F2E9;">€420.00</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#8f8676; width:44px; text-align:right;">(100%)</span></div>
+            <div style="display:flex; align-items:center; gap:10px;"><span style="width:11px; height:11px; border-radius:3px; background:#6b4a1a;"></span><span style="font-size:13.5px; color:#EFEAE0; flex:1;">Non-billable</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#F6F2E9;">€0.00</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#8f8676; width:44px; text-align:right;">(0%)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- approvals table -->
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; overflow:hidden;">
+        <!-- header -->
+        <div style="display:grid; grid-template-columns:1fr 130px 120px 150px 190px; align-items:center; padding:14px 22px; border-bottom:1px solid #322E26; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353;">
+          <span>Teammate</span><span style="text-align:right;">Hours</span><span style="text-align:center;">Status</span><span>Submitted</span><span style="text-align:right;">Action</span>
+        </div>
+
+        <!-- row: awaiting -->
+        <div style="display:grid; grid-template-columns:1fr 130px 120px 150px 190px; align-items:center; padding:16px 22px; border-bottom:1px solid #262219;">
+          <div style="display:flex; align-items:center; gap:13px;"><div style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0;">T</div><div><div style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Théo Marchand</div><div style="font-size:12.5px; color:#8f8676;">Engineering</div></div></div>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14.5px; color:#F6F2E9;">42:00</span>
+          <div style="text-align:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#2b2413; color:#e0b45f; border:1px solid #453818; border-radius:999px; font-size:12px; font-weight:600;"><span style="width:6px; height:6px; border-radius:50%; background:#D6A24A;"></span>Awaiting</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">12 Jul, 18:20</span>
+          <div style="display:flex; justify-content:flex-end; gap:8px;"><button style="padding:8px 12px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;">Reopen</button><button style="padding:8px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;">Approve</button></div>
+        </div>
+
+        <!-- row: awaiting -->
+        <div style="display:grid; grid-template-columns:1fr 130px 120px 150px 190px; align-items:center; padding:16px 22px; border-bottom:1px solid #262219;">
+          <div style="display:flex; align-items:center; gap:13px;"><div style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0;">S</div><div><div style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Saoirse Nolan</div><div style="font-size:12.5px; color:#8f8676;">Design</div></div></div>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14.5px; color:#F6F2E9;">38:30</span>
+          <div style="text-align:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#2b2413; color:#e0b45f; border:1px solid #453818; border-radius:999px; font-size:12px; font-weight:600;"><span style="width:6px; height:6px; border-radius:50%; background:#D6A24A;"></span>Awaiting</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">12 Jul, 16:05</span>
+          <div style="display:flex; justify-content:flex-end; gap:8px;"><button style="padding:8px 12px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;">Reopen</button><button style="padding:8px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;">Approve</button></div>
+        </div>
+
+        <!-- row: approved -->
+        <div style="display:grid; grid-template-columns:1fr 130px 120px 150px 190px; align-items:center; padding:16px 22px; border-bottom:1px solid #262219;">
+          <div style="display:flex; align-items:center; gap:13px;"><div style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0;">L</div><div><div style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Lars Ericsson</div><div style="font-size:12.5px; color:#8f8676;">Engineering</div></div></div>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14.5px; color:#F6F2E9;">46:00</span>
+          <div style="text-align:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#15291f; color:#5fcaa8; border:1px solid #24402f; border-radius:999px; font-size:12px; font-weight:600;"><span style="width:6px; height:6px; border-radius:50%; background:#3FB489;"></span>Approved</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">11 Jul, 09:40</span>
+          <div style="display:flex; justify-content:flex-end; gap:8px;"><button style="padding:8px 12px; background:transparent; color:#A29C8D; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;">Reopen</button></div>
+        </div>
+
+        <!-- row: not submitted -->
+        <div style="display:grid; grid-template-columns:1fr 130px 120px 150px 190px; align-items:center; padding:16px 22px;">
+          <div style="display:flex; align-items:center; gap:13px;"><div style="width:38px; height:38px; border-radius:50%; background:#232019; border:1px solid #3d382e; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#8f8676;">N</div><div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">Nadia Haddad</div><div style="font-size:12.5px; color:#8f8676;">Design</div></div></div>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14.5px; color:#5a5446;">0:00</span>
+          <div style="text-align:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#201d17; color:#A29C8D; border:1px solid #322E26; border-radius:999px; font-size:12px; font-weight:600;"><span style="width:6px; height:6px; border-radius:50%; background:#5a5446;"></span>Not submitted</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#5a5446;">—</span>
+          <div style="display:flex; justify-content:flex-end; gap:8px;"><button style="padding:8px 14px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;">Send reminder</button></div>
+        </div>
+      </div>
+
+      <!-- approve all bar -->
+      <div style="display:flex; align-items:center; margin-top:20px;">
+        <span style="font-size:13.5px; color:#A29C8D;">2 timesheets awaiting your approval</span>
+        <div style="flex:1;"></div>
+        <button style="padding:12px 24px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Approve visible timesheets and expenses</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { collapsed: false };
+  renderVals() {
+    return {
+      expanded: !this.state.collapsed,
+      collapsed: this.state.collapsed,
+      toggleRail: () => this.setState(s => ({ collapsed: !s.collapsed })),
+    };
+  }
+}
+</script>
+</body>
+</html>

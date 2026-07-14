@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+</style>
+</helmet>
+
+<div style="display:flex; min-height:100vh; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- ================= COMPACT RAIL ================= -->
+  <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+  <div style="width:76px; flex:0 0 76px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; align-items:center; padding:20px 12px;">
+    <div style="position:relative; width:36px; height:36px; border-radius:9px; background:#1F5C4D; overflow:hidden; margin-bottom:8px;">
+      <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:50%; bottom:9px; width:18px; height:18px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; height:11px; background:#164034;"></div>
+      <div style="position:absolute; left:0; right:0; bottom:11px; height:1px; background:#0F3D33;"></div>
+    </div>
+    <button onClick="{{ toggleRail }}" title="Expand" style="width:34px; height:30px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#A29C8D; cursor:pointer; margin-bottom:20px; font-size:14px;">»</button>
+    <button title="Start timer" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#4FB79A; color:#0d211b; border:none; border-radius:11px; cursor:pointer; margin-bottom:22px;"><span style="width:16px; height:16px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:3px; width:1.5px; height:5px; background:#0d211b; transform:translateX(-50%);"></span></span></button>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+      <a href="Horae Timesheet.dc.html" title="Timesheet" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">◷</a>
+      <div title="Projects" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#232019; border:1px solid #322E26; color:#4FB79A; font-size:16px;">▤</div>
+      <a href="Horae Approvals.dc.html" title="Approvals" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">✓</a>
+      <a href="Horae Reports.dc.html" title="Reports" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▦</a>
+    </div>
+    <div style="flex:1;"></div>
+    <div title="Mira Kovač" style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0;">M</div>
+  </div>
+  </sc-if>
+
+  <!-- ================= LEFT RAIL ================= -->
+  <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+  <div style="width:264px; flex:0 0 264px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; padding:20px 16px;">
+    <div style="display:flex; align-items:center; gap:11px; padding:6px 8px 22px;">
+      <div style="position:relative; width:34px; height:34px; border-radius:9px; background:#1F5C4D; overflow:hidden; flex:0 0 34px;">
+        <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:50%; bottom:9px; width:17px; height:17px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:10px; background:#164034;"></div>
+        <div style="position:absolute; left:0; right:0; bottom:10px; height:1px; background:#0F3D33;"></div>
+      </div>
+      <div style="display:flex; align-items:baseline;">
+        <span style="font-family:'Newsreader',serif; font-size:25px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span>
+        <span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:5px;"></span>
+      </div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ toggleRail }}" title="Collapse" style="width:30px; height:30px; background:transparent; border:1px solid #322E26; border-radius:8px; color:#8f8676; cursor:pointer; font-size:14px;">«</button>
+    </div>
+
+    <div style="margin-bottom:26px;">
+      <button style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">
+        <span style="width:14px; height:14px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:2px; width:1.5px; height:4px; background:#0d211b; transform:translateX(-50%);"></span></span>
+        Start timer
+      </button>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Track</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Timesheet.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Timesheet</span></a>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Organize</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26;"><span style="width:9px; height:8px; border-radius:2px; background:#4FB79A;"></span><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Projects</span></div>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Review</div>
+    <div style="display:flex; flex-direction:column; gap:3px;">
+      <a href="Horae Approvals.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Approvals</span></a>
+      <a href="Horae Reports.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="display:inline-flex; align-items:flex-end; gap:2px; height:11px;"><span style="width:2.5px; height:6px; background:#5a5446;"></span><span style="width:2.5px; height:11px; background:#5a5446;"></span><span style="width:2.5px; height:8px; background:#5a5446;"></span></span><span style="font-size:14.5px;">Reports</span></a>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div style="display:flex; align-items:center; gap:11px; padding:8px; border-top:1px solid #322E26; padding-top:14px;">
+      <div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0; flex:0 0 34px;">M</div>
+      <div style="min-width:0;"><div style="font-size:13.5px; font-weight:600; color:#F6F2E9;">Mira Kovač</div><div style="font-size:12px; color:#8f8676;">Fieldstone Studio</div></div>
+      <div style="flex:1;"></div>
+      <span style="color:#6a6353; font-size:15px;">◔</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= MAIN ================= -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <div style="display:flex; align-items:center; gap:16px; padding:26px 40px 0;">
+      <h1 style="font-family:'Newsreader',serif; font-size:30px; font-weight:600; color:#F6F2E9; margin:0; letter-spacing:-.01em;">Projects</h1>
+      <div style="flex:1;"></div>
+      <button style="padding:10px 18px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Export</button>
+      <div style="display:flex; align-items:center; gap:9px; width:300px; padding:10px 14px; background:#1A1813; border:1px solid #322E26; border-radius:9px;">
+        <span style="color:#6a6353; font-size:14px;">⌕</span>
+        <span style="font-size:14px; color:#5a5446;">Search by project or client</span>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:16px; padding:22px 40px 0;">
+      <button style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Active projects (2) <span style="color:#8f8676; font-size:11px;">▾</span></button>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border-radius:5px; background:#4FB79A; display:inline-flex; align-items:center; justify-content:center; color:#0d211b; font-size:12px; font-weight:700;">✓</span> Show Forecast data</label>
+      <div style="flex:1;"></div>
+      <button style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Filter by client <span style="color:#8f8676; font-size:11px;">▾</span></button>
+    </div>
+
+    <div style="padding:22px 40px 40px; flex:1;">
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; overflow:hidden;">
+        <!-- header -->
+        <div style="display:grid; grid-template-columns:1fr 130px 130px 96px 200px 220px 120px; align-items:center; padding:14px 22px; border-bottom:1px solid #322E26; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353;">
+          <span>Client</span><span style="text-align:right;">Budget</span><span style="text-align:right;">⚑ Scheduled</span><span style="text-align:right;">Delta</span><span style="text-align:right;">Spent</span><span style="text-align:right;">Budget remaining</span><span></span>
+        </div>
+
+        <!-- Company group A -->
+        <div style="padding:12px 22px; background:#161510; font-size:13.5px; font-weight:600; color:#A29C8D; border-bottom:1px solid #262219;">Meridian Health</div>
+        <div style="display:grid; grid-template-columns:1fr 130px 130px 96px 200px 220px 120px; align-items:center; padding:16px 22px; border-bottom:1px solid #262219;">
+          <div style="display:flex; align-items:center; gap:11px; min-width:0;"><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">[4192] T&amp;M · Atlas Platform</span><span style="padding:3px 9px; background:#232019; border:1px solid #3d382e; border-radius:999px; font-size:11px; color:#A29C8D; white-space:nowrap;">Time &amp; Materials</span></div>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">7,200.00</span>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#A29C8D;">4,180.50</span>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#A29C8D;">118.24</span>
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">3,842.60</span><span style="width:96px; height:7px; border-radius:999px; background:#262219; overflow:hidden;"><span style="display:block; width:53%; height:100%; background:#4FB79A;"></span></span></div>
+          <div style="display:flex; align-items:baseline; justify-content:flex-end; gap:8px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">3,357.40</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8f8676;">(47%)</span></div>
+          <div style="text-align:right;"><button style="padding:7px 13px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;">Actions ▾</button></div>
+        </div>
+
+        <!-- Company group B -->
+        <div style="padding:12px 22px; background:#161510; font-size:13.5px; font-weight:600; color:#A29C8D; border-bottom:1px solid #262219;">Rún Collective</div>
+        <div style="display:grid; grid-template-columns:1fr 130px 130px 96px 200px 220px 120px; align-items:center; padding:16px 22px;">
+          <div style="display:flex; align-items:center; gap:11px; min-width:0;"><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">T&amp;M · Open-source self-hosting fund</span><span style="padding:3px 9px; background:#232019; border:1px solid #3d382e; border-radius:999px; font-size:11px; color:#A29C8D; white-space:nowrap;">Time &amp; Materials</span></div>
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:7px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">€12,000.00</span><span style="color:#8f8676; font-size:12px;">⟳</span></div>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#A29C8D;">96.40</span>
+          <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#5a5446;">–</span>
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">€0.00</span><span style="width:96px; height:7px; border-radius:999px; background:#262219; overflow:hidden;"><span style="display:block; width:2%; height:100%; background:#4FB79A;"></span></span></div>
+          <div style="display:flex; align-items:baseline; justify-content:flex-end; gap:8px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">€12,000.00</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8f8676;">(100%)</span></div>
+          <div style="text-align:right;"><button style="padding:7px 13px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;">Actions ▾</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { collapsed: false };
+  renderVals() {
+    return {
+      expanded: !this.state.collapsed,
+      collapsed: this.state.collapsed,
+      toggleRail: () => this.setState(s => ({ collapsed: !s.collapsed })),
+    };
+  }
+}
+</script>
+</body>
+</html>
