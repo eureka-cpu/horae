@@ -28,6 +28,7 @@ server = [
   "dep:typst-layout",
   "dep:extism",
   "dep:toml",
+  "dep:ureq",
 ]
 web = ["dioxus/web", "dep:gloo-timers"]
 
@@ -82,6 +83,10 @@ typst-pdf = { version = "0.15", optional = true }
 typst-layout = { version = "0.15", optional = true }
 extism = { version = "1", optional = true }
 toml = { version = "0.8", optional = true }
+# Blocking HTTP client for the `horae_http_post` plugin host function. extism host
+# functions are synchronous, so a blocking client avoids bridging to the async
+# runtime. rustls (default) keeps the build free of a system OpenSSL dependency.
+ureq = { version = "2", optional = true }
 
 # web-only
 gloo-timers = { version = "0.3", features = ["futures"], optional = true }

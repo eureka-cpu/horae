@@ -207,6 +207,22 @@ no arbitrary syscalls, and **no data-write access**.
    configuration (keyed by the plugin `name` from the manifest). Returns the string
    value or null if unset. A plugin cannot read another plugin's or the host's config.
 
+### Wire ABI
+
+Each host function takes a single JSON-string argument and (except `horae_log`)
+returns a single JSON string, consistent across all four:
+
+- `horae_db_query` — in `{"sql": string, "params": [ ... ]}`; out a JSON array of row
+  objects, or `{"error": string}`. Read-only is enforced twice: a `SELECT`/`WITH`
+  prefix guard rejects a leading write or a second `;`-separated statement, and the
+  query is executed wrapped as `SELECT json_agg(_t) FROM (<sql>) _t`, a subquery form
+  Postgres accepts only for a `SELECT`. Postgres also does the row→JSON serialisation.
+- `horae_http_post` — in `{"url": string, "body": <json>}`; out `{"status": u16, "body": string}`, or `{"error": string}`. Bounded by a 10-second timeout.
+- `horae_config_get` — in `{"key": string}`; out the JSON string value or JSON `null`.
+
+Per-plugin configuration lives in an optional top-level `[config]` table in the
+plugin's `plugin.toml` (string keys and values), read only by that plugin.
+
 ______________________________________________________________________
 
 ## Dashboard-widget return spec
