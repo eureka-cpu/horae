@@ -107,7 +107,7 @@ pub async fn dev_login_post(
                 email: row.email,
                 name: row.name,
                 org_role: row.org_role,
-                method: "dev".into(),
+                method: Some("dev".into()),
             },
         });
 
@@ -116,6 +116,33 @@ pub async fn dev_login_post(
 
 /// `POST /auth/logout` — flush the session and redirect to login.
 pub async fn logout_post(session: Session) -> impl IntoResponse {
+    // Capture the user before clearing the session so the logout can be announced.
+    if let Some(uid) = crate::auth::session::get_session_user_id(&session).await {
+        let state = crate::state::global_state().await;
+        if let Ok(user) = sqlx::query_as::<_, crate::models::User>(
+            "SELECT id, org_id, email, name, oidc_subject, org_role,
+                    cost_rate_cents, billable_rate_cents, active, created_at
+             FROM users WHERE id = $1",
+        )
+        .bind(uid)
+        .fetch_one(&state.db)
+        .await
+        {
+            state
+                .plugins
+                .dispatch(crate::plugin::AppEvent::UserLoggedOut {
+                    occurred_at: chrono::Utc::now(),
+                    org_id: user.org_id,
+                    user: crate::plugin::event::UserPayload {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        org_role: user.org_role.to_string(),
+                        method: None,
+                    },
+                });
+        }
+    }
     clear_session(&session).await.ok();
     Redirect::to("/auth/login")
 }

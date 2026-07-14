@@ -73,15 +73,15 @@ ______________________________________________________________________
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Add the US2 `AppEvent` variants + `hook_name()` arms and `ClientPayload`/`ProjectPayload`/`TaskPayload`/`AssignmentPayload`/`OrgBrandingPayload` (and `previous_role`) in `crates/horae/src/plugin/event.rs`.
-- [ ] T017 [US2] Dispatch client events in `create_client`/`update_client`/`set_client_active` in `crates/horae/src/server_fns.rs` (no-op + flip suppression).
-- [ ] T018 [US2] Dispatch project events in `create_project`/`update_project`/`set_project_active` in `crates/horae/src/server_fns.rs`.
-- [ ] T019 [US2] Dispatch task events in `create_task`/`update_task`/`set_task_active` in `crates/horae/src/server_fns.rs` (`task_deactivated`/`task_reactivated` only on active flip).
-- [ ] T020 [US2] Dispatch `user_created` in `create_user`, `user_role_changed` (reading the prior role before the update) in `set_user_role`, and `user_deactivated` in `set_user_active` in `crates/horae/src/server_fns.rs`.
-- [ ] T021 [US2] Dispatch `user_logged_out` in the logout path in `crates/horae/src/auth/` (mirroring where `user_logged_in` is dispatched).
-- [ ] T022 [US2] Dispatch `user_assigned_to_project`/`assignment_removed` in `create_assignment`/`delete_assignment` in `crates/horae/src/server_fns.rs`.
-- [ ] T023 [US2] Dispatch `org_branding_updated` in `update_org_branding` in `crates/horae/src/server_fns.rs`.
-- [ ] T024 [US2] Regenerate the `.sqlx/` cache and run the US2 tests green.
+- [x] T016 [US2] Add the US2 `AppEvent` variants + `hook_name()` arms and `ClientPayload`/`ProjectPayload`/`TaskPayload`/`AssignmentPayload`/`OrgBrandingPayload` (and `previous_role`) in `crates/horae/src/plugin/event.rs`.
+- [x] T017 [US2] Dispatch client events in `create_client`/`update_client`/`set_client_active` in `crates/horae/src/server_fns.rs` (no-op + flip suppression).
+- [x] T018 [US2] Dispatch project events in `create_project`/`update_project`/`set_project_active` in `crates/horae/src/server_fns.rs`.
+- [x] T019 [US2] Dispatch task events in `create_task`/`update_task`/`set_task_active` in `crates/horae/src/server_fns.rs` (`task_deactivated`/`task_reactivated` only on active flip).
+- [x] T020 [US2] Dispatch `user_created` in `create_user`, `user_role_changed` (reading the prior role before the update) in `set_user_role`, and `user_deactivated` in `set_user_active` in `crates/horae/src/server_fns.rs`.
+- [x] T021 [US2] Dispatch `user_logged_out` in the logout path in `crates/horae/src/auth/` (mirroring where `user_logged_in` is dispatched).
+- [x] T022 [US2] Dispatch `user_assigned_to_project`/`assignment_removed` in `create_assignment`/`delete_assignment` in `crates/horae/src/server_fns.rs`.
+- [x] T023 [US2] Dispatch `org_branding_updated` in `update_org_branding` in `crates/horae/src/server_fns.rs`.
+- [x] T024 [US2] Regenerate the `.sqlx/` cache and run the US2 tests green.
 
 **Checkpoint**: US1 and US2 both work independently.
 
