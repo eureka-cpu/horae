@@ -945,6 +945,22 @@ pub async fn update_client(
     let client_id: uuid::Uuid = client_id
         .parse()
         .map_err(|_| server_err("Invalid client_id"))?;
+    // Detect a real change so a no-op update emits nothing (FR-012).
+    let changed: Option<bool> = sqlx::query_scalar::<_, bool>(
+        "SELECT (name IS DISTINCT FROM $3 OR currency IS DISTINCT FROM $4
+                 OR address IS DISTINCT FROM $5 OR tax_id IS DISTINCT FROM $6)
+         FROM clients WHERE id = $1 AND org_id = $2",
+    )
+    .bind(client_id)
+    .bind(manager.org_id)
+    .bind(&name)
+    .bind(&currency)
+    .bind(&address)
+    .bind(&tax_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?;
+
     let client = sqlx::query_as::<_, Client>(
         "UPDATE clients SET name = $3, currency = $4, address = $5, tax_id = $6
          WHERE id = $1 AND org_id = $2
@@ -965,13 +981,15 @@ pub async fn update_client(
         details: None,
     })?;
 
-    state
-        .plugins
-        .dispatch(crate::plugin::AppEvent::ClientUpdated {
-            occurred_at: chrono::Utc::now(),
-            org_id: manager.org_id,
-            client: client_payload(&client),
-        });
+    if changed == Some(true) {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::ClientUpdated {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                client: client_payload(&client),
+            });
+    }
     Ok(client)
 }
 
@@ -1010,20 +1028,23 @@ pub async fn set_client_active(client_id: String, active: bool) -> Result<Client
         details: None,
     })?;
 
-    if was_active == Some(!active) {
+    if let Some(t) = crate::plugin::event::active_transition(was_active, active) {
         let occurred_at = chrono::Utc::now();
         let client = client_payload(&client);
-        state.plugins.dispatch(if active {
-            crate::plugin::AppEvent::ClientReactivated {
-                occurred_at,
-                org_id: manager.org_id,
-                client,
+        state.plugins.dispatch(match t {
+            crate::plugin::event::ActiveTransition::Reactivated => {
+                crate::plugin::AppEvent::ClientReactivated {
+                    occurred_at,
+                    org_id: manager.org_id,
+                    client,
+                }
             }
-        } else {
-            crate::plugin::AppEvent::ClientDeactivated {
-                occurred_at,
-                org_id: manager.org_id,
-                client,
+            crate::plugin::event::ActiveTransition::Deactivated => {
+                crate::plugin::AppEvent::ClientDeactivated {
+                    occurred_at,
+                    org_id: manager.org_id,
+                    client,
+                }
             }
         });
     }
@@ -1127,6 +1148,24 @@ pub async fn update_project(
     let project_id: uuid::Uuid = project_id
         .parse()
         .map_err(|_| server_err("Invalid project_id"))?;
+    // Detect a real change so a no-op update emits nothing (FR-012).
+    let changed: Option<bool> = sqlx::query_scalar::<_, bool>(
+        "SELECT (name IS DISTINCT FROM $3
+                 OR project_type::text IS DISTINCT FROM $4
+                 OR currency IS DISTINCT FROM $5
+                 OR budget_kind::text IS DISTINCT FROM $6)
+         FROM projects WHERE id = $1 AND org_id = $2",
+    )
+    .bind(project_id)
+    .bind(manager.org_id)
+    .bind(&name)
+    .bind(&project_type)
+    .bind(&currency)
+    .bind(&budget_kind)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?;
+
     let project = sqlx::query_as::<_, Project>(
         "UPDATE projects
             SET name = $3, project_type = $4, currency = $5, budget_kind = $6
@@ -1160,13 +1199,15 @@ pub async fn update_project(
         details: None,
     })?;
 
-    state
-        .plugins
-        .dispatch(crate::plugin::AppEvent::ProjectUpdated {
-            occurred_at: chrono::Utc::now(),
-            org_id: manager.org_id,
-            project: project_payload(&project),
-        });
+    if changed == Some(true) {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::ProjectUpdated {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                project: project_payload(&project),
+            });
+    }
     Ok(project)
 }
 
@@ -1212,20 +1253,23 @@ pub async fn set_project_active(
         details: None,
     })?;
 
-    if was_active == Some(!active) {
+    if let Some(t) = crate::plugin::event::active_transition(was_active, active) {
         let occurred_at = chrono::Utc::now();
         let project = project_payload(&project);
-        state.plugins.dispatch(if active {
-            crate::plugin::AppEvent::ProjectReactivated {
-                occurred_at,
-                org_id: manager.org_id,
-                project,
+        state.plugins.dispatch(match t {
+            crate::plugin::event::ActiveTransition::Reactivated => {
+                crate::plugin::AppEvent::ProjectReactivated {
+                    occurred_at,
+                    org_id: manager.org_id,
+                    project,
+                }
             }
-        } else {
-            crate::plugin::AppEvent::ProjectDeactivated {
-                occurred_at,
-                org_id: manager.org_id,
-                project,
+            crate::plugin::event::ActiveTransition::Deactivated => {
+                crate::plugin::AppEvent::ProjectDeactivated {
+                    occurred_at,
+                    org_id: manager.org_id,
+                    project,
+                }
             }
         });
     }
@@ -1315,6 +1359,22 @@ pub async fn update_task(
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    // Detect a real change so a no-op update emits nothing (FR-012).
+    let changed: Option<bool> = sqlx::query_scalar::<_, bool>(
+        "SELECT (name IS DISTINCT FROM $3
+                 OR billable_default IS DISTINCT FROM $4
+                 OR default_rate_cents IS DISTINCT FROM $5)
+         FROM tasks WHERE id = $1 AND org_id = $2",
+    )
+    .bind(task_id)
+    .bind(manager.org_id)
+    .bind(&name)
+    .bind(billable_default)
+    .bind(default_rate_cents)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?;
+
     let task = sqlx::query_as::<_, Task>(
         "UPDATE tasks
             SET name = $3, billable_default = $4, default_rate_cents = $5
@@ -1335,13 +1395,15 @@ pub async fn update_task(
         details: None,
     })?;
 
-    state
-        .plugins
-        .dispatch(crate::plugin::AppEvent::TaskUpdated {
-            occurred_at: chrono::Utc::now(),
-            org_id: manager.org_id,
-            task: task_payload(&task),
-        });
+    if changed == Some(true) {
+        state
+            .plugins
+            .dispatch(crate::plugin::AppEvent::TaskUpdated {
+                occurred_at: chrono::Utc::now(),
+                org_id: manager.org_id,
+                task: task_payload(&task),
+            });
+    }
     Ok(task)
 }
 
@@ -1378,20 +1440,23 @@ pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, Serv
         details: None,
     })?;
 
-    if was_active == Some(!active) {
+    if let Some(t) = crate::plugin::event::active_transition(was_active, active) {
         let occurred_at = chrono::Utc::now();
         let task = task_payload(&task);
-        state.plugins.dispatch(if active {
-            crate::plugin::AppEvent::TaskReactivated {
-                occurred_at,
-                org_id: manager.org_id,
-                task,
+        state.plugins.dispatch(match t {
+            crate::plugin::event::ActiveTransition::Reactivated => {
+                crate::plugin::AppEvent::TaskReactivated {
+                    occurred_at,
+                    org_id: manager.org_id,
+                    task,
+                }
             }
-        } else {
-            crate::plugin::AppEvent::TaskDeactivated {
-                occurred_at,
-                org_id: manager.org_id,
-                task,
+            crate::plugin::event::ActiveTransition::Deactivated => {
+                crate::plugin::AppEvent::TaskDeactivated {
+                    occurred_at,
+                    org_id: manager.org_id,
+                    task,
+                }
             }
         });
     }
@@ -2226,7 +2291,9 @@ pub async fn set_user_active(user_id: String, active: bool) -> Result<User, Serv
     })?;
 
     // FR-005 defines only a deactivation event (no user_reactivated).
-    if was_active == Some(true) && !active {
+    if crate::plugin::event::active_transition(was_active, active)
+        == Some(crate::plugin::event::ActiveTransition::Deactivated)
+    {
         state
             .plugins
             .dispatch(crate::plugin::AppEvent::UserDeactivated {
