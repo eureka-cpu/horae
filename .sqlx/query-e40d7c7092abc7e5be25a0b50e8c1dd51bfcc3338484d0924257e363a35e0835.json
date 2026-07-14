@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT te.id, te.org_id, te.user_id, te.project_id, te.task_id,\n                  te.spent_date as \"spent_date: chrono::NaiveDate\",\n                  te.minutes, te.billable, te.notes,\n                  te.started_at as \"started_at!: chrono::DateTime<chrono::Utc>\",\n                  (EXTRACT(EPOCH FROM (now() - te.started_at)) / 60)::int as \"running_minutes!\"\n           FROM time_entries te\n           JOIN organizations o ON o.id = te.org_id\n           WHERE te.is_running = true\n             AND te.notified_long_running_at IS NULL\n             AND te.started_at < now() - make_interval(mins => o.long_timer_minutes)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "task_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "spent_date: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "billable",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "started_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "running_minutes!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "e40d7c7092abc7e5be25a0b50e8c1dd51bfcc3338484d0924257e363a35e0835"
+}

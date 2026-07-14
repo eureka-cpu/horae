@@ -19,6 +19,8 @@ mod render;
 #[cfg(feature = "server")]
 mod reports;
 #[cfg(feature = "server")]
+mod scheduler;
+#[cfg(feature = "server")]
 mod seed;
 #[cfg(feature = "server")]
 mod state;
@@ -164,6 +166,9 @@ fn main() -> anyhow::Result<()> {
                 let plugins_dir = std::path::Path::new(&cfg.plugins_dir);
                 let registry = std::sync::Arc::new(plugin::PluginRegistry::load(plugins_dir));
                 state::init_state(pool.clone(), registry).await;
+
+                // Start the background poller for forgotten timers (US3).
+                scheduler::spawn(state::global_state().await);
 
                 // Session middleware (Postgres-backed, idempotent migrate).
                 let session_layer = auth::make_session_layer(pool.clone()).await?;

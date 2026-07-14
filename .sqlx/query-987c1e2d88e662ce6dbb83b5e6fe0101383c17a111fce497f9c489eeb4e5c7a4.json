@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.org_id, p.client_id, p.name, p.active, p.last_budget_alert_pct,\n                  p.project_type as \"project_type: horae_core::types::ProjectType\",\n                  p.budget_kind as \"budget_kind: horae_core::types::BudgetKind\",\n                  p.budget_minutes,\n                  o.budget_alert_pcts\n           FROM projects p\n           JOIN organizations o ON o.id = p.org_id\n           WHERE p.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "org_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_budget_alert_pct",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "project_type: horae_core::types::ProjectType",
+        "type_info": {
+          "Custom": {
+            "name": "project_type",
+            "kind": {
+              "Enum": [
+                "time_and_materials",
+                "fixed_fee",
+                "non_billable",
+                "retainer"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "budget_kind: horae_core::types::BudgetKind",
+        "type_info": {
+          "Custom": {
+            "name": "budget_kind",
+            "kind": {
+              "Enum": [
+                "none",
+                "amount",
+                "hours"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "budget_minutes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "budget_alert_pcts",
+        "type_info": "Int4Array"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "987c1e2d88e662ce6dbb83b5e6fe0101383c17a111fce497f9c489eeb4e5c7a4"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(COALESCE(rounded_minutes, minutes)), 0)::bigint as \"c!\"\n           FROM time_entries WHERE project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "c!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "879b43c50144516306b8ffa4f8d58d862af3c2add24a3ca3255811c72dacd200"
+}
