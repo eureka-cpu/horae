@@ -95,20 +95,20 @@ ______________________________________________________________________
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Unit tests for `budget::crossed_band` in `crates/core/src/budget.rs` (`#[cfg(test)]`): integer inputs, band boundaries, no re-fire within a band, reset when consumption drops (SC-004, Constitution I).
+- [x] T025 [P] [US3] Unit tests for `budget::crossed_band` in `crates/core/src/budget.rs` (`#[cfg(test)]`): integer inputs, band boundaries, no re-fire within a band, reset when consumption drops (SC-004, Constitution I).
 - [ ] T026 [US3] Integration tests in `crates/horae/tests/integration.rs`: crossing 80% fires one `project_budget_threshold_reached`; staying in band fires none; exceeding 100% fires `project_over_budget`; a `none`-budget project fires nothing.
 - [ ] T027 [US3] Integration test in `crates/horae/tests/integration.rs`: an entry older than `long_timer_minutes` is detected once, sets `notified_long_running_at`, and is not re-detected; stopping clears the marker.
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Migration `crates/horae/migrations/NNNN_plugin_event_support.sql`: add org `budget_alert_pcts int[] default '{80,100}'` and `long_timer_minutes int default 480`; `projects.last_budget_alert_pct smallint`; `time_entries.notified_long_running_at timestamptz`.
-- [ ] T029 [P] [US3] Implement the pure `budget::crossed_band(consumed, budget, thresholds, last_band)` function in `crates/core/src/budget.rs` and export it from `crates/core/src/lib.rs` (integer-only).
-- [ ] T030 [US3] Add the US3 `AppEvent` variants + `hook_name()` arms and `BudgetThresholdPayload` in `crates/horae/src/plugin/event.rs`.
-- [ ] T031 [US3] After time-entry writes (`create_time_entry`, `update_time_entry`, `delete_time_entry`, `stop_timer`) in `crates/horae/src/server_fns.rs`, recompute project consumption, call `budget::crossed_band`, dispatch `project_budget_threshold_reached`/`project_over_budget`, and update/reset `projects.last_budget_alert_pct`.
-- [ ] T032 [US3] Implement the periodic long-running-timer scheduler in `crates/horae/src/scheduler.rs` (server-only `tokio` task): poll for `is_running` entries past `long_timer_minutes` without `notified_long_running_at`, dispatch `timer_running_too_long`, set the marker.
-- [ ] T033 [US3] Clear `notified_long_running_at` in `stop_timer` (`crates/horae/src/server_fns.rs`).
-- [ ] T034 [US3] Read org config and spawn the scheduler at startup: wire it in `crates/horae/src/state.rs` / `crates/horae/src/main.rs` (`serve`).
-- [ ] T035 [US3] Regenerate the `.sqlx/` cache for the new queries and run the US3 tests green.
+- [x] T028 [US3] Migration `crates/horae/migrations/NNNN_plugin_event_support.sql`: add org `budget_alert_pcts int[] default '{80,100}'` and `long_timer_minutes int default 480`; `projects.last_budget_alert_pct smallint`; `time_entries.notified_long_running_at timestamptz`.
+- [x] T029 [P] [US3] Implement the pure `budget::crossed_band(consumed, budget, thresholds, last_band)` function in `crates/core/src/budget.rs` and export it from `crates/core/src/lib.rs` (integer-only).
+- [x] T030 [US3] Add the US3 `AppEvent` variants + `hook_name()` arms and `BudgetThresholdPayload` in `crates/horae/src/plugin/event.rs`.
+- [x] T031 [US3] After time-entry writes (`create_time_entry`, `update_time_entry`, `delete_time_entry`, `stop_timer`) in `crates/horae/src/server_fns.rs`, recompute project consumption, call `budget::crossed_band`, dispatch `project_budget_threshold_reached`/`project_over_budget`, and update/reset `projects.last_budget_alert_pct`.
+- [x] T032 [US3] Implement the periodic long-running-timer scheduler in `crates/horae/src/scheduler.rs` (server-only `tokio` task): poll for `is_running` entries past `long_timer_minutes` without `notified_long_running_at`, dispatch `timer_running_too_long`, set the marker.
+- [x] T033 [US3] Clear `notified_long_running_at` in `stop_timer` (`crates/horae/src/server_fns.rs`).
+- [x] T034 [US3] Read org config and spawn the scheduler at startup: wire it in `crates/horae/src/state.rs` / `crates/horae/src/main.rs` (`serve`).
+- [x] T035 [US3] Regenerate the `.sqlx/` cache for the new queries and run the US3 tests green.
 
 **Checkpoint**: All three stories independently functional.
 

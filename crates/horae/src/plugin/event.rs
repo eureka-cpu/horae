@@ -194,6 +194,25 @@ pub enum AppEvent {
         org_id: Uuid,
         org: OrgBrandingPayload,
     },
+    #[serde(rename = "project_budget_threshold_reached")]
+    ProjectBudgetThresholdReached {
+        occurred_at: DateTime<Utc>,
+        org_id: Uuid,
+        budget: BudgetThresholdPayload,
+    },
+    #[serde(rename = "project_over_budget")]
+    ProjectOverBudget {
+        occurred_at: DateTime<Utc>,
+        org_id: Uuid,
+        budget: BudgetThresholdPayload,
+    },
+    #[serde(rename = "timer_running_too_long")]
+    TimerRunningTooLong {
+        occurred_at: DateTime<Utc>,
+        org_id: Uuid,
+        running_minutes: i32,
+        time_entry: TimeEntryPayload,
+    },
 }
 
 impl AppEvent {
@@ -231,6 +250,9 @@ impl AppEvent {
             Self::UserAssignedToProject { .. } => "user_assigned_to_project",
             Self::AssignmentRemoved { .. } => "assignment_removed",
             Self::OrgBrandingUpdated { .. } => "org_branding_updated",
+            Self::ProjectBudgetThresholdReached { .. } => "project_budget_threshold_reached",
+            Self::ProjectOverBudget { .. } => "project_over_budget",
+            Self::TimerRunningTooLong { .. } => "timer_running_too_long",
         }
     }
 
@@ -327,6 +349,23 @@ pub struct OrgBrandingPayload {
     pub org_id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider_name: Option<String>,
+}
+
+/// Consumption-vs-budget figures for the derived budget events. Only the fields
+/// matching the project's budget kind are set (minutes for `hours`, cents for
+/// `amount`); the rest are omitted.
+#[derive(Debug, Clone, Serialize)]
+pub struct BudgetThresholdPayload {
+    pub project: ProjectPayload,
+    pub threshold_pct: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub consumed_minutes: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budget_minutes: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub consumed_cents: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budget_amount_cents: Option<i64>,
 }
 
 #[cfg(test)]
@@ -447,5 +486,45 @@ mod tests {
         assert!(json.contains("\"previous_role\":\"member\""));
         // The login-only `method` field is omitted for admin user events.
         assert!(!json.contains("\"method\""));
+    }
+
+    #[test]
+    fn budget_and_timer_events_serialize() {
+        let project = ProjectPayload {
+            id: Uuid::nil(),
+            client_id: Uuid::nil(),
+            name: "Website".into(),
+            project_type: "time_and_materials".into(),
+            budget_kind: "hours".into(),
+            active: true,
+        };
+        let over = AppEvent::ProjectOverBudget {
+            occurred_at: DateTime::from_timestamp(0, 0).unwrap(),
+            org_id: Uuid::nil(),
+            budget: BudgetThresholdPayload {
+                project,
+                threshold_pct: 100,
+                consumed_minutes: Some(6000),
+                budget_minutes: Some(4800),
+                consumed_cents: None,
+                budget_amount_cents: None,
+            },
+        };
+        assert_eq!(over.hook_name(), "project_over_budget");
+        let j = over.to_json();
+        assert!(j.contains("\"event\":\"project_over_budget\""));
+        assert!(j.contains("\"threshold_pct\":100"));
+        assert!(j.contains("\"consumed_minutes\":6000"));
+        // Cents fields are omitted for an hours budget.
+        assert!(!j.contains("consumed_cents"));
+
+        let timer = AppEvent::TimerRunningTooLong {
+            occurred_at: DateTime::from_timestamp(0, 0).unwrap(),
+            org_id: Uuid::nil(),
+            running_minutes: 495,
+            time_entry: sample_entry(),
+        };
+        assert_eq!(timer.hook_name(), "timer_running_too_long");
+        assert!(timer.to_json().contains("\"running_minutes\":495"));
     }
 }

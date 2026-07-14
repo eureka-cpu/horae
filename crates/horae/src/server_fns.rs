@@ -282,6 +282,107 @@ fn user_payload(u: &crate::models::User) -> crate::plugin::event::UserPayload {
     }
 }
 
+/// Recompute an hours-budget project's consumption and, if it crossed a new
+/// configured threshold band, dispatch the budget event once, then advance or
+/// reset the stored band. Spawned fire-and-forget so it never blocks the write;
+/// errors are logged, not propagated. Amount budgets are not evaluated yet —
+/// they need FR-024 rate resolution.
+#[cfg(feature = "server")]
+async fn check_project_budget(state: &'static crate::state::AppState, project_id: uuid::Uuid) {
+    let row = match sqlx::query!(
+        r#"SELECT p.org_id, p.client_id, p.name, p.active, p.last_budget_alert_pct,
+                  p.project_type as "project_type: horae_core::types::ProjectType",
+                  p.budget_kind as "budget_kind: horae_core::types::BudgetKind",
+                  p.budget_minutes,
+                  o.budget_alert_pcts
+           FROM projects p
+           JOIN organizations o ON o.id = p.org_id
+           WHERE p.id = $1"#,
+        project_id,
+    )
+    .fetch_optional(&state.db)
+    .await
+    {
+        Ok(Some(r)) => r,
+        Ok(None) => return,
+        Err(e) => {
+            tracing::warn!("budget check: load project {project_id} failed: {e}");
+            return;
+        }
+    };
+
+    // Only hours budgets are evaluated for now (amount needs rate resolution).
+    let budget = match (row.budget_kind, row.budget_minutes) {
+        (horae_core::types::BudgetKind::Hours, Some(b)) if b > 0 => b,
+        _ => return,
+    };
+
+    let consumed: i64 = match sqlx::query_scalar!(
+        r#"SELECT COALESCE(SUM(COALESCE(rounded_minutes, minutes)), 0)::bigint as "c!"
+           FROM time_entries WHERE project_id = $1"#,
+        project_id,
+    )
+    .fetch_one(&state.db)
+    .await
+    {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("budget check: sum for {project_id} failed: {e}");
+            return;
+        }
+    };
+
+    let thresholds = row.budget_alert_pcts;
+    let last = row.last_budget_alert_pct.unwrap_or(0);
+    let current = horae_core::budget::current_band(consumed, budget, &thresholds);
+
+    if let Some(band) = horae_core::budget::crossed_band(consumed, budget, &thresholds, last) {
+        let payload = crate::plugin::event::BudgetThresholdPayload {
+            project: crate::plugin::event::ProjectPayload {
+                id: project_id,
+                client_id: row.client_id,
+                name: row.name.clone(),
+                project_type: row.project_type.to_string(),
+                budget_kind: "hours".into(),
+                active: row.active,
+            },
+            threshold_pct: band,
+            consumed_minutes: Some(consumed as i32),
+            budget_minutes: Some(budget),
+            consumed_cents: None,
+            budget_amount_cents: None,
+        };
+        let occurred_at = chrono::Utc::now();
+        let event = if band >= 100 {
+            crate::plugin::AppEvent::ProjectOverBudget {
+                occurred_at,
+                org_id: row.org_id,
+                budget: payload,
+            }
+        } else {
+            crate::plugin::AppEvent::ProjectBudgetThresholdReached {
+                occurred_at,
+                org_id: row.org_id,
+                budget: payload,
+            }
+        };
+        state.plugins.dispatch(event);
+    }
+
+    // Advance (or reset) the stored band so each crossing fires at most once.
+    if current != last
+        && let Err(e) = sqlx::query!(
+            "UPDATE projects SET last_budget_alert_pct = $2 WHERE id = $1",
+            project_id,
+            current,
+        )
+        .execute(&state.db)
+        .await
+    {
+        tracing::warn!("budget check: store band for {project_id} failed: {e}");
+    }
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 /// Stub login — the real auth flows go through Axum routes at `/auth/login`.
@@ -510,6 +611,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
          SET is_running = false,
              minutes = $3,
              started_at = NULL,
+             notified_long_running_at = NULL,
              updated_at = now()
          WHERE id = $1 AND user_id = $2 AND is_running = true
          RETURNING id, org_id, user_id, project_id, task_id,
@@ -533,6 +635,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     })?;
 
     dispatch_time_entry_event(&entry, "time_entry_stopped").await;
+    tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(entry)
 }
 
@@ -641,6 +744,7 @@ pub async fn create_time_entry(
     .map_err(server_err)?;
 
     dispatch_time_entry_event(&entry, "time_entry_created").await;
+    tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(entry)
 }
 
@@ -711,6 +815,7 @@ pub async fn update_time_entry(
             });
     }
 
+    tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(entry)
 }
 
@@ -758,6 +863,7 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
             time_entry: time_entry_payload(&entry),
         });
 
+    tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(())
 }
 

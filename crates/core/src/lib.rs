@@ -1,3 +1,4 @@
+pub mod budget;
 pub mod duration;
 pub mod invoice;
 pub mod money;
