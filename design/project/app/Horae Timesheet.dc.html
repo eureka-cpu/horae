@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; min-height:820px; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- ================= COMPACT RAIL ================= -->
+  <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+  <div style="width:76px; flex:0 0 76px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; align-items:center; padding:20px 12px;">
+    <div style="position:relative; width:36px; height:36px; border-radius:9px; background:#1F5C4D; overflow:hidden; margin-bottom:8px;">
+      <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:50%; bottom:9px; width:18px; height:18px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; height:11px; background:#164034;"></div>
+      <div style="position:absolute; left:0; right:0; bottom:11px; height:1px; background:#0F3D33;"></div>
+    </div>
+    <button onClick="{{ toggleRail }}" title="Expand" style="width:34px; height:30px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#A29C8D; cursor:pointer; margin-bottom:20px; font-size:14px;">»</button>
+    <button title="Start timer" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#4FB79A; color:#0d211b; border:none; border-radius:11px; cursor:pointer; margin-bottom:22px;"><span style="width:16px; height:16px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:3px; width:1.5px; height:5px; background:#0d211b; transform:translateX(-50%);"></span></span></button>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+      <div title="Timesheet" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#232019; border:1px solid #322E26; color:#4FB79A; font-size:16px;">◷</div>
+      <a href="Horae Projects.dc.html" title="Projects" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▤</a>
+      <div title="Approvals" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">✓</div>
+      <div title="Reports" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▦</div>
+    </div>
+    <div style="flex:1;"></div>
+    <div title="Mira Kovač" style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0;">M</div>
+  </div>
+  </sc-if>
+
+  <!-- ================= LEFT RAIL ================= -->
+  <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+  <div style="width:264px; flex:0 0 264px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; padding:20px 16px;">
+    <div style="display:flex; align-items:center; gap:11px; padding:6px 8px 22px;">
+      <div style="position:relative; width:34px; height:34px; border-radius:9px; background:#1F5C4D; overflow:hidden; flex:0 0 34px;">
+        <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:50%; bottom:9px; width:17px; height:17px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:10px; background:#164034;"></div>
+        <div style="position:absolute; left:0; right:0; bottom:10px; height:1px; background:#0F3D33;"></div>
+      </div>
+      <div style="display:flex; align-items:baseline;">
+        <span style="font-family:'Newsreader',serif; font-size:25px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span>
+        <span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:5px;"></span>
+      </div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ toggleRail }}" title="Collapse" style="width:30px; height:30px; background:transparent; border:1px solid #322E26; border-radius:8px; color:#8f8676; cursor:pointer; font-size:14px;">«</button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:26px;">
+      <button style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">
+        <span style="width:14px; height:14px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:2px; width:1.5px; height:4px; background:#0d211b; transform:translateX(-50%);"></span></span>
+        Start timer
+      </button>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Track</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26;">
+        <span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span>
+        <span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Timesheet</span>
+      </div>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Organize</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Projects.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="width:9px; height:8px; border-radius:2px; border:1.5px solid #5a5446;"></span>
+        <span style="font-size:14.5px;">Projects</span>
+      </a>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Review</div>
+    <div style="display:flex; flex-direction:column; gap:3px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span>
+        <span style="font-size:14.5px;">Approvals</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="display:inline-flex; align-items:flex-end; gap:2px; height:11px;"><span style="width:2.5px; height:6px; background:#5a5446;"></span><span style="width:2.5px; height:11px; background:#5a5446;"></span><span style="width:2.5px; height:8px; background:#5a5446;"></span></span>
+        <span style="font-size:14.5px;">Reports</span>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <!-- user + popover menu -->
+    <div style="position:relative;">
+      <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:56px; left:0; width:238px; background:#201D17; border:1px solid #3d382e; border-radius:13px; overflow:hidden; box-shadow:0 20px 50px -14px rgba(0,0,0,.7); z-index:20;">
+        <div style="display:flex; align-items:center; gap:11px; padding:14px 14px 13px; border-bottom:1px solid #322E26;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0; flex:0 0 36px;">M</div>
+          <div><div style="font-size:14px; font-weight:600; color:#F6F2E9;">Mira Kovač</div><div style="font-size:12px; color:#8f8676;">Fieldstone Studio</div></div>
+        </div>
+        <div style="padding:6px;">
+          <div style="padding:9px 10px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">My profile</div>
+          <div style="padding:9px 10px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">My time report</div>
+          <div onClick="{{ goSettings }}" style="padding:9px 10px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Notifications</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 10px; border-radius:8px; font-size:14px; color:#A29C8D; cursor:pointer;">Need help? <span>›</span></div>
+        </div>
+        <div style="border-top:1px solid #322E26; padding:6px;">
+          <div style="padding:9px 10px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Switch accounts</div>
+          <div style="padding:9px 10px; border-radius:8px; font-size:14px; color:#E06661; cursor:pointer;">Sign out</div>
+        </div>
+      </div>
+      </sc-if>
+      <div onClick="{{ toggleMenu }}" style="display:flex; align-items:center; gap:11px; padding:8px; border-top:1px solid #322E26; padding-top:14px; cursor:pointer;">
+        <div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0; flex:0 0 34px;">M</div>
+        <div style="min-width:0;">
+          <div style="font-size:13.5px; font-weight:600; color:#F6F2E9;">Mira Kovač</div>
+          <div style="font-size:12px; color:#8f8676;">Fieldstone Studio</div>
+        </div>
+        <div style="flex:1;"></div>
+        <span style="color:#6a6353; font-size:15px;">◔</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= MAIN ================= -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <div style="display:flex; align-items:center; padding:26px 40px 0;">
+      <h1 style="font-family:'Newsreader',serif; font-size:30px; font-weight:600; color:#F6F2E9; margin:0; letter-spacing:-.01em;">Timesheet</h1>
+      <div style="flex:1;"></div>
+      <span style="font-size:13px; color:#8f8676; margin-right:20px;">Last saved at 12:44</span>
+      <div style="display:flex; background:#1A1813; border:1px solid #322E26; border-radius:9px; padding:3px;">
+        <button onClick="{{ setDay }}" style="{{ dayBtnStyle }}">Day</button>
+        <button onClick="{{ setWeek }}" style="{{ weekBtnStyle }}">Week</button>
+        <button onClick="{{ setCal }}" style="{{ calBtnStyle }}">Calendar</button>
+      </div>
+    </div>
+
+    <!-- ===================== WEEK VIEW ===================== -->
+    <sc-if value="{{ isWeek }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:24px 40px 40px; flex:1; overflow:auto;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:22px;">
+        <button onClick="{{ openAdd }}" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; background:#4FB79A; border:none; border-radius:11px; color:#0d211b; font-size:24px; font-weight:600; cursor:pointer; line-height:0;">+</button>
+        <div style="display:flex; align-items:center; background:#1A1813; border:1px solid #322E26; border-radius:11px; overflow:hidden;">
+          <button style="width:42px; height:44px; background:transparent; border:none; border-right:1px solid #322E26; color:#A29C8D; cursor:pointer; font-size:16px;">←</button>
+          <div style="display:flex; align-items:center; gap:9px; padding:0 18px; font-size:14px; color:#EFEAE0;"><span style="color:#8f8676;">▦</span><span style="font-weight:600;">This week</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">06 – 12 Jul 2026</span></div>
+          <button style="width:42px; height:44px; background:transparent; border:none; border-left:1px solid #322E26; color:#A29C8D; cursor:pointer; font-size:16px;">→</button>
+        </div>
+      </div>
+
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:minmax(280px,1fr) repeat(7, 92px) 92px 44px; align-items:end; padding:16px 20px 14px; border-bottom:1px solid #322E26;">
+          <span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#8f8676;">◷ Mon</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#A29C8D; margin-top:3px;">06 Jul</span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#8f8676;">◷ Tue</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#A29C8D; margin-top:3px;">07 Jul</span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#8f8676;">◷ Wed</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#A29C8D; margin-top:3px;">08 Jul</span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#8f8676;">◷ Thu</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#A29C8D; margin-top:3px;">09 Jul</span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#D99A3C; font-weight:600;">◷ Fri</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#D99A3C; margin-top:3px;">10 Jul</span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#6a6353;">Sat</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#6a6353; margin-top:3px;">11 Jul</span></span>
+          <span style="text-align:center;"><span style="display:block; font-size:11px; color:#6a6353;">Sun</span><span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#6a6353; margin-top:3px;">12 Jul</span></span>
+          <span style="text-align:right; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353;">Total</span>
+          <span></span>
+        </div>
+        <div style="display:grid; grid-template-columns:minmax(280px,1fr) repeat(7, 92px) 92px 44px; align-items:center; padding:18px 20px; border-bottom:1px solid #262219;">
+          <div style="display:flex; align-items:flex-start; gap:14px; padding-right:16px;">
+            <button style="width:34px; height:34px; flex:0 0 34px; display:flex; align-items:center; justify-content:center; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#8f8676; cursor:pointer;">▤</button>
+            <div>
+              <div style="font-size:14.5px; color:#F6F2E9; line-height:1.35;"><strong style="font-weight:600;">[7307] T&amp;M · Project Nix Blaze</strong> <span style="color:#8f8676; font-weight:400;">(Larkfield · EUR)</span></div>
+              <div style="font-size:13px; color:#A29C8D; margin-top:2px;">Infrastructure Development</div>
+            </div>
+          </div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#EFEAE0;">8:00</div></div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#EFEAE0;">8:00</div></div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#EFEAE0;">10:00</div></div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#EFEAE0;">8:00</div></div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; gap:5px; background:#1c1a12; border:1px solid #D99A3C; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#F6F2E9; box-shadow:0 0 0 3px rgba(217,154,60,.14);"><span style="color:#8f8676; font-size:11px;">▤</span>4:00</div></div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; background:#161510; border:1px solid #2a271f; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#5a5446;">–</div></div>
+          <div style="padding:0 5px;"><div style="height:40px; display:flex; align-items:center; justify-content:center; background:#161510; border:1px solid #2a271f; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#5a5446;">–</div></div>
+          <div style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; color:#F6F2E9;">38:00</div>
+          <div style="text-align:center;"><button style="width:30px; height:30px; background:transparent; border:none; color:#6a6353; cursor:pointer; font-size:16px;">×</button></div>
+        </div>
+        <div style="display:grid; grid-template-columns:minmax(280px,1fr) repeat(7, 92px) 92px 44px; align-items:center; padding:16px 20px;">
+          <div><button style="display:inline-flex; align-items:center; gap:9px; padding:10px 16px; background:transparent; border:1px dashed #3d382e; border-radius:9px; color:#A29C8D; font-family:inherit; font-size:14px; cursor:pointer;"><span style="color:#4FB79A; font-size:16px;">＋</span> Add row</button></div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D;">8:00</div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D;">8:00</div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D;">10:00</div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D;">8:00</div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#D99A3C; font-weight:600;">4:00</div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#5a5446;">0</div>
+          <div style="text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#5a5446;">0</div>
+          <div style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; color:#D99A3C;">38:00</div>
+          <div></div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:22px;">
+        <div style="display:flex; align-items:stretch; border-radius:10px; overflow:hidden; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">
+          <button style="padding:13px 24px; background:#1F5C4D; color:#F6F2E9; border:none; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer;">Submit week for approval</button>
+          <button style="padding:0 14px; background:#164034; color:#bfe0d4; border:none; border-left:1px solid #0f3d33; cursor:pointer; font-size:12px;">▾</button>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===================== DAY VIEW ===================== -->
+    <sc-if value="{{ isDay }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:24px 40px 40px; flex:1; overflow:auto;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:26px; position:relative;">
+        <button onClick="{{ openAdd }}" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; background:#4FB79A; border:none; border-radius:11px; color:#0d211b; font-size:24px; font-weight:600; cursor:pointer; line-height:0;">+</button>
+        <div style="display:flex; align-items:center; background:#1A1813; border:1px solid #322E26; border-radius:11px; overflow:hidden;">
+          <button style="width:42px; height:44px; background:transparent; border:none; border-right:1px solid #322E26; color:#A29C8D; cursor:pointer; font-size:16px;">←</button>
+          <div style="display:flex; align-items:center; gap:9px; padding:0 18px; font-size:14px; color:#EFEAE0;"><span style="color:#8f8676;">▦</span><span style="font-weight:600;">Today</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">Friday, 10 Jul</span></div>
+          <button style="width:42px; height:44px; background:transparent; border:none; border-left:1px solid #322E26; color:#A29C8D; cursor:pointer; font-size:16px;">→</button>
+        </div>
+        <!-- encouragement toast -->
+        <div style="position:absolute; left:330px; top:-6px; background:#000; border:1px solid #322E26; border-radius:11px; padding:12px 16px; max-width:280px; box-shadow:0 12px 30px -12px rgba(0,0,0,.7);">
+          <div style="font-size:13.5px; color:#EFEAE0; line-height:1.45;"><strong style="color:#D99A3C;">Nice job!</strong> You've tracked time on 9 Jul 2026.</div>
+          <div style="position:absolute; left:40px; bottom:-6px; width:12px; height:12px; background:#000; border-right:1px solid #322E26; border-bottom:1px solid #322E26; transform:rotate(45deg);"></div>
+        </div>
+      </div>
+
+      <!-- day strip -->
+      <div style="display:grid; grid-template-columns:repeat(7,1fr) 120px; gap:0; border-bottom:1px solid #322E26; padding-bottom:12px; margin-bottom:0;">
+        <div style="padding:0 6px;"><div style="font-size:13px; color:#8f8676;">Mon</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D; margin-top:3px;">8:00</div></div>
+        <div style="padding:0 6px;"><div style="font-size:13px; color:#8f8676;">Tue</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D; margin-top:3px;">8:00</div></div>
+        <div style="padding:0 6px;"><div style="font-size:13px; color:#8f8676;">Wed</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D; margin-top:3px;">10:00</div></div>
+        <div style="padding:0 6px;"><div style="font-size:13px; color:#8f8676;">Thu</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#A29C8D; margin-top:3px;">8:00</div></div>
+        <div style="padding:0 6px; position:relative;"><div style="font-size:13px; color:#D99A3C; font-weight:600;">Fri</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#D99A3C; margin-top:3px;">4:00</div><div style="position:absolute; left:0; right:0; bottom:-12px; height:2px; background:#D99A3C;"></div></div>
+        <div style="padding:0 6px;"><div style="font-size:13px; color:#6a6353;">Sat</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#6a6353; margin-top:3px;">0:00</div></div>
+        <div style="padding:0 6px;"><div style="font-size:13px; color:#6a6353;">Sun</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#6a6353; margin-top:3px;">0:00</div></div>
+        <div style="padding:0 6px; text-align:right;"><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353;">Week total</div><div style="font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:600; color:#F6F2E9; margin-top:3px;">38:00</div></div>
+      </div>
+
+      <!-- day project row -->
+      <div style="display:flex; align-items:center; gap:20px; padding:22px 4px; border-bottom:1px solid #262219;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:15px; color:#F6F2E9; line-height:1.35;"><strong style="font-weight:600;">[7307] T&amp;M · Project Nix Blaze</strong> <span style="color:#8f8676; font-weight:400;">(Larkfield · EUR)</span></div>
+          <div style="font-size:13.5px; color:#A29C8D; margin-top:2px;">Infrastructure Development</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600; color:#F6F2E9;">4:00</div>
+        <button onClick="{{ openAdd }}" style="display:flex; align-items:center; gap:8px; padding:10px 16px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;"><span style="width:12px; height:12px; border-radius:50%; border:2px solid #0d211b; display:inline-block;"></span>Start</button>
+        <button style="padding:10px 16px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:9px; font-family:inherit; font-size:14px; cursor:pointer;">Edit</button>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:flex-end; gap:16px; padding:22px 4px 0;">
+        <span style="font-size:14px; color:#A29C8D;">Total</span>
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600; color:#D99A3C;">4:00</span>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:40px;">
+        <div style="display:flex; align-items:stretch; border-radius:10px; overflow:hidden; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">
+          <button style="padding:13px 24px; background:#1F5C4D; color:#F6F2E9; border:none; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer;">Submit week for approval</button>
+          <button style="padding:0 14px; background:#164034; color:#bfe0d4; border:none; border-left:1px solid #0f3d33; cursor:pointer; font-size:12px;">▾</button>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===================== CALENDAR VIEW ===================== -->
+    <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:24px 40px 40px; flex:1; overflow:auto; display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:22px;">
+        <div style="display:flex; align-items:center; background:#1A1813; border:1px solid #322E26; border-radius:11px; overflow:hidden;">
+          <button style="width:42px; height:44px; background:transparent; border:none; border-right:1px solid #322E26; color:#A29C8D; cursor:pointer; font-size:16px;">←</button>
+          <div style="display:flex; align-items:center; gap:9px; padding:0 18px; font-size:14px; color:#EFEAE0;"><span style="color:#8f8676;">▦</span><span style="font-weight:600;">This week</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D;">06 – 12 Jul 2026</span></div>
+          <button style="width:42px; height:44px; background:transparent; border:none; border-left:1px solid #322E26; color:#A29C8D; cursor:pointer; font-size:16px;">→</button>
+        </div>
+        <button style="display:flex; align-items:center; gap:9px; padding:0 16px; height:46px; background:#1A1813; border:1px solid #322E26; border-radius:11px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Week view <span style="color:#8f8676; font-size:12px;">▾</span></button>
+        <div style="flex:1;"></div>
+        <button style="display:flex; align-items:center; gap:9px; padding:0 18px; height:46px; background:#232019; border:1px solid #3d382e; border-radius:11px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;"><span style="color:#8f8676;">▦</span> Connect Calendar</button>
+      </div>
+
+      <!-- day headers -->
+      <div style="display:grid; grid-template-columns:56px repeat(7,1fr) 100px; border-bottom:1px solid #322E26; padding-bottom:12px;">
+        <span></span>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#EFEAE0; font-weight:500;">Mon 6</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D; margin-top:2px;">8:00</div></div>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#EFEAE0; font-weight:500;">Tue 7</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D; margin-top:2px;">8:00</div></div>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#EFEAE0; font-weight:500;">Wed 8</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D; margin-top:2px;">10:00</div></div>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#EFEAE0; font-weight:500;">Thu 9</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A29C8D; margin-top:2px;">8:00</div></div>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#D99A3C; font-weight:600;">Fri 10</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#D99A3C; margin-top:2px;">4:00</div></div>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#6a6353;">Sat 11</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#6a6353; margin-top:2px;">0:00</div></div>
+        <div style="padding:0 8px;"><div style="font-size:13px; color:#6a6353;">Sun 12</div><div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#6a6353; margin-top:2px;">0:00</div></div>
+        <div style="padding:0 8px; text-align:right;"><div style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6a6353;">Week total</div><div style="font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; color:#F6F2E9; margin-top:2px;">38:00</div></div>
+      </div>
+
+      <!-- calendar grid -->
+      <div style="display:grid; grid-template-columns:56px repeat(7,1fr) 100px; flex:1; min-height:420px;">
+        <!-- hour rail -->
+        <div style="position:relative;">
+          <div style="position:absolute; top:26px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">1hr</div>
+          <div style="position:absolute; top:74px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">2hr</div>
+          <div style="position:absolute; top:122px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">3hr</div>
+          <div style="position:absolute; top:170px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">4hr</div>
+          <div style="position:absolute; top:218px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">5hr</div>
+          <div style="position:absolute; top:266px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">6hr</div>
+          <div style="position:absolute; top:314px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">7hr</div>
+          <div style="position:absolute; top:362px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5a5446;">8hr</div>
+        </div>
+        <!-- Mon 8h -->
+        <div style="position:relative; border-left:1px solid #262219; background:repeating-linear-gradient(#100F0C 0 47px,#1c1a15 47px 48px);">
+          <div style="position:absolute; top:0; left:4px; right:4px; height:384px; background:#1F5C4D; border:1px solid #2b7a66; border-radius:7px; padding:8px 9px; overflow:hidden;"><div style="font-size:11.5px; font-weight:600; color:#F6F2E9;">T&amp;M · Project Nix Blaze <span style="float:right; font-family:'IBM Plex Mono',monospace;">8:00</span></div><div style="font-size:11px; color:#bfe0d4; margin-top:3px;">Infrastructure Development</div><div style="font-size:10.5px; color:#8fc4b3; margin-top:2px;">Larkfield · EUR</div></div>
+        </div>
+        <!-- Tue 8h -->
+        <div style="position:relative; border-left:1px solid #262219; background:repeating-linear-gradient(#100F0C 0 47px,#1c1a15 47px 48px);">
+          <div style="position:absolute; top:0; left:4px; right:4px; height:384px; background:#1F5C4D; border:1px solid #2b7a66; border-radius:7px; padding:8px 9px; overflow:hidden;"><div style="font-size:11.5px; font-weight:600; color:#F6F2E9;">T&amp;M · Project Nix Blaze <span style="float:right; font-family:'IBM Plex Mono',monospace;">8:00</span></div><div style="font-size:11px; color:#bfe0d4; margin-top:3px;">Infrastructure Development</div><div style="font-size:10.5px; color:#8fc4b3; margin-top:2px;">Larkfield · EUR</div></div>
+        </div>
+        <!-- Wed 10h -->
+        <div style="position:relative; border-left:1px solid #262219; background:repeating-linear-gradient(#100F0C 0 47px,#1c1a15 47px 48px);">
+          <div style="position:absolute; top:0; left:4px; right:4px; height:480px; background:#1F5C4D; border:1px solid #2b7a66; border-radius:7px; padding:8px 9px; overflow:hidden;"><div style="font-size:11.5px; font-weight:600; color:#F6F2E9;">T&amp;M · Project Nix Blaze <span style="float:right; font-family:'IBM Plex Mono',monospace;">10:00</span></div><div style="font-size:11px; color:#bfe0d4; margin-top:3px;">Infrastructure Development</div><div style="font-size:10.5px; color:#8fc4b3; margin-top:2px;">Larkfield · EUR</div></div>
+        </div>
+        <!-- Thu 8h -->
+        <div style="position:relative; border-left:1px solid #262219; background:repeating-linear-gradient(#100F0C 0 47px,#1c1a15 47px 48px);">
+          <div style="position:absolute; top:0; left:4px; right:4px; height:384px; background:#1F5C4D; border:1px solid #2b7a66; border-radius:7px; padding:8px 9px; overflow:hidden;"><div style="font-size:11.5px; font-weight:600; color:#F6F2E9;">T&amp;M · Project Nix Blaze <span style="float:right; font-family:'IBM Plex Mono',monospace;">8:00</span></div><div style="font-size:11px; color:#bfe0d4; margin-top:3px;">Infrastructure Development</div><div style="font-size:10.5px; color:#8fc4b3; margin-top:2px;">Larkfield · EUR</div></div>
+        </div>
+        <!-- Fri 4h — brass accent (active) -->
+        <div style="position:relative; border-left:1px solid #262219; background:repeating-linear-gradient(#151109 0 47px,#1c150c 47px 48px);">
+          <div style="position:absolute; top:0; left:4px; right:4px; height:192px; background:#D99A3C; border:1px solid #e6b45f; border-radius:7px; padding:8px 9px; overflow:hidden;"><div style="font-size:11.5px; font-weight:700; color:#251804;">T&amp;M · Project Nix Blaze <span style="float:right; font-family:'IBM Plex Mono',monospace;">4:00</span></div><div style="font-size:11px; color:#4a3208; margin-top:3px;">Infrastructure Development</div><div style="font-size:10.5px; color:#6b4a10; margin-top:2px;">Larkfield · EUR</div></div>
+        </div>
+        <!-- Sat -->
+        <div style="border-left:1px solid #262219; background:repeating-linear-gradient(#0d0c0a 0 47px,#151410 47px 48px);"></div>
+        <!-- Sun -->
+        <div style="border-left:1px solid #262219; background:repeating-linear-gradient(#0d0c0a 0 47px,#151410 47px 48px);"></div>
+        <div style="border-left:1px solid #262219;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:22px;">
+        <div style="display:flex; align-items:stretch; border-radius:10px; overflow:hidden; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">
+          <button style="padding:13px 24px; background:#1F5C4D; color:#F6F2E9; border:none; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer;">Submit week for approval</button>
+          <button style="padding:0 14px; background:#164034; color:#bfe0d4; border:none; border-left:1px solid #0f3d33; cursor:pointer; font-size:12px;">▾</button>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+  </div>
+
+  <!-- ===================== NEW TIME ENTRY MODAL ===================== -->
+  <sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAdd }}" style="position:fixed; inset:0; background:rgba(8,7,5,.68); display:flex; align-items:flex-start; justify-content:center; padding-top:120px; z-index:60;">
+    <div style="width:640px; max-width:92vw; background:#1A1813; border:1px solid #322E26; border-radius:16px; overflow:hidden; box-shadow:0 40px 90px -30px rgba(0,0,0,.8);">
+      <div style="padding:16px 24px; border-bottom:1px solid #322E26; text-align:center; font-family:'Newsreader',serif; font-size:18px; font-weight:600; color:#F6F2E9;">New time entry for Friday, 10 Jul</div>
+      <div style="padding:26px 24px 24px;">
+        <div style="font-size:13px; font-weight:600; color:#EFEAE0; margin-bottom:10px;">Project / Task</div>
+        <!-- project select -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:#100F0C; border:1px solid #4FB79A; border-radius:9px; box-shadow:0 0 0 3px rgba(79,183,154,.14); margin-bottom:12px;">
+          <div>
+            <div style="font-size:11.5px; color:#8f8676;">Larkfield · EUR</div>
+            <div style="font-size:14.5px; font-weight:600; color:#F6F2E9; margin-top:2px;">[7307] T&amp;M · Project Nix Blaze</div>
+          </div>
+          <span style="color:#8f8676; font-size:12px;">▾</span>
+        </div>
+        <!-- task select -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; margin-bottom:12px;">
+          <span style="font-size:14px; color:#EFEAE0;">Infrastructure Development</span>
+          <span style="color:#8f8676; font-size:12px;">▾</span>
+        </div>
+        <!-- notes + duration -->
+        <div style="display:flex; gap:12px; margin-bottom:22px;">
+          <div style="flex:1; padding:12px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; font-size:14px; color:#5a5446; min-height:64px;">Notes (optional)</div>
+          <div style="width:130px; display:flex; align-items:center; justify-content:flex-end; padding:12px 16px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; font-family:'IBM Plex Mono',monospace; font-size:22px; color:#EFEAE0;">0:00</div>
+        </div>
+        <!-- actions -->
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button onClick="{{ closeAdd }}" style="display:flex; align-items:center; gap:8px; padding:11px 20px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;"><span style="width:13px; height:13px; border-radius:50%; border:2px solid #0d211b; display:inline-block;"></span>Start timer</button>
+          <button onClick="{{ closeAdd }}" style="padding:11px 20px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:9px; font-family:inherit; font-size:14px; cursor:pointer;">Cancel</button>
+          <div style="flex:1;"></div>
+          <a href="#" style="display:flex; align-items:center; gap:7px; font-size:13.5px; color:#4FB79A;"><span>▦</span> Pull in a calendar event</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { view: 'week', menuOpen: false, addOpen: false, collapsed: false };
+
+  renderVals() {
+    const v = this.state.view;
+    const base = 'padding:7px 16px; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;';
+    const on = base + ' background:#1F5C4D; color:#F6F2E9; font-weight:600;';
+    const off = base + ' background:transparent; color:#A29C8D; font-weight:500;';
+    return {
+      isDay: v === 'day',
+      isWeek: v === 'week',
+      isCal: v === 'calendar',
+      menuOpen: this.state.menuOpen,
+      dayBtnStyle: v === 'day' ? on : off,
+      weekBtnStyle: v === 'week' ? on : off,
+      calBtnStyle: v === 'calendar' ? on : off,
+      setDay: () => this.setState({ view: 'day' }),
+      setWeek: () => this.setState({ view: 'week' }),
+      setCal: () => this.setState({ view: 'calendar' }),
+      toggleMenu: () => this.setState(s => ({ menuOpen: !s.menuOpen })),
+      addOpen: this.state.addOpen,
+      openAdd: () => this.setState({ addOpen: true, menuOpen: false }),
+      closeAdd: () => this.setState({ addOpen: false }),
+      expanded: !this.state.collapsed,
+      collapsed: this.state.collapsed,
+      toggleRail: () => this.setState(s => ({ collapsed: !s.collapsed, menuOpen: false })),
+      goSettings: () => { window.location.href = 'Horae Settings.dc.html'; },
+    };
+  }
+}
+</script>
+</body>
+</html>

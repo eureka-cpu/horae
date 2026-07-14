@@ -96,9 +96,9 @@ ______________________________________________________________________
 
 **Independent test**: Create a member and a manager; verify the member cannot manage clients/invoices; deactivating a user blocks sign-in and preserves history.
 
-- [ ] T033 [US4] Implement the user-management server functions in `crates/horae/src/server_fns.rs` and/or `crates/horae/src/cli.rs`: `create_user`, `set_user_role`, `deactivate_user`, `list_users` — replacing the current CLI stubs flagged in [contracts/cli.md](./contracts/cli.md).
+- [x] T033 [US4] Implement the user-management server functions in `crates/horae/src/server_fns.rs` and/or `crates/horae/src/cli.rs`: `create_user`, `set_user_role`, `deactivate_user`, `list_users` — replacing the current CLI stubs flagged in [contracts/cli.md](./contracts/cli.md).
 - [ ] T034 [US4] Enforce that deactivated users cannot authenticate in `crates/horae/src/auth/` (session/OIDC/dev paths) (FR-002).
-- [ ] T035 [P] [US4] Admin users UI in `crates/horae/src/pages/admin.rs`.
+- [x] T035 [P] [US4] Admin users UI in `crates/horae/src/pages/admin.rs`.
 - [ ] T036 [US4] Integration tests in `crates/horae/tests/integration.rs`: role gating (member denied manager actions); deactivated user cannot sign in; history retained.
 
 ______________________________________________________________________
@@ -109,14 +109,14 @@ ______________________________________________________________________
 
 **Independent test**: Install a plugin subscribed to `invoice_sent`; sending an invoice fires it within ~1s; a failing/slow plugin never blocks the core action; a widget-returning plugin renders on the dashboard.
 
-- [ ] T037 [US5] Add the `extism` dependency (server feature) in `crates/horae/Cargo.toml`.
-- [ ] T038 [P] [US5] `plugin.toml` manifest parsing in `crates/horae/src/plugin/manifest.rs` (name, version, hooks).
-- [ ] T039 [P] [US5] `AppEvent` enum + JSON payloads in `crates/horae/src/plugin/event.rs` (time_entry_created/stopped, invoice_created/sent, user_logged_in).
+- [x] T037 [US5] Add the `extism` dependency (server feature) in `crates/horae/Cargo.toml`.
+- [x] T038 [P] [US5] `plugin.toml` manifest parsing in `crates/horae/src/plugin/manifest.rs` (name, version, hooks).
+- [x] T039 [P] [US5] `AppEvent` enum + JSON payloads in `crates/horae/src/plugin/event.rs` (time_entry_created/stopped, invoice_created/sent, user_logged_in).
 - [x] T040 [P] [US5] extism host functions in `crates/horae/src/plugin/host.rs`: `horae_log`, read-only `horae_db_query`, `horae_http_post`, `horae_config_get` (FR-020).
-- [ ] T041 [US5] `PluginRegistry` in `crates/horae/src/plugin/registry.rs`: scan `{dataDir}/plugins/`, load `*.wasm`, index by subscribed hook (FR-018); expose `dispatch(event)` with concurrent, time-bounded, failure-isolated calls (FR-021/SC-006).
-- [ ] T042 [US5] Hold `plugins: Arc<PluginRegistry>` in `AppState` (`crates/horae/src/state.rs`) and load at startup (`crates/horae/src/main.rs`).
-- [ ] T043 [US5] Dispatch events after the relevant DB writes in `crates/horae/src/server_fns.rs` (time entry created/stopped, invoice created/sent, user signed in) (FR-019).
-- [ ] T044 [P] [US5] Dashboard-widget contract + rendering of plugin-returned widgets in `crates/horae/src/pages/dashboard.rs` / a plugin slot component (FR-022).
+- [x] T041 [US5] `PluginRegistry` in `crates/horae/src/plugin/registry.rs`: scan `{dataDir}/plugins/`, load `*.wasm`, index by subscribed hook (FR-018); expose `dispatch(event)` with concurrent, time-bounded, failure-isolated calls (FR-021/SC-006).
+- [x] T042 [US5] Hold `plugins: Arc<PluginRegistry>` in `AppState` (`crates/horae/src/state.rs`) and load at startup (`crates/horae/src/main.rs`).
+- [x] T043 [US5] Dispatch events after the relevant DB writes in `crates/horae/src/server_fns.rs` (time entry created/stopped, invoice created/sent, user signed in) (FR-019).
+- [x] T044 [P] [US5] Dashboard-widget contract + rendering of plugin-returned widgets in `crates/horae/src/pages/dashboard.rs` / a plugin slot component (FR-022).
 - [ ] T045 [US5] Integration test in `crates/horae/tests/integration.rs`: a sample plugin receives a dispatched event; a failing plugin does not break the triggering action.
 
 ______________________________________________________________________
