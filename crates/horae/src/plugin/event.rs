@@ -329,6 +329,27 @@ pub struct OrgBrandingPayload {
     pub provider_name: Option<String>,
 }
 
+/// Which lifecycle event an active-flag write should emit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActiveTransition {
+    Deactivated,
+    Reactivated,
+}
+
+/// Decide which event an `active` write represents. Returns `None` when the flag
+/// did not actually change, so a no-op set emits nothing (FR-012). `was_active`
+/// is the value read before the write (`None` if the row was absent).
+pub fn active_transition(was_active: Option<bool>, now_active: bool) -> Option<ActiveTransition> {
+    match was_active {
+        Some(prev) if prev != now_active => Some(if now_active {
+            ActiveTransition::Reactivated
+        } else {
+            ActiveTransition::Deactivated
+        }),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,5 +468,18 @@ mod tests {
         assert!(json.contains("\"previous_role\":\"member\""));
         // The login-only `method` field is omitted for admin user events.
         assert!(!json.contains("\"method\""));
+    }
+
+    #[test]
+    fn active_transition_fires_only_on_a_real_flip() {
+        use ActiveTransition::{Deactivated, Reactivated};
+        assert_eq!(active_transition(Some(true), false), Some(Deactivated));
+        assert_eq!(active_transition(Some(false), true), Some(Reactivated));
+        // No-op sets (same value) emit nothing (FR-012).
+        assert_eq!(active_transition(Some(true), true), None);
+        assert_eq!(active_transition(Some(false), false), None);
+        // Absent prior row → no event.
+        assert_eq!(active_transition(None, true), None);
+        assert_eq!(active_transition(None, false), None);
     }
 }
