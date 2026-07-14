@@ -336,7 +336,10 @@ async fn check_project_budget(state: &'static crate::state::AppState, project_id
     let last = row.last_budget_alert_pct.unwrap_or(0);
     let current = horae_core::budget::current_band(consumed, budget, &thresholds);
 
-    if let Some(band) = horae_core::budget::crossed_band(consumed, budget, &thresholds, last) {
+    // Announce every band newly crossed since `last`. `100` is always a band, so
+    // exceeding budget fires `project_over_budget` regardless of the configured
+    // warning thresholds, and a single large jump reports each band it passed.
+    for band in horae_core::budget::newly_crossed_bands(consumed, budget, &thresholds, last) {
         let payload = crate::plugin::event::BudgetThresholdPayload {
             project: crate::plugin::event::ProjectPayload {
                 id: project_id,
