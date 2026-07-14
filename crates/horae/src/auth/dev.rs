@@ -92,6 +92,14 @@ pub async fn dev_login_post(
         "No admin user found — run `horae seed` first.",
     ))?;
 
+    // Rotate the session id on login to defeat session fixation (matches the
+    // OIDC path).
+    session.cycle_id().await.map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to rotate session",
+        )
+    })?;
     set_session_user_id(&session, row.id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to write session"))?;

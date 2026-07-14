@@ -201,9 +201,12 @@ async fn resolve_and_login(
     session: &Session,
     identity: &Identity,
 ) -> anyhow::Result<bool> {
-    let by_subject = fetch_user(state, "oidc_subject", &identity.subject).await?;
+    let by_subject = fetch_by_subject(state, &identity.subject).await?;
+    // Only an as-yet-unlinked account may be claimed by a verified email — a
+    // first-login bootstrap. This prevents a different subject with a matching
+    // email from silently rebinding an already-linked account.
     let by_email = match (identity.email_verified, &identity.email) {
-        (true, Some(email)) => fetch_user(state, "email", email).await?,
+        (true, Some(email)) => fetch_unlinked_by_email(state, email).await?,
         _ => None,
     };
 
@@ -234,13 +237,19 @@ async fn resolve_and_login(
     };
 
     if link_subject {
-        sqlx::query("UPDATE users SET oidc_subject = $1 WHERE id = $2")
+        // Guard the link on the row still being unlinked, closing the window
+        // between the read above and this write.
+        sqlx::query("UPDATE users SET oidc_subject = $1 WHERE id = $2 AND oidc_subject IS NULL")
             .bind(&identity.subject)
             .bind(user.id)
             .execute(&state.db)
             .await?;
     }
 
+    // Rotate the session id on the privilege change to defeat session fixation:
+    // any pre-auth id an attacker may have fixed is discarded before we mark the
+    // session authenticated.
+    session.cycle_id().await?;
     set_session_user_id(session, user.id).await?;
 
     state
@@ -267,20 +276,32 @@ fn candidate(u: &crate::models::User) -> Candidate {
     }
 }
 
-/// Fetch a user by a single indexed column (`oidc_subject` or `email`). The
-/// column name is a fixed internal literal, never user input.
-async fn fetch_user(
+/// Columns for the `User` model, shared by the identity lookups.
+const USER_COLUMNS: &str = "id, org_id, email, name, oidc_subject, org_role, \
+     cost_rate_cents, billable_rate_cents, active, created_at";
+
+/// The user already linked to this OIDC subject, if any.
+async fn fetch_by_subject(
     state: &crate::state::AppState,
-    column: &str,
-    value: &str,
+    subject: &str,
 ) -> anyhow::Result<Option<crate::models::User>> {
-    let sql = format!(
-        "SELECT id, org_id, email, name, oidc_subject, org_role,
-                cost_rate_cents, billable_rate_cents, active, created_at
-         FROM users WHERE {column} = $1"
-    );
+    let sql = format!("SELECT {USER_COLUMNS} FROM users WHERE oidc_subject = $1");
     let user = sqlx::query_as::<_, crate::models::User>(&sql)
-        .bind(value)
+        .bind(subject)
+        .fetch_optional(&state.db)
+        .await?;
+    Ok(user)
+}
+
+/// The user with this email that has **not** yet been linked to any OIDC
+/// subject — the only account a verified email is allowed to claim (FR-002).
+async fn fetch_unlinked_by_email(
+    state: &crate::state::AppState,
+    email: &str,
+) -> anyhow::Result<Option<crate::models::User>> {
+    let sql = format!("SELECT {USER_COLUMNS} FROM users WHERE email = $1 AND oidc_subject IS NULL");
+    let user = sqlx::query_as::<_, crate::models::User>(&sql)
+        .bind(email)
         .fetch_optional(&state.db)
         .await?;
     Ok(user)

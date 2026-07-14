@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post},
 };
 use sqlx::PgPool;
+use tower_sessions::cookie::SameSite;
 use tower_sessions::{Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
 
@@ -44,6 +45,11 @@ pub async fn make_session_layer(
 
     let layer = SessionManagerLayer::new(store)
         .with_secure(secure)
+        // `Lax`, not the tower-sessions default `Strict`: the OIDC callback is a
+        // cross-site top-level redirect from the provider, and `Strict` would
+        // withhold the session cookie that carries the in-flight flow secrets,
+        // breaking login. `Lax` still sends the cookie on that top-level GET.
+        .with_same_site(SameSite::Lax)
         .with_expiry(Expiry::OnSessionEnd); // expires when the browser session ends
 
     Ok(layer)
