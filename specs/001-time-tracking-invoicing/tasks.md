@@ -97,7 +97,7 @@ ______________________________________________________________________
 **Independent test**: Create a member and a manager; verify the member cannot manage clients/invoices; deactivating a user blocks sign-in and preserves history.
 
 - [x] T033 [US4] Implement the user-management server functions in `crates/horae/src/server_fns.rs` and/or `crates/horae/src/cli.rs`: `create_user`, `set_user_role`, `deactivate_user`, `list_users` — replacing the current CLI stubs flagged in [contracts/cli.md](./contracts/cli.md).
-- [ ] T034 [US4] Enforce that deactivated users cannot authenticate in `crates/horae/src/auth/` (session/OIDC/dev paths) (FR-002).
+- [x] T034 [US4] Enforce that deactivated users cannot authenticate in `crates/horae/src/auth/` (session/OIDC/dev paths) (FR-002).
 - [x] T035 [P] [US4] Admin users UI in `crates/horae/src/pages/admin.rs`.
 - [ ] T036 [US4] Integration tests in `crates/horae/tests/integration.rs`: role gating (member denied manager actions); deactivated user cannot sign in; history retained.
 

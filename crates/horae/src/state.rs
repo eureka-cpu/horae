@@ -9,11 +9,22 @@ use crate::plugin::PluginRegistry;
 pub struct AppState {
     pub db: PgPool,
     pub plugins: Arc<PluginRegistry>,
+    /// OIDC provider settings, `None` when running with `DEV_LOGIN` / no OIDC.
+    pub oidc: Option<crate::config::OidcConfig>,
 }
 
 impl AppState {
     pub fn new(db: PgPool, plugins: Arc<PluginRegistry>) -> Self {
-        Self { db, plugins }
+        Self {
+            db,
+            plugins,
+            oidc: None,
+        }
+    }
+
+    pub fn with_oidc(mut self, oidc: Option<crate::config::OidcConfig>) -> Self {
+        self.oidc = oidc;
+        self
     }
 }
 
@@ -23,9 +34,13 @@ static GLOBAL_STATE: OnceCell<AppState> = OnceCell::const_new();
 /// Pre-initialise the global state with an already-created pool and plugin registry.
 /// Call this in `main` before starting the Axum server so that session and
 /// auth handlers share the same pool as server functions.
-pub async fn init_state(pool: sqlx::PgPool, plugins: Arc<PluginRegistry>) {
+pub async fn init_state(
+    pool: sqlx::PgPool,
+    plugins: Arc<PluginRegistry>,
+    oidc: Option<crate::config::OidcConfig>,
+) {
     GLOBAL_STATE
-        .get_or_init(|| async { AppState::new(pool, plugins) })
+        .get_or_init(|| async { AppState::new(pool, plugins).with_oidc(oidc) })
         .await;
 }
 

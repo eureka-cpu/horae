@@ -165,13 +165,14 @@ fn main() -> anyhow::Result<()> {
                 // Load plugins from the configured directory (FR-018).
                 let plugins_dir = std::path::Path::new(&cfg.plugins_dir);
                 let registry = std::sync::Arc::new(plugin::PluginRegistry::load(plugins_dir));
-                state::init_state(pool.clone(), registry).await;
+                state::init_state(pool.clone(), registry, cfg.oidc.clone()).await;
 
                 // Start the background poller for forgotten timers (US3).
                 scheduler::spawn(state::global_state().await);
 
                 // Session middleware (Postgres-backed, idempotent migrate).
-                let session_layer = auth::make_session_layer(pool.clone()).await?;
+                let session_layer =
+                    auth::make_session_layer(pool.clone(), cfg.secure_cookies).await?;
 
                 // Build the Dioxus fullstack router (returns Router<()>), then
                 // layer our own routes on top of it.
@@ -195,7 +196,7 @@ fn main() -> anyhow::Result<()> {
                         "/api/invoices/{id}/export/pdf",
                         get(reports::export_invoice_pdf),
                     )
-                    .merge(auth::router())
+                    .merge(auth::router(cfg.dev_login))
                     .merge(harvest::router())
                     .layer(session_layer);
 

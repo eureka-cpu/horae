@@ -71,7 +71,9 @@ tower-sessions-sqlx-store = { version = "0.15", features = [
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ], optional = true }
-openidconnect = { version = "3", optional = true }
+# `ureq` client feature gives a blocking, rustls-backed HTTP client for OIDC
+# discovery and token exchange — no system OpenSSL, consistent with the ureq dep.
+openidconnect = { version = "3", features = ["ureq"], optional = true }
 csv = { version = "1", optional = true }
 rust_xlsxwriter = { version = "0.80", optional = true }
 typst = { version = "0.15", optional = true }
