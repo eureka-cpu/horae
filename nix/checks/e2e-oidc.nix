@@ -87,8 +87,12 @@ pkgs.testers.nixosTest {
       "sudo -u horae psql horae -c "
       "\"UPDATE users SET active = false WHERE email = 'kilgore@kilgore.trout'\""
     )
-    server.succeed(
-      "curl -s -c /tmp/jar2.txt -b /tmp/jar2.txt -L "
+    # On denial the callback redirects back to /auth/login, which restarts OIDC;
+    # the mock connector then silently re-authenticates, so following redirects
+    # loops. That loop *is* the denial — cap it and tolerate curl's error, then
+    # confirm no authenticated session was ever established.
+    server.execute(
+      "curl -s -c /tmp/jar2.txt -b /tmp/jar2.txt -L --max-redirs 8 "
       "http://127.0.0.1:3000/auth/login -o /dev/null"
     )
     code = server.succeed(
