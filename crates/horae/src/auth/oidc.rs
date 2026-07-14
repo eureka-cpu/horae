@@ -354,7 +354,7 @@ fn exchange_and_verify(
     let token = client
         .exchange_code(AuthorizationCode::new(code))
         .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier.to_string()))
-        .request(openidconnect::ureq::http_client)?;
+        .request(http_client_with_timeout)?;
 
     let id_token = token
         .id_token()
@@ -383,10 +383,65 @@ fn audience_is_trusted(additional: &[String], aud: &str) -> bool {
     additional.iter().any(|a| a == aud)
 }
 
+/// Wall-clock bound on each OIDC HTTP call (discovery, token exchange), so a
+/// slow or hung provider cannot stall a login or pin a `spawn_blocking` thread.
+const OIDC_HTTP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// A drop-in for `openidconnect::ureq::http_client` that bounds the request with
+/// [`OIDC_HTTP_TIMEOUT`]. The upstream client uses the global `ureq::get/post`
+/// with no timeout; this routes through an agent that has one.
+fn http_client_with_timeout(
+    request: openidconnect::HttpRequest,
+) -> Result<openidconnect::HttpResponse, openidconnect::ureq::Error> {
+    use openidconnect::http::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
+    use openidconnect::http::{Method, StatusCode};
+    use openidconnect::ureq::Error;
+
+    let agent = ureq::AgentBuilder::new().timeout(OIDC_HTTP_TIMEOUT).build();
+
+    let is_post = request.method == Method::POST;
+    let mut req = if is_post {
+        agent.post(request.url.as_str())
+    } else {
+        agent.get(request.url.as_str())
+    };
+    for (name, value) in &request.headers {
+        req = req.set(
+            name.as_str(),
+            value.to_str().map_err(|_| {
+                Error::Other(format!(
+                    "invalid {name} header value {:?}",
+                    value.as_bytes()
+                ))
+            })?,
+        );
+    }
+
+    let response = if is_post {
+        req.send_bytes(&request.body)
+    } else {
+        req.call()
+    }
+    .map_err(Box::new)?;
+
+    Ok(openidconnect::HttpResponse {
+        status_code: StatusCode::from_u16(response.status())
+            .map_err(|err| Error::Http(err.into()))?,
+        headers: [(
+            CONTENT_TYPE,
+            HeaderValue::from_str(response.content_type())
+                .map_err(|err| Error::Http(err.into()))?,
+        )]
+        .into_iter()
+        .collect::<HeaderMap>(),
+        body: response.into_string()?.as_bytes().into(),
+    })
+}
+
 /// Discover provider metadata and build a client. Blocking (network).
 fn discover_client(cfg: &OidcConfig) -> anyhow::Result<CoreClient> {
     let issuer = IssuerUrl::new(cfg.issuer.clone())?;
-    let metadata = CoreProviderMetadata::discover(&issuer, openidconnect::ureq::http_client)?;
+    let metadata = CoreProviderMetadata::discover(&issuer, http_client_with_timeout)?;
     let client = CoreClient::from_provider_metadata(
         metadata,
         ClientId::new(cfg.client_id.clone()),
