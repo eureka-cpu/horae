@@ -29,6 +29,11 @@ pub struct OidcConfig {
     pub client_id: String,
     pub client_secret: String,
     pub redirect_url: String,
+    /// Extra `aud` values to trust in the ID token beyond `client_id`. Some
+    /// providers (e.g. Zitadel) add the project ID to `aud`; without listing it
+    /// here the strict verifier rejects the token. Empty means strict
+    /// (client_id only). Set `HORAE_OIDC_ADDITIONAL_AUDIENCES` (comma-separated).
+    pub additional_audiences: Vec<String>,
 }
 
 impl AppConfig {
@@ -66,6 +71,15 @@ impl OidcConfig {
             client_id: non_empty("HORAE_OIDC_CLIENT_ID")?,
             client_secret: non_empty("HORAE_OIDC_CLIENT_SECRET")?,
             redirect_url: non_empty("HORAE_OIDC_REDIRECT_URL")?,
+            additional_audiences: non_empty("HORAE_OIDC_ADDITIONAL_AUDIENCES")
+                .map(|v| {
+                    v.split(',')
+                        .map(str::trim)
+                        .filter(|s| !s.is_empty())
+                        .map(String::from)
+                        .collect()
+                })
+                .unwrap_or_default(),
         })
     }
 }

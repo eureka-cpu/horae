@@ -360,13 +360,27 @@ fn exchange_and_verify(
         .id_token()
         .ok_or_else(|| anyhow::anyhow!("provider returned no ID token"))?;
 
-    let claims = id_token.claims(&client.id_token_verifier(), &Nonce::new(nonce.to_string()))?;
+    // `client_id` is always required by the base verifier; this only widens which
+    // *additional* audiences are tolerated (e.g. Zitadel's project ID). With an
+    // empty list the closure always returns false — i.e. strict, client_id only.
+    let additional = cfg.additional_audiences.clone();
+    let verifier = client
+        .id_token_verifier()
+        .set_other_audience_verifier_fn(move |aud| audience_is_trusted(&additional, aud.as_str()));
+
+    let claims = id_token.claims(&verifier, &Nonce::new(nonce.to_string()))?;
 
     Ok(Identity {
         subject: claims.subject().as_str().to_string(),
         email: claims.email().map(|e| e.as_str().to_string()),
         email_verified: claims.email_verified().unwrap_or(false),
     })
+}
+
+/// Whether an extra ID-token audience (one that is not `client_id`) is on the
+/// operator-configured trust list.
+fn audience_is_trusted(additional: &[String], aud: &str) -> bool {
+    additional.iter().any(|a| a == aud)
 }
 
 /// Discover provider metadata and build a client. Blocking (network).
@@ -448,6 +462,17 @@ mod tests {
             resolve_identity(None, true, Some(inactive(id))),
             Resolution::DenyInactive
         );
+    }
+
+    #[test]
+    fn extra_audiences_are_trusted_only_when_listed() {
+        let allow = vec!["proj-123".to_string()];
+        // Zitadel's extra project-ID audience is accepted when configured.
+        assert!(audience_is_trusted(&allow, "proj-123"));
+        // Anything else is rejected.
+        assert!(!audience_is_trusted(&allow, "proj-999"));
+        // With nothing configured, no extra audience is trusted (strict default).
+        assert!(!audience_is_trusted(&[], "proj-123"));
     }
 
     #[test]
