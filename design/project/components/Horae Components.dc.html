@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; }
+  a:hover { color:#6ecab0; }
+  @media (max-width: 860px) {
+    .hs-layout { flex-direction: column; }
+    .hs-rail { position: static !important; width: 100% !important; flex: none !important; height: auto !important; flex-direction: row !important; flex-wrap: wrap; align-items: center; gap: 6px !important; overflow: visible !important; border-right: none !important; border-bottom: 1px solid #322E26; }
+    .hs-content { padding: 36px 24px 80px !important; }
+  }
+  .hs-table-wrap { overflow-x: auto; }
+  button { transition: filter .14s ease, background .14s ease; }
+  button:hover { filter: brightness(1.13); }
+</style>
+</helmet>
+
+<div class="hs-layout" style="font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C; display:flex;">
+
+  <!-- CONTENTS RAIL -->
+  <div class="hs-rail" style="width:236px; flex:0 0 236px; position:sticky; top:0; align-self:flex-start; height:100vh; border-right:1px solid #322E26; background:#1A1813; padding:26px 20px; display:flex; flex-direction:column; gap:3px; overflow:auto;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:22px;">
+      <div style="position:relative; width:32px; height:32px; border-radius:8px; background:#1F5C4D; overflow:hidden; flex:0 0 32px;">
+        <div style="position:absolute; left:50%; top:5px; width:1.5px; height:5px; background:#E7C079; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:50%; bottom:8px; width:16px; height:16px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:9px; background:#164034;"></div>
+        <div style="position:absolute; left:0; right:0; bottom:9px; height:1px; background:#0F3D33;"></div>
+      </div>
+      <div style="display:flex; align-items:baseline;"><span style="font-family:'Newsreader',serif; font-size:21px; font-weight:600; color:#F6F2E9;">Horae</span><span style="width:4px; height:4px; border-radius:50%; background:#D99A3C; margin-left:3px; align-self:flex-end; margin-bottom:4px;"></span></div>
+    </div>
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 8px 8px;">Components</div>
+    <a href="#buttons" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Buttons</a>
+    <a href="#pills" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Status pills</a>
+    <a href="#inputs" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Inputs & fields</a>
+    <a href="#controls" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Toggles & segments</a>
+    <a href="#nav" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Nav item</a>
+    <a href="#chips" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Avatar & chips</a>
+    <a href="#cards" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Cards</a>
+    <a href="#table" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Table & rows</a>
+    <a href="#toast" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Toast & empty state</a>
+    <div style="flex:1;"></div>
+    <a href="../Horae Design System.dc.html" style="padding:7px 10px; font-size:12.5px; color:#8f8676; text-decoration:none;">← Design System</a>
+  </div>
+
+  <!-- CONTENT -->
+  <div style="flex:1; min-width:0;">
+  <div class="hs-content" style="max-width:980px; margin:0 auto; padding:56px 52px 100px;">
+
+    <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Component library</div>
+    <h1 style="font-family:'Newsreader',serif; font-size:46px; font-weight:600; letter-spacing:-.015em; margin:0 0 12px; color:#F6F2E9;">The Horae kit</h1>
+    <p style="font-size:16px; line-height:1.6; color:#B4AD9D; max-width:600px; margin:0 0 8px;">Every reusable part of the app, shown with its variants and states. Inline-styled, dark-first, built on pine + brass + paper neutrals.</p>
+
+    <!-- BUTTONS -->
+    <div id="buttons" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Buttons</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Primary uses luminous pine; solid pine for form submits; brass for the billable/send action. Ghost and destructive round out the set.</p>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:22px 18px;">
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Primary</div><button style="padding:11px 20px; background:#4FB79A; color:#0d211b; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">Start timer</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Solid</div><button style="padding:11px 20px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;">Submit week</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Accent</div><button style="padding:11px 20px; background:#D99A3C; color:#251804; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">Send invoice</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Secondary</div><button style="padding:11px 20px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer;">Re-sync</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Ghost</div><button style="padding:11px 16px; background:transparent; color:#4FB79A; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;">Manage source</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Destructive</div><button style="padding:11px 16px; background:transparent; color:#E06661; border:1px solid #6e3634; border-radius:8px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer;">Delete</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Disabled</div><button style="padding:11px 20px; background:#2a4a41; color:#7fae9f; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:600; cursor:not-allowed;">Update</button></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Split</div><div style="display:inline-flex; align-items:stretch; border-radius:8px; overflow:hidden;"><button style="padding:11px 18px; background:#1F5C4D; color:#F6F2E9; border:none; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;">Generate PDF</button><button style="padding:0 11px; background:#164034; color:#bfe0d4; border:none; border-left:1px solid #0f3d33; cursor:pointer; font-size:11px;">▾</button></div></div>
+        <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:10px;">Icon</div><button style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#A29C8D; cursor:pointer; font-size:15px;">⌕</button></div>
+      </div>
+    </div>
+
+    <!-- PILLS -->
+    <div id="pills" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Status pills</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">A tinted background, matching border, a status dot, and semibold label. One per state.</p>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; gap:12px; flex-wrap:wrap;">
+      <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 12px; background:#15291f; color:#5fcaa8; border:1px solid #24402f; border-radius:999px; font-size:12.5px; font-weight:600;"><span style="width:7px; height:7px; border-radius:50%; background:#3FB489;"></span>Synced</span>
+      <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 12px; background:#15291f; color:#5fcaa8; border:1px solid #24402f; border-radius:999px; font-size:12.5px; font-weight:600;"><span style="width:7px; height:7px; border-radius:50%; background:#3FB489;"></span>Approved</span>
+      <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 12px; background:#2b2413; color:#e0b45f; border:1px solid #453818; border-radius:999px; font-size:12.5px; font-weight:600;"><span style="width:7px; height:7px; border-radius:50%; background:#D6A24A;"></span>Awaiting</span>
+      <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 12px; background:#2b2413; color:#e0b45f; border:1px solid #453818; border-radius:999px; font-size:12.5px; font-weight:600;"><span style="width:7px; height:7px; border-radius:50%; background:#D6A24A;"></span>Draft</span>
+      <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 12px; background:#2e1817; color:#ec8683; border:1px solid #4d2523; border-radius:999px; font-size:12.5px; font-weight:600;"><span style="width:7px; height:7px; border-radius:50%; background:#E06661;"></span>Overdue</span>
+      <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 12px; background:#201d17; color:#A29C8D; border:1px solid #322E26; border-radius:999px; font-size:12.5px; font-weight:600;"><span style="width:7px; height:7px; border-radius:50%; background:#5a5446;"></span>Not submitted</span>
+    </div>
+
+    <!-- INPUTS -->
+    <div id="inputs" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Inputs & fields</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Void field on surface, hairline border. Focus is a pine border + soft ring. Numeric fields switch to mono.</p>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
+      <div style="width:240px;"><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Default</div><div style="padding:11px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-size:14px; color:#EFEAE0;">Larkfield, S.L.</div></div>
+      <div style="width:240px;"><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Focus</div><div style="padding:11px 14px; background:#100F0C; border:1px solid #4FB79A; border-radius:8px; font-size:14px; color:#EFEAE0; box-shadow:0 0 0 3px rgba(79,183,154,.18);">mira@fieldstone.studio</div></div>
+      <div style="width:130px;"><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Numeric</div><div style="padding:11px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#EFEAE0;">95.00</div></div>
+      <div style="width:180px;"><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Disabled</div><div style="padding:11px 14px; background:#161510; border:1px solid #262219; border-radius:8px; font-size:14px; color:#5a5446;">Read only</div></div>
+      <div style="width:200px;"><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Dropdown</div><div style="display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:8px; font-size:14px; color:#EFEAE0;">STARTTLS <span style="color:#8f8676; font-size:12px;">▾</span></div></div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div id="controls" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Toggles & segments</h2>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; gap:34px; flex-wrap:wrap; align-items:center;">
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Segmented</div><div style="display:inline-flex; background:#100F0C; border:1px solid #322E26; border-radius:9px; padding:3px;"><button style="padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;">Day</button><button style="padding:7px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;">Week</button><button style="padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;">Calendar</button></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Switch · on / off</div><div style="display:flex; gap:12px;"><span style="width:44px; height:24px; border-radius:999px; background:#1F5C4D; position:relative; display:inline-block;"><span style="position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#EFEAE0;"></span></span><span style="width:44px; height:24px; border-radius:999px; background:#322E26; position:relative; display:inline-block;"><span style="position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#8f8676;"></span></span></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Checkbox</div><div style="display:flex; gap:12px; align-items:center;"><span style="width:20px; height:20px; border-radius:5px; background:#4FB79A; display:inline-flex; align-items:center; justify-content:center; color:#0d211b; font-size:13px; font-weight:700;">✓</span><span style="width:20px; height:20px; border-radius:5px; border:1.5px solid #5a5446; display:inline-block;"></span></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Radio</div><div style="display:flex; gap:12px; align-items:center;"><span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4FB79A; display:inline-flex; align-items:center; justify-content:center;"><span style="width:9px; height:9px; border-radius:50%; background:#4FB79A;"></span></span><span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #5a5446; display:inline-block;"></span></div></div>
+    </div>
+
+    <!-- NAV -->
+    <div id="nav" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Nav item</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Rail row: dot/icon + label. Active gets a raised surface, hairline, and pine dot; rest are muted.</p>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:22px; display:flex; gap:24px; flex-wrap:wrap;">
+      <div style="width:220px; background:#100F0C; border:1px solid #262219; border-radius:11px; padding:12px;">
+        <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26;"><span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Timesheet</span></div>
+        <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Approvals</span></div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#232019; border:1px solid #322E26; color:#4FB79A; font-size:16px;">◷</div>
+        <div style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▤</div>
+        <span style="font-size:12.5px; color:#8f8676;">collapsed · icon strip</span>
+      </div>
+    </div>
+
+    <!-- CHIPS -->
+    <div id="chips" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Avatar & chips</h2>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+      <div style="width:52px; height:52px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:22px; color:#EFEAE0;">M</div>
+      <div style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0;">T</div>
+      <div style="width:38px; height:38px; border-radius:50%; background:#232019; border:1px solid #3d382e; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#8f8676;">N</div>
+      <span style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px; background:#232019; border:1px solid #3d382e; border-radius:999px; font-size:12.5px; color:#A29C8D;"><span style="width:14px; height:14px; border-radius:4px; background:#1F5C4D;"></span>Fieldstone Studio</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#232019; border:1px solid #3d382e; border-radius:999px; font-size:11px; color:#A29C8D;">Time &amp; Materials</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#15291f; color:#5fcaa8; border:1px solid #24402f; border-radius:999px; font-size:11px; font-weight:600;">Manager</span>
+    </div>
+
+    <!-- CARDS -->
+    <div id="cards" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Cards</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px;">
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:22px;">
+        <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:14px;">Metric card</div>
+        <div style="display:flex; align-items:center; gap:24px; background:#100F0C; border:1px solid #322E26; border-radius:11px; padding:18px 20px;">
+          <div><div style="font-size:12.5px; color:#A29C8D;">Total time</div><div style="font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600; color:#F6F2E9; margin-top:2px;">80:30</div></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+            <div style="display:flex; align-items:center; gap:9px;"><span style="width:10px; height:10px; border-radius:3px; background:#4FB79A;"></span><span style="font-size:12.5px; flex:1;">Billable</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px;">72:00</span></div>
+            <div style="display:flex; align-items:center; gap:9px;"><span style="width:10px; height:10px; border-radius:3px; background:#2a6d5c;"></span><span style="font-size:12.5px; flex:1;">Non-billable</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px;">8:30</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:22px;">
+        <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:14px;">Ledger + totals</div>
+        <div style="background:#100F0C; border:1px solid #322E26; border-radius:11px; overflow:hidden;">
+          <div style="display:grid; grid-template-columns:1fr 84px 96px; padding:11px 16px; border-bottom:1px solid #262219;"><span style="font-size:13.5px;">Frontend engineering</span><span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#A29C8D;">110.00</span><span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">6,435.00</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:13px 16px; background:#000;"><span style="font-family:'Newsreader',serif; font-size:16px; color:#F6F2E9;">Total due</span><span style="font-family:'IBM Plex Mono',monospace; font-size:19px; font-weight:600; color:#D99A3C;">€14,919.30</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div id="table" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Table & rows</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Grid columns, uppercase micro-headers, hairline row dividers, mono numerals right-aligned, an avatar/label lead cell.</p>
+    <div class="hs-table-wrap" style="background:#1A1813; border:1px solid #322E26; border-radius:16px;">
+      <div style="min-width:640px;">
+      <div style="display:grid; grid-template-columns:1fr 120px 110px 150px; padding:13px 22px; border-bottom:1px solid #322E26; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353;"><span>Teammate</span><span style="text-align:right;">Hours</span><span style="text-align:center;">Status</span><span style="text-align:right;">Action</span></div>
+      <div style="display:grid; grid-template-columns:1fr 120px 110px 150px; align-items:center; padding:15px 22px; border-bottom:1px solid #262219;"><div style="display:flex; align-items:center; gap:12px;"><div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:14px; color:#EFEAE0;">T</div><div><div style="font-size:14px; font-weight:600; color:#F6F2E9;">Théo Marchand</div><div style="font-size:12px; color:#8f8676;">Engineering</div></div></div><span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#F6F2E9;">42:00</span><div style="text-align:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#2b2413; color:#e0b45f; border:1px solid #453818; border-radius:999px; font-size:12px; font-weight:600;">Awaiting</span></div><div style="text-align:right;"><button style="padding:7px 14px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;">Approve</button></div></div>
+      <div style="display:grid; grid-template-columns:1fr 120px 110px 150px; align-items:center; padding:15px 22px;"><div style="display:flex; align-items:center; gap:12px;"><div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:14px; color:#EFEAE0;">L</div><div><div style="font-size:14px; font-weight:600; color:#F6F2E9;">Lars Ericsson</div><div style="font-size:12px; color:#8f8676;">Engineering</div></div></div><span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#F6F2E9;">46:00</span><div style="text-align:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:#15291f; color:#5fcaa8; border:1px solid #24402f; border-radius:999px; font-size:12px; font-weight:600;">Approved</span></div><div style="text-align:right;"><button style="padding:7px 12px; background:transparent; color:#A29C8D; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;">Reopen</button></div></div>
+      </div>
+    </div>
+
+    <!-- TOAST + EMPTY -->
+    <div id="toast" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Toast & empty state</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px;">
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; align-items:center; justify-content:center;">
+        <div style="background:#000; border:1px solid #322E26; border-radius:11px; padding:12px 16px; max-width:260px;"><div style="font-size:13.5px; color:#EFEAE0; line-height:1.45;"><strong style="color:#D99A3C;">Nice job!</strong> You've tracked time on 9 Jul 2026.</div></div>
+      </div>
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:22px;">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:30px 20px; background:#161510; border:1px solid #262219; border-radius:12px; text-align:center;">
+          <div style="width:46px; height:46px; border-radius:50%; background:#232019; border:1px solid #3d382e; display:flex; align-items:center; justify-content:center; color:#5a5446; font-size:20px;">⌕</div>
+          <div style="font-size:14px; color:#A29C8D; max-width:320px; line-height:1.5;">No approval data found matching your current filters.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

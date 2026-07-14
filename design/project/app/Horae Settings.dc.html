@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+  input.hf { width:100%; padding:12px 15px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; font-family:'Instrument Sans',sans-serif; font-size:15px; color:#EFEAE0; outline:none; }
+  input.hf:focus { border-color:#4FB79A; box-shadow:0 0 0 3px rgba(79,183,154,.16); }
+</style>
+</helmet>
+
+<div style="display:flex; min-height:100vh; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- ================= COMPACT RAIL ================= -->
+  <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+  <div style="width:76px; flex:0 0 76px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; align-items:center; padding:20px 12px;">
+    <div style="position:relative; width:36px; height:36px; border-radius:9px; background:#1F5C4D; overflow:hidden; margin-bottom:8px;">
+      <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:50%; bottom:9px; width:18px; height:18px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; height:11px; background:#164034;"></div>
+      <div style="position:absolute; left:0; right:0; bottom:11px; height:1px; background:#0F3D33;"></div>
+    </div>
+    <button onClick="{{ toggleRail }}" title="Expand" style="width:34px; height:30px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#A29C8D; cursor:pointer; margin-bottom:20px; font-size:14px;">»</button>
+    <button title="Start timer" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#4FB79A; color:#0d211b; border:none; border-radius:11px; cursor:pointer; margin-bottom:22px;"><span style="width:16px; height:16px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:3px; width:1.5px; height:5px; background:#0d211b; transform:translateX(-50%);"></span></span></button>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+      <a href="Horae Timesheet.dc.html" title="Timesheet" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">◷</a>
+      <a href="Horae Projects.dc.html" title="Projects" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▤</a>
+      <div title="Approvals" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">✓</div>
+      <div title="Reports" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#8f8676; font-size:16px;">▦</div>
+    </div>
+    <div style="flex:1;"></div>
+    <div title="Mira Kovač" style="width:38px; height:38px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:16px; color:#EFEAE0;">M</div>
+  </div>
+  </sc-if>
+
+  <!-- ================= LEFT RAIL ================= -->
+  <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+  <div style="width:264px; flex:0 0 264px; background:#1A1813; border-right:1px solid #322E26; display:flex; flex-direction:column; padding:20px 16px;">
+    <div style="display:flex; align-items:center; gap:11px; padding:6px 8px 22px;">
+      <div style="position:relative; width:34px; height:34px; border-radius:9px; background:#1F5C4D; overflow:hidden; flex:0 0 34px;">
+        <div style="position:absolute; left:50%; top:5px; width:1.5px; height:6px; background:#E7C079; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:50%; bottom:9px; width:17px; height:17px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:10px; background:#164034;"></div>
+        <div style="position:absolute; left:0; right:0; bottom:10px; height:1px; background:#0F3D33;"></div>
+      </div>
+      <div style="display:flex; align-items:baseline;">
+        <span style="font-family:'Newsreader',serif; font-size:25px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span>
+        <span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:5px;"></span>
+      </div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ toggleRail }}" title="Collapse" style="width:30px; height:30px; background:transparent; border:1px solid #322E26; border-radius:8px; color:#8f8676; cursor:pointer; font-size:14px;">«</button>
+    </div>
+
+    <div style="margin-bottom:26px;">
+      <button style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; background:#4FB79A; color:#0d211b; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;">
+        <span style="width:14px; height:14px; border-radius:50%; border:2px solid #0d211b; position:relative; display:inline-block;"><span style="position:absolute; left:50%; top:2px; width:1.5px; height:4px; background:#0d211b; transform:translateX(-50%);"></span></span>
+        Start timer
+      </button>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Track</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Timesheet.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span>
+        <span style="font-size:14.5px;">Timesheet</span>
+      </a>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Organize</div>
+    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:20px;">
+      <a href="Horae Projects.dc.html" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="width:9px; height:8px; border-radius:2px; border:1.5px solid #5a5446;"></span>
+        <span style="font-size:14.5px;">Projects</span>
+      </a>
+    </div>
+
+    <div style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#6a6353; padding:0 10px 10px;">Review</div>
+    <div style="display:flex; flex-direction:column; gap:3px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span>
+        <span style="font-size:14.5px;">Approvals</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;">
+        <span style="display:inline-flex; align-items:flex-end; gap:2px; height:11px;"><span style="width:2.5px; height:6px; background:#5a5446;"></span><span style="width:2.5px; height:11px; background:#5a5446;"></span><span style="width:2.5px; height:8px; background:#5a5446;"></span></span>
+        <span style="font-size:14.5px;">Reports</span>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div style="display:flex; align-items:center; gap:11px; padding:8px; border-top:1px solid #322E26; padding-top:14px;">
+      <div style="width:34px; height:34px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:15px; color:#EFEAE0; flex:0 0 34px;">M</div>
+      <div style="min-width:0;">
+        <div style="font-size:13.5px; font-weight:600; color:#F6F2E9;">Mira Kovač</div>
+        <div style="font-size:12px; color:#8f8676;">Fieldstone Studio</div>
+      </div>
+      <div style="flex:1;"></div>
+      <span style="color:#6a6353; font-size:15px;">◔</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= MAIN ================= -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <div style="padding:24px 44px 0;">
+      <a href="Horae Timesheet.dc.html" style="display:inline-flex; align-items:center; gap:9px; font-size:14px; color:#A29C8D;"><span style="font-size:16px;">←</span> Back to Timesheet</a>
+    </div>
+
+    <div style="display:flex; gap:48px; padding:22px 44px 60px; flex:1;">
+
+      <!-- SETTINGS SUB-NAV -->
+      <div style="width:250px; flex:0 0 250px;">
+        <div style="display:flex; align-items:center; gap:14px; padding:6px 4px 20px; border-bottom:1px solid #322E26; margin-bottom:16px;">
+          <div style="width:52px; height:52px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:22px; color:#EFEAE0; flex:0 0 52px;">M</div>
+          <div style="min-width:0;">
+            <div style="font-size:16px; font-weight:600; color:#F6F2E9;">Mira Kovač</div>
+            <div style="font-size:12.5px; color:#8f8676;">mira@fieldstone.studio</div>
+            <span style="display:inline-block; margin-top:6px; padding:2px 10px; background:#15291f; color:#5fcaa8; border:1px solid #24402f; border-radius:999px; font-size:11px; font-weight:600;">Manager</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div onClick="{{ goBasic }}" style="{{ navBasic }}">Basic info</div>
+          <div onClick="{{ goRates }}" style="{{ navRates }}">Rates</div>
+          <div onClick="{{ goProjects }}" style="{{ navProjects }}">Assigned projects</div>
+          <div onClick="{{ goPeople }}" style="{{ navPeople }}">Assigned people</div>
+          <div onClick="{{ goPerms }}" style="{{ navPerms }}">Permissions</div>
+          <div onClick="{{ goIntegrations }}" style="{{ navIntegrations }}">Integrations</div>
+          <div onClick="{{ goNotifications }}" style="{{ navNotifications }}">Notifications</div>
+          <div onClick="{{ goSecurity }}" style="{{ navSecurity }}">Security</div>
+        </div>
+      </div>
+
+      <!-- ================= SECTION CONTENT ================= -->
+      <div style="flex:1; max-width:720px;">
+
+      <!-- BASIC INFO -->
+      <sc-if value="{{ isBasic }}" hint-placeholder-val="{{ true }}">
+        <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; color:#F6F2E9; margin:0 0 32px; letter-spacing:-.01em;">Your basic info</h1>
+
+        <div style="display:flex; flex-direction:column; gap:22px;">
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:center; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0;">First name</label>
+            <input class="hf" value="Mira" />
+          </div>
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:center; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0;">Last name</label>
+            <input class="hf" value="Kovač" />
+          </div>
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:start; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0; padding-top:12px;">Work email</label>
+            <div>
+              <input class="hf" value="mira@fieldstone.studio" style="background:#161510; color:#8f8676;" disabled />
+              <div style="font-size:12.5px; color:#8f8676; margin-top:8px;">You can update your email from <a href="#">your account settings</a>.</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:center; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0;">Rates</label>
+            <a href="#" style="font-size:14.5px;">Edit rates</a>
+          </div>
+
+          <div style="height:1px; background:#262219; margin:4px 0;"></div>
+
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:center; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0;">Timezone</label>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 15px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; cursor:pointer;">
+              <span style="font-size:15px; color:#EFEAE0;">(GMT+01:00) Madrid</span>
+              <span style="color:#8f8676; font-size:12px;">▾</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:start; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0; padding-top:4px;">Photo</label>
+            <div>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="width:56px; height:56px; border-radius:50%; background:#1F5C4D; display:flex; align-items:center; justify-content:center; font-family:'Newsreader',serif; font-size:22px; color:#EFEAE0;">M</div>
+                <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#A29C8D; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block;"></span> Remove photo</label>
+              </div>
+              <div style="display:flex; align-items:stretch; margin-top:16px; border:1px solid #3d382e; border-radius:9px; overflow:hidden; max-width:420px;">
+                <span style="padding:11px 16px; background:#232019; border-right:1px solid #3d382e; font-size:14px; color:#EFEAE0;">Choose file</span>
+                <span style="flex:1; padding:11px 16px; background:#100F0C; font-size:14px; color:#5a5446;">No file chosen</span>
+              </div>
+              <div style="font-size:12.5px; color:#8f8676; margin-top:8px;">Suggested size: 100×100</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:150px 1fr; align-items:center; gap:20px;">
+            <label style="font-size:14.5px; color:#EFEAE0;">Home</label>
+            <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#A29C8D; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block;"></span> Show the welcome home page</label>
+          </div>
+
+          <div style="display:grid; grid-template-columns:150px 1fr; gap:20px;">
+            <span></span>
+            <div><button style="padding:12px 24px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Update info</button></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ASSIGNED PEOPLE -->
+      <sc-if value="{{ isPeople }}" hint-placeholder-val="{{ false }}">
+        <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; color:#F6F2E9; margin:0 0 10px; letter-spacing:-.01em;">Your assigned people</h1>
+        <div style="font-size:15px; color:#A29C8D; margin-bottom:26px;">As a Manager, you can report on and approve these people's time.</div>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:64px 32px; background:#161510; border:1px solid #262219; border-radius:14px; text-align:center;">
+          <div style="width:52px; height:52px; border-radius:50%; background:#232019; border:1px solid #3d382e; display:flex; align-items:center; justify-content:center; color:#5a5446; font-size:22px;">◔</div>
+          <div style="font-size:15px; color:#A29C8D; max-width:420px; line-height:1.5;">You are not assigned to manage anyone. Ask an Administrator to assign you a team.</div>
+        </div>
+      </sc-if>
+
+      <!-- PERMISSIONS -->
+      <sc-if value="{{ isPermissions }}" hint-placeholder-val="{{ false }}">
+        <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; color:#F6F2E9; margin:0 0 10px; letter-spacing:-.01em;">Your permissions</h1>
+        <div style="font-size:15px; color:#A29C8D; margin-bottom:22px;">This setting determines what you can see and do in this account. <a href="#">Learn more about what people can access</a></div>
+        <div style="height:1px; background:#262219; margin:0 0 22px;"></div>
+
+        <!-- admin-only callout -->
+        <div style="display:flex; align-items:center; gap:12px; padding:15px 18px; background:#2b2413; border:1px solid #453818; border-radius:11px; margin-bottom:26px;">
+          <span style="color:#D6A24A; font-size:16px;">⚠</span>
+          <span style="font-size:14.5px; color:#e0b45f;">Only an Administrator can edit your permissions.</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:150px 1fr; gap:24px;">
+          <div style="display:flex; align-items:center; gap:7px; font-size:15px; color:#EFEAE0;">Profiles <span style="width:16px; height:16px; border-radius:50%; border:1px solid #5a5446; color:#8f8676; font-size:10px; display:inline-flex; align-items:center; justify-content:center;">i</span></div>
+          <div>
+            <!-- select-new-profile warning -->
+            <div style="padding:14px 16px; background:#2b2413; border:1px solid #453818; border-radius:10px; margin-bottom:22px; font-size:14px; color:#e0b45f; line-height:1.5;">⚠ Mira's current profile <strong>Manager</strong> is no longer available. Select a new profile to continue.</div>
+
+            <div style="display:flex; flex-direction:column; gap:22px;">
+              <div style="display:grid; grid-template-columns:26px 1fr; gap:12px;">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4a4539; margin-top:1px;"></span>
+                <div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">Member</div><div style="font-size:13.5px; color:#A29C8D; margin-top:3px; line-height:1.5;">Track time and expenses on assigned projects.</div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:26px 1fr; gap:12px;">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4a4539; margin-top:1px;"></span>
+                <div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">Project Manager</div><div style="font-size:13.5px; color:#A29C8D; margin-top:3px; line-height:1.5;">Manage projects, clients, and tasks. View and edit time and expenses for their team. No access to rates, invoices, people, or account settings.</div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:26px 1fr; gap:12px;">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4a4539; margin-top:1px;"></span>
+                <div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">People Admin</div><div style="font-size:13.5px; color:#A29C8D; margin-top:3px; line-height:1.5;">Manage people and all time entries and expenses across the account. No access to rates, invoices, or account settings.</div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:26px 1fr; gap:12px;">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4a4539; margin-top:1px;"></span>
+                <div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">Accounting</div><div style="font-size:13.5px; color:#A29C8D; margin-top:3px; line-height:1.5;">Manage invoices, estimates, expenses, and clients. View rates and reports. No access to people or account settings.</div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:26px 1fr; gap:12px;">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4a4539; margin-top:1px;"></span>
+                <div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">Executive Manager</div><div style="font-size:13.5px; color:#A29C8D; margin-top:3px; line-height:1.5;">Manage time, expenses, projects, people, invoices, and reports. View rates. No access to account settings or billing.</div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:26px 1fr; gap:12px;">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4a4539; margin-top:1px;"></span>
+                <div><div style="font-size:14.5px; font-weight:600; color:#EFEAE0;">Administrator</div><div style="font-size:13.5px; color:#A29C8D; margin-top:3px; line-height:1.5;">Full access to everything: account settings, billing, all permissions.</div></div>
+              </div>
+            </div>
+
+            <div style="height:1px; background:#262219; margin:26px 0 22px;"></div>
+            <button style="padding:12px 24px; background:#2a4a41; color:#7fae9f; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:not-allowed;">Update permissions</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- NOTIFICATIONS -->
+      <sc-if value="{{ isNotifications }}" hint-placeholder-val="{{ false }}">
+        <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; color:#F6F2E9; margin:0 0 26px; letter-spacing:-.01em;">Notifications</h1>
+
+        <div style="display:flex; flex-direction:column; gap:0;">
+          <!-- Timesheet reminders -->
+          <div style="display:grid; grid-template-columns:200px 1fr; gap:24px; padding:22px 0; border-top:1px solid #262219;">
+            <div style="font-size:14.5px; color:#EFEAE0;">Timesheet reminders</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block; flex:0 0 18px;"></span> Help me track my time with daily personal reminders</label>
+              <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border-radius:5px; background:#D99A3C; display:inline-flex; align-items:center; justify-content:center; color:#251804; font-size:12px; font-weight:700; flex:0 0 18px;">✓</span> Include me in automatic team-wide reminders</label>
+              <div style="display:flex; gap:12px; padding:15px 18px; background:#12212b; border:1px solid #1e3a4a; border-radius:11px;">
+                <span style="color:#5aa8d6; font-size:16px;">ⓘ</span>
+                <span style="font-size:13.5px; color:#a9cfe4; line-height:1.55;">Jonas Chevalier has set up reminders for your team. When this is checked and you haven't submitted your timesheet for approval, Horae will automatically remind you that timesheets must be submitted by <strong style="color:#cfe6f2;">23:00, Sunday</strong>.</span>
+              </div>
+            </div>
+          </div>
+          <!-- Weekly -->
+          <div style="display:grid; grid-template-columns:200px 1fr; gap:24px; padding:22px 0; border-top:1px solid #262219;">
+            <div style="font-size:14.5px; color:#EFEAE0;">Your Weekly Horae</div>
+            <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block; flex:0 0 18px;"></span> Email me a weekly report of my time</label>
+          </div>
+          <!-- Approval -->
+          <div style="display:grid; grid-template-columns:200px 1fr; gap:24px; padding:22px 0; border-top:1px solid #262219;">
+            <div style="font-size:14.5px; color:#EFEAE0;">Approval</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block; flex:0 0 18px;"></span> Email me if timesheets are submitted for people I manage</label>
+              <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block; flex:0 0 18px;"></span> Email me if timesheets are submitted for projects I manage</label>
+            </div>
+          </div>
+          <!-- Other -->
+          <div style="display:grid; grid-template-columns:200px 1fr; gap:24px; padding:22px 0; border-top:1px solid #262219; border-bottom:1px solid #262219;">
+            <div style="font-size:14.5px; color:#EFEAE0;">Other notifications</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block; flex:0 0 18px;"></span> Email me if a project I manage is deleted</label>
+              <label style="display:flex; align-items:center; gap:11px; font-size:14.5px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border:1.5px solid #5a5446; border-radius:5px; display:inline-block; flex:0 0 18px;"></span> Email me occasional updates, offers, tips, and interesting stories</label>
+            </div>
+          </div>
+        </div>
+        <button style="margin-top:24px; padding:12px 24px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Update notifications</button>
+      </sc-if>
+
+      <!-- GENERIC PLACEHOLDER for other sections -->
+      <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+        <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; color:#F6F2E9; margin:0 0 10px; letter-spacing:-.01em;">{{ otherTitle }}</h1>
+        <div style="font-size:15px; color:#A29C8D; margin-bottom:26px;">{{ otherSub }}</div>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:64px 32px; background:#161510; border:1px solid #262219; border-radius:14px; text-align:center;">
+          <div style="width:52px; height:52px; border-radius:50%; background:#232019; border:1px solid #3d382e; display:flex; align-items:center; justify-content:center; color:#5a5446; font-size:22px;">◔</div>
+          <div style="font-size:15px; color:#A29C8D; max-width:420px; line-height:1.5;">Nothing to configure here yet in this mockup.</div>
+        </div>
+      </sc-if>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { section: 'basic', collapsed: false };
+
+  renderVals() {
+    const s = this.state.section;
+    const base = 'padding:10px 14px; border-radius:9px; font-size:14.5px; cursor:pointer;';
+    const on = base + ' background:#232019; border:1px solid #322E26; font-weight:600; color:#F6F2E9;';
+    const off = base + ' color:#A29C8D;';
+    const nav = (k) => s === k ? on : off;
+    const titles = {
+      rates: ['Your rates', 'Set your billable and cost rates.'],
+      projects: ['Your assigned projects', 'Projects you can track time against.'],
+      integrations: ['Integrations', 'Connect Horae to your other tools.'],
+      security: ['Security', 'Password, sessions, and two-factor authentication.'],
+    };
+    const t = titles[s] || ['', ''];
+    return {
+      isBasic: s === 'basic',
+      isPeople: s === 'people',
+      isPermissions: s === 'permissions',
+      isNotifications: s === 'notifications',
+      isOther: !!titles[s],
+      otherTitle: t[0],
+      otherSub: t[1],
+      navBasic: nav('basic'), navRates: nav('rates'), navProjects: nav('projects'),
+      navPeople: nav('people'), navPerms: nav('permissions'), navIntegrations: nav('integrations'),
+      navNotifications: nav('notifications'), navSecurity: nav('security'),
+      goBasic: () => this.setState({ section: 'basic' }),
+      goRates: () => this.setState({ section: 'rates' }),
+      goProjects: () => this.setState({ section: 'projects' }),
+      goPeople: () => this.setState({ section: 'people' }),
+      goPerms: () => this.setState({ section: 'permissions' }),
+      goIntegrations: () => this.setState({ section: 'integrations' }),
+      goNotifications: () => this.setState({ section: 'notifications' }),
+      goSecurity: () => this.setState({ section: 'security' }),
+      expanded: !this.state.collapsed,
+      collapsed: this.state.collapsed,
+      toggleRail: () => this.setState(s => ({ collapsed: !s.collapsed })),
+    };
+  }
+}
+</script>
+</body>
+</html>
