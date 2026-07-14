@@ -19,8 +19,8 @@ ______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirm the US5 plugin subsystem is present and builds: `cargo build -p horae --features server` compiles `crates/horae/src/plugin/` (`AppEvent`, `PluginRegistry`, `dispatch`) and the fixture plugins under `crates/horae/tests/fixtures/plugins/` load.
-- [ ] T002 [P] Confirm the offline query cache workflow: `SQLX_OFFLINE=true` build is green and `.sqlx/` is current (baseline before adding queries).
+- [x] T001 Confirm the US5 plugin subsystem is present and builds: `cargo build -p horae --features server` compiles `crates/horae/src/plugin/` (`AppEvent`, `PluginRegistry`, `dispatch`) and the fixture plugins under `crates/horae/tests/fixtures/plugins/` load.
+- [x] T002 [P] Confirm the offline query cache workflow: `SQLX_OFFLINE=true` build is green and `.sqlx/` is current (baseline before adding queries).
 
 ______________________________________________________________________
 
@@ -48,12 +48,12 @@ ______________________________________________________________________
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add the US1 `AppEvent` variants and `hook_name()` arms plus `SubmissionPayload` in `crates/horae/src/plugin/event.rs` (`time_entry_updated`, `time_entry_deleted`, `timesheet_submitted`, `submission_approved`, `submission_rejected`, `invoice_paid`, `invoice_voided`).
-- [ ] T008 [US1] Dispatch `time_entry_updated` after a real change in `update_time_entry`, and `time_entry_deleted` in `delete_time_entry`, in `crates/horae/src/server_fns.rs` (suppress on no-op update).
-- [ ] T009 [US1] Dispatch `timesheet_submitted` in `submit_week` in `crates/horae/src/server_fns.rs`.
-- [ ] T010 [US1] Dispatch `submission_approved` in `approve_submission` and `submission_rejected` in `reject_submission` in `crates/horae/src/server_fns.rs`.
-- [ ] T011 [US1] Dispatch `invoice_paid` / `invoice_voided` on the matching status transitions in `update_invoice_status` in `crates/horae/src/server_fns.rs`.
-- [ ] T012 [US1] Regenerate the `.sqlx/` cache for any changed queries and run the US1 tests green.
+- [x] T007 [US1] Add the US1 `AppEvent` variants and `hook_name()` arms plus `SubmissionPayload` in `crates/horae/src/plugin/event.rs` (`time_entry_updated`, `time_entry_deleted`, `timesheet_submitted`, `submission_approved`, `submission_rejected`, `invoice_paid`, `invoice_voided`).
+- [x] T008 [US1] Dispatch `time_entry_updated` after a real change in `update_time_entry`, and `time_entry_deleted` in `delete_time_entry`, in `crates/horae/src/server_fns.rs` (suppress on no-op update).
+- [x] T009 [US1] Dispatch `timesheet_submitted` in `submit_week` in `crates/horae/src/server_fns.rs`.
+- [x] T010 [US1] Dispatch `submission_approved` in `approve_submission` and `submission_rejected` in `reject_submission` in `crates/horae/src/server_fns.rs`.
+- [x] T011 [US1] Dispatch `invoice_paid` / `invoice_voided` on the matching status transitions in `update_invoice_status` in `crates/horae/src/server_fns.rs`.
+- [x] T012 [US1] Regenerate the `.sqlx/` cache for any changed queries and run the US1 tests green.
 
 **Checkpoint**: US1 fully functional and independently testable.
 
@@ -95,20 +95,20 @@ ______________________________________________________________________
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Unit tests for `budget::crossed_band` in `crates/core/src/budget.rs` (`#[cfg(test)]`): integer inputs, band boundaries, no re-fire within a band, reset when consumption drops (SC-004, Constitution I).
+- [x] T025 [P] [US3] Unit tests for `budget::crossed_band` in `crates/core/src/budget.rs` (`#[cfg(test)]`): integer inputs, band boundaries, no re-fire within a band, reset when consumption drops (SC-004, Constitution I).
 - [ ] T026 [US3] Integration tests in `crates/horae/tests/integration.rs`: crossing 80% fires one `project_budget_threshold_reached`; staying in band fires none; exceeding 100% fires `project_over_budget`; a `none`-budget project fires nothing.
 - [ ] T027 [US3] Integration test in `crates/horae/tests/integration.rs`: an entry older than `long_timer_minutes` is detected once, sets `notified_long_running_at`, and is not re-detected; stopping clears the marker.
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Migration `crates/horae/migrations/NNNN_plugin_event_support.sql`: add org `budget_alert_pcts int[] default '{80,100}'` and `long_timer_minutes int default 480`; `projects.last_budget_alert_pct smallint`; `time_entries.notified_long_running_at timestamptz`.
-- [ ] T029 [P] [US3] Implement the pure `budget::crossed_band(consumed, budget, thresholds, last_band)` function in `crates/core/src/budget.rs` and export it from `crates/core/src/lib.rs` (integer-only).
-- [ ] T030 [US3] Add the US3 `AppEvent` variants + `hook_name()` arms and `BudgetThresholdPayload` in `crates/horae/src/plugin/event.rs`.
-- [ ] T031 [US3] After time-entry writes (`create_time_entry`, `update_time_entry`, `delete_time_entry`, `stop_timer`) in `crates/horae/src/server_fns.rs`, recompute project consumption, call `budget::crossed_band`, dispatch `project_budget_threshold_reached`/`project_over_budget`, and update/reset `projects.last_budget_alert_pct`.
-- [ ] T032 [US3] Implement the periodic long-running-timer scheduler in `crates/horae/src/scheduler.rs` (server-only `tokio` task): poll for `is_running` entries past `long_timer_minutes` without `notified_long_running_at`, dispatch `timer_running_too_long`, set the marker.
-- [ ] T033 [US3] Clear `notified_long_running_at` in `stop_timer` (`crates/horae/src/server_fns.rs`).
-- [ ] T034 [US3] Read org config and spawn the scheduler at startup: wire it in `crates/horae/src/state.rs` / `crates/horae/src/main.rs` (`serve`).
-- [ ] T035 [US3] Regenerate the `.sqlx/` cache for the new queries and run the US3 tests green.
+- [x] T028 [US3] Migration `crates/horae/migrations/NNNN_plugin_event_support.sql`: add org `budget_alert_pcts int[] default '{80,100}'` and `long_timer_minutes int default 480`; `projects.last_budget_alert_pct smallint`; `time_entries.notified_long_running_at timestamptz`.
+- [x] T029 [P] [US3] Implement the pure `budget::crossed_band(consumed, budget, thresholds, last_band)` function in `crates/core/src/budget.rs` and export it from `crates/core/src/lib.rs` (integer-only).
+- [x] T030 [US3] Add the US3 `AppEvent` variants + `hook_name()` arms and `BudgetThresholdPayload` in `crates/horae/src/plugin/event.rs`.
+- [x] T031 [US3] After time-entry writes (`create_time_entry`, `update_time_entry`, `delete_time_entry`, `stop_timer`) in `crates/horae/src/server_fns.rs`, recompute project consumption, call `budget::crossed_band`, dispatch `project_budget_threshold_reached`/`project_over_budget`, and update/reset `projects.last_budget_alert_pct`.
+- [x] T032 [US3] Implement the periodic long-running-timer scheduler in `crates/horae/src/scheduler.rs` (server-only `tokio` task): poll for `is_running` entries past `long_timer_minutes` without `notified_long_running_at`, dispatch `timer_running_too_long`, set the marker.
+- [x] T033 [US3] Clear `notified_long_running_at` in `stop_timer` (`crates/horae/src/server_fns.rs`).
+- [x] T034 [US3] Read org config and spawn the scheduler at startup: wire it in `crates/horae/src/state.rs` / `crates/horae/src/main.rs` (`serve`).
+- [x] T035 [US3] Regenerate the `.sqlx/` cache for the new queries and run the US3 tests green.
 
 **Checkpoint**: All three stories independently functional.
 
@@ -119,7 +119,7 @@ ______________________________________________________________________
 - [ ] T036 [P] Extend the base event catalog in `specs/001-time-tracking-invoicing/contracts/plugin-interface.md` (or reference this addendum) so the full event list is discoverable in one place.
 - [ ] T037 [P] Update `crates/horae/tests/fixtures/plugins/` (or add one) so a fixture subscribes to a new hook, and add a failure-isolation test: a `fail-plugin` on `invoice_paid` does not affect the status change (FR-011 / SC-003).
 - [ ] T038 Verify the five pre-existing events are unchanged in name/envelope/payload (SC-005) — a regression assertion in `crates/horae/tests/integration.rs`.
-- [ ] T039 Run `nix fmt -- --ci` and `nix flake check`; confirm `.sqlx/` committed and green.
+- [x] T039 Run `nix fmt -- --ci` and `nix flake check`; confirm `.sqlx/` committed and green.
 - [ ] T040 Run the [quickstart.md](./quickstart.md) scenarios end-to-end and confirm all success criteria (SC-001..SC-006).
 
 ______________________________________________________________________
