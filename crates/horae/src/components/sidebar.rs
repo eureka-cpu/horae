@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::components::avatar::Avatar;
+use crate::components::icons::NavIcon;
 use crate::components::logo::HoraeMark;
 use crate::route::Route;
 use crate::server_fns;
@@ -10,8 +11,6 @@ use crate::server_fns;
 /// `AppLayout` so the shell can narrow the content area in step with the rail.
 #[component]
 pub fn Sidebar(collapsed: Signal<bool>) -> Element {
-    let me = use_resource(|| async move { server_fns::get_me().await });
-
     rsx! {
         aside { class: "app-sidebar",
             div { class: "sidebar-brand",
@@ -33,69 +32,104 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
 
             div { class: "sidebar-section", "Track" }
             div { class: "sidebar-group",
-                SideLink { to: Route::Dashboard {}, icon: "◈", label: "Dashboard" }
-                SideLink { to: Route::TimeList {}, icon: "◔", label: "Time" }
-                SideLink { to: Route::Timesheet {}, icon: "▤", label: "Timesheet" }
+                SideLink { to: Route::Dashboard {}, icon: "dashboard", label: "Dashboard" }
+                SideLink { to: Route::TimeList {}, icon: "time", label: "Time" }
+                SideLink { to: Route::Timesheet {}, icon: "timesheet", label: "Timesheet" }
             }
 
             div { class: "sidebar-section", "Organize" }
             div { class: "sidebar-group",
-                SideLink { to: Route::ClientList {}, icon: "◇", label: "Clients" }
-                SideLink { to: Route::ProjectList {}, icon: "▧", label: "Projects" }
-                SideLink { to: Route::InvoiceList {}, icon: "▭", label: "Invoices" }
+                SideLink { to: Route::ClientList {}, icon: "clients", label: "Clients" }
+                SideLink { to: Route::ProjectList {}, icon: "projects", label: "Projects" }
+                SideLink { to: Route::InvoiceList {}, icon: "invoices", label: "Invoices" }
             }
 
             div { class: "sidebar-section", "Review" }
             div { class: "sidebar-group",
-                SideLink { to: Route::Approvals {}, icon: "✓", label: "Approvals" }
-                SideLink { to: Route::Reports {}, icon: "▥", label: "Reports" }
+                SideLink { to: Route::Approvals {}, icon: "approvals", label: "Approvals" }
+                SideLink { to: Route::Reports {}, icon: "reports", label: "Reports" }
             }
 
             div { class: "sidebar-section", "System" }
             div { class: "sidebar-group",
-                SideLink { to: Route::AdminUsers {}, icon: "◍", label: "Users" }
-                SideLink { to: Route::Settings {}, icon: "⚙", label: "Settings" }
+                SideLink { to: Route::AdminUsers {}, icon: "users", label: "Users" }
+                SideLink { to: Route::Settings {}, icon: "settings", label: "Settings" }
             }
 
             div { class: "sidebar-spacer" }
 
-            div { class: "sidebar-footer",
-                match &*me.read() {
-                    Some(Ok(u)) => rsx! {
-                        Avatar { initials: initials(&u.name) }
-                        div { class: "sidebar-user",
-                            div { class: "sidebar-user-name truncate", "{u.name}" }
-                            div { class: "sidebar-user-sub", "{u.org_role}" }
-                        }
-                        // A form POST so sign-out works without JS (the /auth/logout
-                        // Axum route flushes the session and redirects to login).
-                        form { method: "post", action: "/auth/logout",
-                            button {
-                                class: "sidebar-signout",
-                                r#type: "submit",
-                                title: "Sign out",
-                                "aria-label": "Sign out",
-                                "⏻"
-                            }
-                        }
-                    },
-                    _ => rsx! {
-                        Avatar { initials: "·".to_string() }
-                        div { class: "sidebar-user", div { class: "sidebar-user-name", "…" } }
-                    },
-                }
-            }
+            SidebarUser {}
         }
     }
 }
 
 /// One rail row: a client-side `Link` that auto-marks itself active for its route.
+/// The glyph is shown when inactive; the active route swaps it for a pine dot
+/// (via `.nav-item.active` CSS), matching the design's rail language.
 #[component]
 fn SideLink(to: Route, icon: String, label: String) -> Element {
     rsx! {
         Link { to, active_class: "active", class: "nav-item",
-            span { class: "nav-item-icon", "{icon}" }
+            span { class: "nav-item-icon", NavIcon { name: icon } }
+            span { class: "nav-item-dot" }
             span { class: "nav-item-label", "{label}" }
+        }
+    }
+}
+
+/// The signed-in user: an avatar + name + role row that opens an account popover
+/// (profile, notifications, sign out). Falls back to a placeholder until `get_me`
+/// resolves (or when not authenticated).
+#[component]
+fn SidebarUser() -> Element {
+    let me = use_resource(|| async move { server_fns::get_me().await });
+    let mut open = use_signal(|| false);
+
+    let user = me.read();
+    let (name, role, marks) = match &*user {
+        Some(Ok(u)) => (u.name.clone(), u.org_role.to_string(), initials(&u.name)),
+        _ => ("Not signed in".to_string(), String::new(), "·".to_string()),
+    };
+
+    rsx! {
+        div { class: "sidebar-userbox",
+            if open() {
+                div { class: "sidebar-menu",
+                    div { class: "sidebar-menu-head",
+                        Avatar { initials: "{marks}" }
+                        div { class: "sidebar-user",
+                            div { class: "sidebar-user-name truncate", "{name}" }
+                            if !role.is_empty() {
+                                div { class: "sidebar-user-sub", "{role}" }
+                            }
+                        }
+                    }
+                    div { class: "sidebar-menu-list",
+                        Link { to: Route::Settings {}, class: "sidebar-menu-item", onclick: move |_| open.set(false), "My profile" }
+                        Link { to: Route::Settings {}, class: "sidebar-menu-item", onclick: move |_| open.set(false), "Notifications" }
+                    }
+                    div { class: "sidebar-menu-foot",
+                        form { method: "post", action: "/auth/logout",
+                            button { class: "sidebar-menu-item danger", r#type: "submit", "Sign out" }
+                        }
+                    }
+                }
+            }
+
+            button {
+                class: "sidebar-footer",
+                "aria-haspopup": "menu",
+                "aria-expanded": "{open()}",
+                onclick: move |_| open.set(!open()),
+                Avatar { initials: "{marks}" }
+                div { class: "sidebar-user",
+                    div { class: "sidebar-user-name truncate", "{name}" }
+                    if !role.is_empty() {
+                        div { class: "sidebar-user-sub", "{role}" }
+                    }
+                }
+                span { class: "sidebar-user-caret", "⌄" }
+            }
         }
     }
 }
