@@ -1,7 +1,12 @@
+pub mod avatar;
 pub mod badge;
+pub mod button;
+pub mod card;
+pub mod controls;
 pub mod form;
 pub mod layout;
 pub mod nav;
 pub mod sidebar;
 pub mod table;
 pub mod timer_widget;
+pub mod toast;

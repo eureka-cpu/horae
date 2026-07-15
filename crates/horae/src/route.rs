@@ -7,6 +7,7 @@ use crate::pages::{
     approvals::Approvals,
     clients::{ClientDetail, ClientList},
     dashboard::Dashboard,
+    gallery::Gallery,
     invoices::{InvoiceDetail, InvoiceList},
     projects::{ProjectDetail, ProjectList},
     reports::Reports,
@@ -67,6 +68,8 @@ pub enum Route {
     AdminUsers {},
     #[route("/settings")]
     Settings {},
+    #[route("/components")]
+    Gallery {},
     #[end_layout]
     #[route("/:..route")]
     NotFound { route: Vec<String> },
