@@ -10,8 +10,53 @@ use crate::route::Route;
 use crate::server_fns;
 
 /// `H:MM` clock format from integer minutes (the design's cell/total format).
+/// Delegates to the core formatter so duration display has one source of truth.
 fn format_hm(total_minutes: i32) -> String {
-    format!("{}:{:02}", total_minutes / 60, total_minutes % 60)
+    horae_core::duration::format_hhmm(total_minutes.max(0) as u32)
+}
+
+/// Offset (0 = Mon .. 6 = Sun) of `today` within the week starting `week_start`,
+/// or `None` when today falls outside that week.
+fn today_offset(today: NaiveDate, week_start: NaiveDate) -> Option<usize> {
+    let o = (today - week_start).num_days();
+    (0..7).contains(&o).then_some(o as usize)
+}
+
+/// A weekday column's CSS class: `base`, plus a `today`/`weekend` modifier.
+fn day_col_class(base: &str, today_off: Option<usize>, i: usize) -> String {
+    if today_off == Some(i) {
+        format!("{base} today")
+    } else if i >= 5 {
+        format!("{base} weekend")
+    } else {
+        base.to_string()
+    }
+}
+
+/// A week-grid value cell's class: `base`, plus `empty` when zero or `today`
+/// when it's today's column.
+fn value_cell_class(base: &str, minutes: i32, today_off: Option<usize>, i: usize) -> String {
+    if minutes == 0 {
+        format!("{base} empty")
+    } else if today_off == Some(i) {
+        format!("{base} today")
+    } else {
+        base.to_string()
+    }
+}
+
+/// Map a list-returning resource's loaded value, or yield `R::default()` while it
+/// is still loading or errored — collapses the repeated
+/// `read().as_ref().and_then(...).map(...).unwrap_or_default()` boilerplate.
+fn from_list<T: 'static, E: 'static, R: Default>(
+    res: &Resource<Result<Vec<T>, E>>,
+    f: impl FnOnce(&[T]) -> R,
+) -> R {
+    res.read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|v| f(v))
+        .unwrap_or_default()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -63,43 +108,29 @@ pub fn Timesheet() -> Element {
     let tasks = use_resource(|| async move { server_fns::list_tasks().await });
     let clients = use_resource(|| async move { server_fns::list_clients(true).await });
 
-    let project_names: HashMap<Uuid, String> = projects
-        .read()
-        .as_ref()
-        .and_then(|r| r.as_ref().ok())
-        .map(|ps| ps.iter().map(|p| (p.id, p.name.clone())).collect())
-        .unwrap_or_default();
+    let project_names: HashMap<Uuid, String> = from_list(&projects, |ps| {
+        ps.iter().map(|p| (p.id, p.name.clone())).collect()
+    });
 
     // project_id -> (client name, project currency), for the calendar event's
     // "Client · CUR" line.
     let project_client: HashMap<Uuid, (String, String)> = {
-        let client_names: HashMap<Uuid, String> = clients
-            .read()
-            .as_ref()
-            .and_then(|r| r.as_ref().ok())
-            .map(|cs| cs.iter().map(|c| (c.id, c.name.clone())).collect())
-            .unwrap_or_default();
-        projects
-            .read()
-            .as_ref()
-            .and_then(|r| r.as_ref().ok())
-            .map(|ps| {
-                ps.iter()
-                    .map(|p| {
-                        let name = client_names.get(&p.client_id).cloned().unwrap_or_default();
-                        (p.id, (name, p.currency.clone()))
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
+        let client_names: HashMap<Uuid, String> = from_list(&clients, |cs| {
+            cs.iter().map(|c| (c.id, c.name.clone())).collect()
+        });
+        from_list(&projects, |ps| {
+            ps.iter()
+                .map(|p| {
+                    let name = client_names.get(&p.client_id).cloned().unwrap_or_default();
+                    (p.id, (name, p.currency.clone()))
+                })
+                .collect()
+        })
     };
 
-    let task_names: HashMap<Uuid, String> = tasks
-        .read()
-        .as_ref()
-        .and_then(|r| r.as_ref().ok())
-        .map(|ts| ts.iter().map(|t| (t.id, t.name.clone())).collect())
-        .unwrap_or_default();
+    let task_names: HashMap<Uuid, String> = from_list(&tasks, |ts| {
+        ts.iter().map(|t| (t.id, t.name.clone())).collect()
+    });
 
     let ws = *week_start.read();
     let week_end = ws + Duration::days(6);
@@ -156,18 +187,12 @@ pub fn Timesheet() -> Element {
 
     // Open the modal for `date`, defaulting the selects to the first project/task.
     let open_add = use_callback(move |date: NaiveDate| {
-        let first_project = projects
-            .read()
-            .as_ref()
-            .and_then(|r| r.as_ref().ok())
-            .and_then(|ps| ps.first().map(|p| p.id.to_string()))
-            .unwrap_or_default();
-        let first_task = tasks
-            .read()
-            .as_ref()
-            .and_then(|r| r.as_ref().ok())
-            .and_then(|ts| ts.first().map(|t| t.id.to_string()))
-            .unwrap_or_default();
+        let first_project = from_list(&projects, |ps| {
+            ps.first().map(|p| p.id.to_string()).unwrap_or_default()
+        });
+        let first_task = from_list(&tasks, |ts| {
+            ts.first().map(|t| t.id.to_string()).unwrap_or_default()
+        });
         add_project.set(first_project);
         add_task.set(first_task);
         add_notes.set(String::new());
@@ -177,32 +202,22 @@ pub fn Timesheet() -> Element {
     });
 
     // Options for the modal selects: (id, label).
-    let project_options: Vec<(String, String)> = projects
-        .read()
-        .as_ref()
-        .and_then(|r| r.as_ref().ok())
-        .map(|ps| {
-            ps.iter()
-                .map(|p| {
-                    let label = match &p.code {
-                        Some(code) => format!("[{code}] {}", p.name),
-                        None => p.name.clone(),
-                    };
-                    (p.id.to_string(), label)
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    let task_options: Vec<(String, String)> = tasks
-        .read()
-        .as_ref()
-        .and_then(|r| r.as_ref().ok())
-        .map(|ts| {
-            ts.iter()
-                .map(|t| (t.id.to_string(), t.name.clone()))
-                .collect()
-        })
-        .unwrap_or_default();
+    let project_options: Vec<(String, String)> = from_list(&projects, |ps| {
+        ps.iter()
+            .map(|p| {
+                let label = match &p.code {
+                    Some(code) => format!("[{code}] {}", p.name),
+                    None => p.name.clone(),
+                };
+                (p.id.to_string(), label)
+            })
+            .collect()
+    });
+    let task_options: Vec<(String, String)> = from_list(&tasks, |ts| {
+        ts.iter()
+            .map(|t| (t.id.to_string(), t.name.clone()))
+            .collect()
+    });
 
     // The "+" button adds for today when it's in the viewed week, else Monday.
     let add_default_date = if (0..7).contains(&(today - ws).num_days()) {
@@ -483,28 +498,9 @@ fn render_calendar_view(
     // At least 8 rows so a light week still reads as a calendar.
     let max_hours = ((max_min + 59) / 60).max(8);
 
-    let today_off = {
-        let o = (today - week_start).num_days();
-        (0..7).contains(&o).then_some(o as usize)
-    };
-    let col_class = |i: usize| {
-        if today_off == Some(i) {
-            "ts-cal-col today"
-        } else if i >= 5 {
-            "ts-cal-col weekend"
-        } else {
-            "ts-cal-col"
-        }
-    };
-    let head_class = |i: usize| {
-        if today_off == Some(i) {
-            "ts-cal-dayhead today"
-        } else if i >= 5 {
-            "ts-cal-dayhead weekend"
-        } else {
-            "ts-cal-dayhead"
-        }
-    };
+    let today_off = today_offset(today, week_start);
+    let col_class = |i: usize| day_col_class("ts-cal-col", today_off, i);
+    let head_class = |i: usize| day_col_class("ts-cal-dayhead", today_off, i);
 
     // Pre-compute each entry's placement, stacked from the top of its day.
     let mut day_events: Vec<Vec<CalEvent>> = Vec::with_capacity(7);
@@ -717,19 +713,8 @@ fn render_week_view(
         row[offset as usize] += entry.minutes;
     }
 
-    let today_off = {
-        let o = (today - week_start).num_days();
-        (0..7).contains(&o).then_some(o as usize)
-    };
-    let day_class = |i: usize, base: &str| {
-        if today_off == Some(i) {
-            format!("{base} today")
-        } else if i >= 5 {
-            format!("{base} weekend")
-        } else {
-            base.to_string()
-        }
-    };
+    let today_off = today_offset(today, week_start);
+    let day_class = |i: usize, base: &str| day_col_class(base, today_off, i);
 
     rsx! {
         div { class: "ts-grid-card",
@@ -780,13 +765,7 @@ fn render_week_view(
                                 for i in 0..7 {
                                     {
                                         let mins = row[i];
-                                        let cls = if mins == 0 {
-                                            "ts-cell-box empty".to_string()
-                                        } else if today_off == Some(i) {
-                                            "ts-cell-box today".to_string()
-                                        } else {
-                                            "ts-cell-box".to_string()
-                                        };
+                                        let cls = value_cell_class("ts-cell-box", mins, today_off, i);
                                         rsx! {
                                             div { class: "ts-cell",
                                                 div { class: "{cls}",
@@ -820,13 +799,7 @@ fn render_week_view(
                     for i in 0..7 {
                         {
                             let t = daily_totals[i];
-                            let cls = if t == 0 {
-                                "ts-coltotal empty".to_string()
-                            } else if today_off == Some(i) {
-                                "ts-coltotal today".to_string()
-                            } else {
-                                "ts-coltotal".to_string()
-                            };
+                            let cls = value_cell_class("ts-coltotal", t, today_off, i);
                             rsx! {
                                 div { class: "{cls}",
                                     if t > 0 {
