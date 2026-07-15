@@ -5,6 +5,7 @@ pub mod card;
 pub mod controls;
 pub mod form;
 pub mod layout;
+pub mod logo;
 pub mod nav;
 pub mod sidebar;
 pub mod table;

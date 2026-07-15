@@ -155,15 +155,32 @@ h1, h2, h3, h4, h5, h6 {
 .app-content { flex: 1; min-width: 0; padding: var(--space-8); }
 
 /* Brand row */
-.sidebar-brand { display: flex; align-items: baseline; margin-bottom: var(--space-6); }
+.sidebar-brand { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-6); }
 .sidebar-brand-name {
-  font-family: var(--font-family-display); font-size: 1.55rem; font-weight: 600;
+  font-family: var(--font-family-display); font-size: 1.4rem; font-weight: 600;
   letter-spacing: -0.01em; color: var(--color-text);
 }
-.sidebar-brand-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: var(--color-accent);
-  align-self: flex-end; margin: 0 0 6px 4px;
+
+/* Horae mark — rising sun over a horizon in a clipped pine tile */
+.horae-mark {
+  position: relative; width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 7px; background: var(--color-pine); overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
+.horae-mark .ray {
+  position: absolute; left: 50%; top: 3.5px; width: 2px; height: 6px;
+  border-radius: 2px; background: #E7C079; transform-origin: bottom center;
+}
+.horae-mark .ray-c { transform: translateX(-50%); }
+.horae-mark .ray-l { transform: translateX(-50%) rotate(-34deg); background: #E4B061; }
+.horae-mark .ray-r { transform: translateX(-50%) rotate(34deg); background: #E4B061; }
+.horae-mark .sun {
+  position: absolute; left: 50%; bottom: 7px; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--color-accent); transform: translateX(-50%);
+  box-shadow: 0 0 8px -1px rgba(217, 154, 60, 0.5);
+}
+.horae-mark .horizon-line { position: absolute; left: 0; right: 0; bottom: 8px; height: 1px; background: #0F3D33; }
+.horae-mark .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: #164034; }
 .sidebar-collapse {
   margin-left: auto; align-self: center; width: 30px; height: 30px; line-height: 1;
   background: transparent; border: 1px solid var(--color-border); border-radius: 8px;
@@ -215,12 +232,13 @@ h1, h2, h3, h4, h5, h6 {
 /* Collapsed rail (icon strip) */
 .app-shell.collapsed .app-sidebar { width: 68px; padding-left: var(--space-2); padding-right: var(--space-2); }
 .app-shell.collapsed .sidebar-brand-name,
-.app-shell.collapsed .sidebar-brand-dot,
 .app-shell.collapsed .sidebar-section,
 .app-shell.collapsed .nav-item-label,
 .app-shell.collapsed .sidebar-timer-label,
 .app-shell.collapsed .sidebar-user,
 .app-shell.collapsed .sidebar-signout { display: none; }
+.app-shell.collapsed .sidebar-brand { flex-direction: column; gap: var(--space-2); }
+.app-shell.collapsed .sidebar-collapse { margin-left: 0; }
 .app-shell.collapsed .nav-item,
 .app-shell.collapsed .sidebar-timer { justify-content: center; padding: 10px; }
 .app-shell.collapsed .sidebar-footer { justify-content: center; }

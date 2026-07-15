@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::components::avatar::Avatar;
+use crate::components::logo::HoraeMark;
 use crate::route::Route;
 use crate::server_fns;
 
@@ -14,8 +15,8 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
     rsx! {
         aside { class: "app-sidebar",
             div { class: "sidebar-brand",
+                HoraeMark {}
                 span { class: "sidebar-brand-name", "Horae" }
-                span { class: "sidebar-brand-dot" }
                 button {
                     class: "sidebar-collapse",
                     title: "Collapse sidebar",
