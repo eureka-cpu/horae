@@ -71,15 +71,6 @@ fn iso_week_monday(date: NaiveDate) -> NaiveDate {
     date - Duration::days(date.weekday().num_days_from_monday() as i64)
 }
 
-fn format_decimal_hours(total_minutes: i32) -> String {
-    let hours = total_minutes as f64 / 60.0;
-    if hours == hours.floor() {
-        format!("{}h", hours as i32)
-    } else {
-        format!("{:.1}h", hours)
-    }
-}
-
 const DAY_LABELS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 #[component]
@@ -108,13 +99,22 @@ pub fn Timesheet() -> Element {
     let tasks = use_resource(|| async move { server_fns::list_tasks().await });
     let clients = use_resource(|| async move { server_fns::list_clients(true).await });
 
-    let project_names: HashMap<Uuid, String> = from_list(&projects, |ps| {
-        ps.iter().map(|p| (p.id, p.name.clone())).collect()
+    // Lookups and grid data are memoized so they rebuild only when their
+    // resources (or the selected week) change — not on every render, e.g. each
+    // keystroke in the add-entry modal.
+    let project_names = use_memo(move || -> HashMap<Uuid, String> {
+        from_list(&projects, |ps| {
+            ps.iter().map(|p| (p.id, p.name.clone())).collect()
+        })
     });
-
+    let task_names = use_memo(move || -> HashMap<Uuid, String> {
+        from_list(&tasks, |ts| {
+            ts.iter().map(|t| (t.id, t.name.clone())).collect()
+        })
+    });
     // project_id -> (client name, project currency), for the calendar event's
     // "Client · CUR" line.
-    let project_client: HashMap<Uuid, (String, String)> = {
+    let project_client = use_memo(move || -> HashMap<Uuid, (String, String)> {
         let client_names: HashMap<Uuid, String> = from_list(&clients, |cs| {
             cs.iter().map(|c| (c.id, c.name.clone())).collect()
         });
@@ -126,52 +126,52 @@ pub fn Timesheet() -> Element {
                 })
                 .collect()
         })
-    };
-
-    let task_names: HashMap<Uuid, String> = from_list(&tasks, |ts| {
-        ts.iter().map(|t| (t.id, t.name.clone())).collect()
     });
 
     let ws = *week_start.read();
     let week_end = ws + Duration::days(6);
 
-    // Filter entries to this week
-    let week_entries: Vec<TimeEntry> = entries
-        .read()
-        .as_ref()
-        .and_then(|r| r.as_ref().ok())
-        .map(|es| {
+    // Entries for the visible week, grouped by weekday, with per-day totals.
+    let week_entries = use_memo(move || -> Vec<TimeEntry> {
+        let ws = week_start();
+        let we = ws + Duration::days(6);
+        from_list(&entries, |es| {
             es.iter()
-                .filter(|e| e.spent_date >= ws && e.spent_date <= week_end)
+                .filter(|e| e.spent_date >= ws && e.spent_date <= we)
                 .cloned()
                 .collect()
         })
-        .unwrap_or_default();
-
-    // Group entries by day offset (0=Mon .. 6=Sun)
-    let mut by_day: [Vec<TimeEntry>; 7] = Default::default();
-    for entry in &week_entries {
-        let offset = (entry.spent_date - ws).num_days();
-        if (0..7).contains(&offset) {
-            by_day[offset as usize].push(entry.clone());
+    });
+    let by_day = use_memo(move || -> [Vec<TimeEntry>; 7] {
+        let ws = week_start();
+        let mut by_day: [Vec<TimeEntry>; 7] = Default::default();
+        for entry in week_entries.read().iter() {
+            let offset = (entry.spent_date - ws).num_days();
+            if (0..7).contains(&offset) {
+                by_day[offset as usize].push(entry.clone());
+            }
         }
-    }
+        by_day
+    });
+    let daily_totals = use_memo(move || -> Vec<i32> {
+        by_day
+            .read()
+            .iter()
+            .map(|d| d.iter().map(|e| e.minutes).sum())
+            .collect()
+    });
+    let week_total: i32 = daily_totals.read().iter().sum();
 
-    // Daily totals
-    let daily_totals: Vec<i32> = by_day
-        .iter()
-        .map(|d| d.iter().map(|e| e.minutes).sum())
-        .collect();
-    let week_total: i32 = daily_totals.iter().sum();
-
-    // Check if any entries are non-open (already submitted/approved)
+    // Submission state of the week's entries (Open = still editable).
     let has_non_open = week_entries
+        .read()
         .iter()
         .any(|e| e.state != horae_core::types::EntryState::Open);
     let has_open = week_entries
+        .read()
         .iter()
         .any(|e| e.state == horae_core::types::EntryState::Open);
-    let all_submitted_or_approved = !week_entries.is_empty() && !has_open;
+    let all_submitted_or_approved = !week_entries.read().is_empty() && !has_open;
 
     let submit_status = use_signal(|| None::<String>);
 
@@ -202,21 +202,25 @@ pub fn Timesheet() -> Element {
     });
 
     // Options for the modal selects: (id, label).
-    let project_options: Vec<(String, String)> = from_list(&projects, |ps| {
-        ps.iter()
-            .map(|p| {
-                let label = match &p.code {
-                    Some(code) => format!("[{code}] {}", p.name),
-                    None => p.name.clone(),
-                };
-                (p.id.to_string(), label)
-            })
-            .collect()
+    let project_options = use_memo(move || -> Vec<(String, String)> {
+        from_list(&projects, |ps| {
+            ps.iter()
+                .map(|p| {
+                    let label = match &p.code {
+                        Some(code) => format!("[{code}] {}", p.name),
+                        None => p.name.clone(),
+                    };
+                    (p.id.to_string(), label)
+                })
+                .collect()
+        })
     });
-    let task_options: Vec<(String, String)> = from_list(&tasks, |ts| {
-        ts.iter()
-            .map(|t| (t.id.to_string(), t.name.clone()))
-            .collect()
+    let task_options = use_memo(move || -> Vec<(String, String)> {
+        from_list(&tasks, |ts| {
+            ts.iter()
+                .map(|t| (t.id.to_string(), t.name.clone()))
+                .collect()
+        })
     });
 
     // The "+" button adds for today when it's in the viewed week, else Monday.
@@ -308,7 +312,7 @@ pub fn Timesheet() -> Element {
                 },
                 Some(Ok(_)) => match current_mode {
                     ViewMode::Week => rsx! {
-                        {render_week_view(&week_entries, &daily_totals, ws, today, &project_names, &task_names)}
+                        {render_week_view(&week_entries.read(), &daily_totals.read(), ws, today, &project_names.read(), &task_names.read())}
                         div { class: "ts-submit-bar",
                             if all_submitted_or_approved {
                                 span { class: "badge badge-success", "Submitted" }
@@ -344,10 +348,10 @@ pub fn Timesheet() -> Element {
                         }
                     },
                     ViewMode::Day => rsx! {
-                        {render_day_view(&by_day, daily_totals.as_slice(), ws, sel_offset, selected_day_offset, &project_names, &task_names)}
+                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read())}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day, &daily_totals, week_total, ws, today, &CalLabels { projects: &project_names, tasks: &task_names, clients: &project_client }, open_add)}
+                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add)}
                     },
                 },
             }
@@ -367,7 +371,7 @@ pub fn Timesheet() -> Element {
                                 class: "form-select",
                                 value: "{add_project}",
                                 onchange: move |e| add_project.set(e.value()),
-                                for (id , label) in project_options.iter() {
+                                for (id , label) in project_options.read().iter() {
                                     option { value: "{id}", "{label}" }
                                 }
                             }
@@ -375,7 +379,7 @@ pub fn Timesheet() -> Element {
                                 class: "form-select",
                                 value: "{add_task}",
                                 onchange: move |e| add_task.set(e.value()),
-                                for (id , label) in task_options.iter() {
+                                for (id , label) in task_options.read().iter() {
                                     option { value: "{id}", "{label}" }
                                 }
                             }
@@ -407,7 +411,20 @@ pub fn Timesheet() -> Element {
                                             add_error.set(Some("Select a project and task.".to_string()));
                                             return;
                                         }
+                                        // Parse cap keeps the u32 -> i32 cast lossless: a day
+                                        // can't hold more than 24h, and 0 is not an entry.
+                                        const MAX_ENTRY_MINUTES: u32 = 24 * 60;
                                         let minutes = match horae_core::duration::parse(&add_duration.read()) {
+                                            Ok(0) => {
+                                                add_error
+                                                    .set(Some("Duration must be greater than zero.".to_string()));
+                                                return;
+                                            }
+                                            Ok(m) if m > MAX_ENTRY_MINUTES => {
+                                                add_error
+                                                    .set(Some("Duration can't exceed 24 hours.".to_string()));
+                                                return;
+                                            }
                                             Ok(m) => m as i32,
                                             Err(_) => {
                                                 add_error
@@ -415,11 +432,6 @@ pub fn Timesheet() -> Element {
                                                 return;
                                             }
                                         };
-                                        if minutes <= 0 {
-                                            add_error
-                                                .set(Some("Duration must be greater than zero.".to_string()));
-                                            return;
-                                        }
                                         let notes = {
                                             let n = add_notes.read().trim().to_string();
                                             (!n.is_empty()).then_some(n)
@@ -681,7 +693,7 @@ fn render_day_view(
             div { style: "margin-top: 1rem; text-align: right; padding: 0.5rem;",
                 span { class: "text-muted text-sm", "Day total: " }
                 span { class: "text-mono", style: "font-weight: 600; color: var(--color-primary);",
-                    "{format_decimal_hours(total)}"
+                    "{format_hm(total)}"
                 }
             }
         }
@@ -816,5 +828,78 @@ fn render_week_view(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ymd(y: i32, m: u32, d: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    #[test]
+    fn format_hm_pads_minutes() {
+        assert_eq!(format_hm(65), "1:05");
+    }
+
+    #[test]
+    fn format_hm_clamps_negative_to_zero() {
+        assert_eq!(format_hm(-5), "0:00");
+    }
+
+    #[test]
+    fn today_offset_is_zero_on_the_monday() {
+        let monday = ymd(2026, 7, 13);
+        assert_eq!(today_offset(monday, monday), Some(0));
+    }
+
+    #[test]
+    fn today_offset_is_six_on_the_sunday() {
+        let monday = ymd(2026, 7, 13);
+        assert_eq!(today_offset(ymd(2026, 7, 19), monday), Some(6));
+    }
+
+    #[test]
+    fn today_offset_is_none_before_the_week() {
+        let monday = ymd(2026, 7, 13);
+        assert_eq!(today_offset(ymd(2026, 7, 12), monday), None);
+    }
+
+    #[test]
+    fn today_offset_is_none_after_the_week() {
+        let monday = ymd(2026, 7, 13);
+        assert_eq!(today_offset(ymd(2026, 7, 20), monday), None);
+    }
+
+    #[test]
+    fn day_col_class_marks_today() {
+        assert_eq!(day_col_class("c", Some(2), 2), "c today");
+    }
+
+    #[test]
+    fn day_col_class_marks_weekend() {
+        assert_eq!(day_col_class("c", None, 5), "c weekend");
+    }
+
+    #[test]
+    fn day_col_class_today_wins_over_weekend() {
+        assert_eq!(day_col_class("c", Some(6), 6), "c today");
+    }
+
+    #[test]
+    fn day_col_class_plain_weekday() {
+        assert_eq!(day_col_class("c", None, 1), "c");
+    }
+
+    #[test]
+    fn value_cell_class_empty_wins_over_today() {
+        assert_eq!(value_cell_class("v", 0, Some(2), 2), "v empty");
+    }
+
+    #[test]
+    fn value_cell_class_marks_today_when_nonzero() {
+        assert_eq!(value_cell_class("v", 30, Some(2), 2), "v today");
     }
 }
