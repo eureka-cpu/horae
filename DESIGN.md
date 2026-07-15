@@ -137,12 +137,27 @@ palette stays themeable and consistent. Notable token groups:
 - Chrome: `--color-border`, `--color-border-input`, `--color-border-danger`, `--ring` / `--ring-soft` (focus glows).
 - Scale: `--space-1..16`, `--font-size-*`, `--radius-*`.
 
-On top of the tokens is a small **Tailwind-style utility layer** (plain CSS, no
-build step) — `flex`, `items-center`, `justify-between`, `gap-4`, `p-4`, `text-sm`,
-`font-semibold`, `text-secondary`, `bg-secondary`, `rounded-lg`, … The numeric
-spacing scale matches Tailwind's (`p-4` = `--space-4` = 1rem). Compose utilities in
-markup for layout/spacing; reach for a semantic component class (`.btn`, `.card`,
-`.badge`, `.nav-item`) for anything reused.
+On top of the tokens is a **Tailwind-style utility layer** — `flex`,
+`items-center`, `justify-between`, `gap-4`, `p-4`, `text-sm`, `font-semibold`,
+`text-secondary`, `bg-secondary`, `rounded-lg`, … plus responsive variants
+(`md:flex-row`, `lg:grid-cols-3`). The numeric spacing scale matches Tailwind's
+(`p-4` = `--space-4` = 1rem). Compose utilities in markup for layout/spacing; reach
+for a semantic component class (`.btn`, `.card`, `.badge`, `.nav-item`) for
+anything reused.
+
+This layer is **generated** from the design scale by the `cssgen` crate (the
+Node-free equivalent of a Tailwind build) into `assets/css/horae-utils.css`, which
+`app.rs` loads alongside `horae.css`. It is plain committed CSS at runtime — no
+build step in the app. After changing the scale in `crates/cssgen/src/main.rs`:
+
+```sh
+cargo run -p cssgen        # regenerate and commit horae-utils.css
+cargo run -p cssgen -- --check   # CI parity: fails if the committed file is stale
+```
+
+`nix flake check` runs the `--check` so drift can't merge. Tokens and semantic
+component classes stay hand-written in `horae.css`; the generator owns only the
+mechanical utility + responsive matrix.
 
 ## Pages
 
