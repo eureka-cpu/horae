@@ -4,8 +4,15 @@ use chrono::{Datelike, Duration, NaiveDate};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
+use crate::components::controls::Segmented;
 use crate::models::time_entry::TimeEntry;
+use crate::route::Route;
 use crate::server_fns;
+
+/// `H:MM` clock format from integer minutes (the design's cell/total format).
+fn format_hm(total_minutes: i32) -> String {
+    format!("{}:{:02}", total_minutes / 60, total_minutes % 60)
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum ViewMode {
@@ -33,7 +40,7 @@ const DAY_LABELS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 #[component]
 pub fn Timesheet() -> Element {
     let today = chrono::Utc::now().date_naive();
-    let mut view_mode = use_signal(|| ViewMode::Calendar);
+    let mut view_mode = use_signal(|| ViewMode::Week);
     let mut week_start = use_signal(move || iso_week_monday(today));
     // Which day is selected within the week (0 = Monday .. 6 = Sunday) for Day view
     let mut selected_day_offset = use_signal(|| today.weekday().num_days_from_monday() as i64);
@@ -71,7 +78,6 @@ pub fn Timesheet() -> Element {
 
     let ws = *week_start.read();
     let week_end = ws + Duration::days(6);
-    let week_label = format!("{} - {}", ws.format("%b %d"), week_end.format("%b %d, %Y"));
 
     // Filter entries to this week
     let week_entries: Vec<TimeEntry> = entries
@@ -115,119 +121,122 @@ pub fn Timesheet() -> Element {
 
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();
+    let is_this_week = ws == iso_week_monday(today);
+    let range_label = format!("{} – {}", ws.format("%d %b"), week_end.format("%d %b %Y"));
 
     rsx! {
         div {
-            div { class: "page-header",
+            // Header: title + last-saved + view toggle
+            div { class: "ts-header",
                 h1 { class: "page-title", "Timesheet" }
-            }
-
-            // View mode toggle
-            div { style: "display: flex; gap: 0.25rem; margin-bottom: 1rem;",
-                button {
-                    class: if current_mode == ViewMode::Day { "btn btn-primary" } else { "btn btn-secondary" },
-                    onclick: move |_| view_mode.set(ViewMode::Day),
-                    "Day"
-                }
-                button {
-                    class: if current_mode == ViewMode::Week { "btn btn-primary" } else { "btn btn-secondary" },
-                    onclick: move |_| view_mode.set(ViewMode::Week),
-                    "Week"
-                }
-                button {
-                    class: if current_mode == ViewMode::Calendar { "btn btn-primary" } else { "btn btn-secondary" },
-                    onclick: move |_| view_mode.set(ViewMode::Calendar),
-                    "Calendar"
-                }
-            }
-
-            // Week navigation
-            div { style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;",
-                button {
-                    class: "btn btn-ghost",
-                    onclick: move |_| {
-                        week_start.set(ws - Duration::days(7));
-                    },
-                    "\u{2190} Prev"
-                }
-                span { style: "font-weight: 500; color: var(--color-text);", "{week_label}" }
-                button {
-                    class: "btn btn-ghost",
-                    onclick: move |_| {
-                        week_start.set(ws + Duration::days(7));
-                    },
-                    "Next \u{2192}"
-                }
-                button {
-                    class: "btn btn-secondary",
-                    onclick: move |_| {
-                        let t = chrono::Utc::now().date_naive();
-                        week_start.set(iso_week_monday(t));
-                        selected_day_offset.set(t.weekday().num_days_from_monday() as i64);
-                    },
-                    "Today"
-                }
-            }
-
-            // Loading / error states
-            match &*entries.read() {
-                None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
-                Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
-                Some(Ok(_)) => rsx! {
-                    // Weekly total banner + submit button
-                    div { style: "margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;",
-                        div { style: "display: flex; align-items: baseline; gap: 0.5rem;",
-                            span { class: "text-muted text-sm", "Week total:" }
-                            span { class: "text-mono", style: "font-size: 1.25rem; font-weight: 600; color: var(--color-primary);",
-                                "{format_decimal_hours(week_total)}"
-                            }
-                        }
-
-                        if all_submitted_or_approved {
-                            span { class: "badge badge-success", "Submitted" }
-                        } else if !week_entries.is_empty() && has_open {
-                            button {
-                                class: "btn btn-accent",
-                                disabled: has_non_open && has_open,
-                                onclick: {
-                                    let ws_str = ws.to_string();
-                                    move |_| {
-                                        let ws_str = ws_str.clone();
-                                        let mut entries = entries;
-                                        let mut submit_status = submit_status;
-                                        spawn(async move {
-                                            match server_fns::submit_week(ws_str).await {
-                                                Ok(_) => {
-                                                    submit_status.set(None);
-                                                    entries.restart();
-                                                }
-                                                Err(e) => {
-                                                    submit_status.set(Some(format!("{e}")));
-                                                }
-                                            }
-                                        });
-                                    }
+                span { class: "ts-saved", "{format_hm(week_total)} this week" }
+                Segmented {
+                    items: vec!["Day".to_string(), "Week".to_string(), "Calendar".to_string()],
+                    active: match current_mode {
+                        ViewMode::Day => "Day",
+                        ViewMode::Week => "Week",
+                        ViewMode::Calendar => "Calendar",
+                    }
+                        .to_string(),
+                    onselect: move |v: String| {
+                        view_mode
+                            .set(
+                                match v.as_str() {
+                                    "Day" => ViewMode::Day,
+                                    "Calendar" => ViewMode::Calendar,
+                                    _ => ViewMode::Week,
                                 },
-                                "Submit Week"
+                            )
+                    },
+                }
+            }
+
+            // Toolbar: add entry + week pager
+            div { class: "ts-toolbar",
+                Link { to: Route::TimeList {}, class: "ts-add", "aria-label": "Add entry", "+" }
+                div { class: "ts-pager",
+                    button {
+                        class: "ts-pager-btn prev",
+                        "aria-label": "Previous week",
+                        onclick: move |_| week_start.set(ws - Duration::days(7)),
+                        "←"
+                    }
+                    div { class: "ts-pager-label",
+                        span { style: "color: var(--color-text-muted);", "▦" }
+                        span { class: "cur", if is_this_week { "This week" } else { "Week" } }
+                        span { class: "ts-pager-range", "{range_label}" }
+                    }
+                    button {
+                        class: "ts-pager-btn next",
+                        "aria-label": "Next week",
+                        onclick: move |_| week_start.set(ws + Duration::days(7)),
+                        "→"
+                    }
+                }
+                if !is_this_week {
+                    button {
+                        class: "btn btn-ghost btn-sm",
+                        onclick: move |_| {
+                            let t = chrono::Utc::now().date_naive();
+                            week_start.set(iso_week_monday(t));
+                            selected_day_offset.set(t.weekday().num_days_from_monday() as i64);
+                        },
+                        "Today"
+                    }
+                }
+            }
+
+            // Content
+            match &*entries.read() {
+                None => rsx! {
+                    div { class: "text-muted text-sm", "Loading…" }
+                },
+                Some(Err(e)) => rsx! {
+                    div { class: "alert alert-danger", "{e}" }
+                },
+                Some(Ok(_)) => match current_mode {
+                    ViewMode::Week => rsx! {
+                        {render_week_view(&week_entries, &daily_totals, ws, today, &project_names, &task_names)}
+                        div { class: "ts-submit-bar",
+                            if all_submitted_or_approved {
+                                span { class: "badge badge-success", "Submitted" }
+                            } else if !week_entries.is_empty() && has_open {
+                                div { class: "ts-submit",
+                                    button {
+                                        class: "ts-submit-main",
+                                        disabled: has_non_open,
+                                        onclick: move |_| {
+                                            let ws_str = ws.to_string();
+                                            let mut entries = entries;
+                                            let mut submit_status = submit_status;
+                                            spawn(async move {
+                                                match server_fns::submit_week(ws_str).await {
+                                                    Ok(_) => {
+                                                        submit_status.set(None);
+                                                        entries.restart();
+                                                    }
+                                                    Err(e) => submit_status.set(Some(format!("{e}"))),
+                                                }
+                                            });
+                                        },
+                                        "Submit week for approval"
+                                    }
+                                    button { class: "ts-submit-caret", "aria-label": "More", "▾" }
+                                }
+                            }
+                            if let Some(err) = &*submit_status.read() {
+                                span { style: "color: var(--color-danger); font-size: var(--font-size-sm); margin-left: var(--space-3);",
+                                    "{err}"
+                                }
                             }
                         }
-
-                        if let Some(err) = &*submit_status.read() {
-                            span { style: "color: var(--color-danger); font-size: 0.85rem;", "{err}" }
-                        }
-                    }
-
-                    match current_mode {
-                        ViewMode::Calendar => rsx! {
-                            {render_calendar_view(&by_day, &daily_totals, ws, &project_names, &task_names)}
-                        },
-                        ViewMode::Day => rsx! {
-                            {render_day_view(&by_day, daily_totals.as_slice(), ws, sel_offset, selected_day_offset, &project_names, &task_names)}
-                        },
-                        ViewMode::Week => rsx! {
-                            {render_week_view(&week_entries, &daily_totals, ws, &project_names, &task_names)}
-                        },
-                    }
+                    },
+                    ViewMode::Day => rsx! {
+                        {render_day_view(&by_day, daily_totals.as_slice(), ws, sel_offset, selected_day_offset, &project_names, &task_names)}
+                    },
+                    ViewMode::Calendar => rsx! {
+                        {render_calendar_view(&by_day, &daily_totals, ws, &project_names, &task_names)}
+                    },
                 },
             }
         }
@@ -409,104 +418,150 @@ fn render_week_view(
     entries: &[TimeEntry],
     daily_totals: &[i32],
     week_start: NaiveDate,
+    today: NaiveDate,
     project_names: &HashMap<Uuid, String>,
     task_names: &HashMap<Uuid, String>,
 ) -> Element {
-    // Group by (project_id, task_id) preserving insertion order
+    // Group by (project_id, task_id) into per-day minutes, preserving order.
     let mut row_keys: Vec<(Uuid, Uuid)> = Vec::new();
     let mut row_map: HashMap<(Uuid, Uuid), [i32; 7]> = HashMap::new();
-
     for entry in entries {
-        let key = (entry.project_id, entry.task_id);
         let offset = (entry.spent_date - week_start).num_days();
         if !(0..7).contains(&offset) {
             continue;
         }
-        let row = row_map.entry(key).or_insert_with(|| {
-            row_keys.push(key);
-            [0i32; 7]
-        });
+        let row = row_map
+            .entry((entry.project_id, entry.task_id))
+            .or_insert_with(|| {
+                row_keys.push((entry.project_id, entry.task_id));
+                [0i32; 7]
+            });
         row[offset as usize] += entry.minutes;
     }
 
+    let today_off = {
+        let o = (today - week_start).num_days();
+        (0..7).contains(&o).then_some(o as usize)
+    };
+    let day_class = |i: usize, base: &str| {
+        if today_off == Some(i) {
+            format!("{base} today")
+        } else if i >= 5 {
+            format!("{base} weekend")
+        } else {
+            base.to_string()
+        }
+    };
+
     rsx! {
-        div { class: "card",
-            div { class: "table-container",
-                table {
-                    thead {
-                        tr {
-                            th { "Project" }
-                            th { "Task" }
-                            for i in 0..7 {
-                                {
-                                    let d = week_start + Duration::days(i as i64);
-                                    rsx! {
-                                        th { style: "text-align: center; min-width: 60px;",
-                                            "{DAY_LABELS[i]}"
-                                            br {}
-                                            span { class: "text-mono", style: "font-size: 0.75rem;", "{d.format(\"%d\")}" }
-                                        }
-                                    }
+        div { class: "ts-grid-card",
+            div { class: "ts-grid-scroll",
+                // Header row
+                div { class: "ts-row ts-head",
+                    span {}
+                    for i in 0..7 {
+                        {
+                            let d = week_start + Duration::days(i as i64);
+                            rsx! {
+                                span { class: "{day_class(i, \"ts-daycol\")}",
+                                    span { class: "ts-dayname", "{DAY_LABELS[i]}" }
+                                    span { class: "ts-daynum", "{d.format(\"%d %b\")}" }
                                 }
                             }
-                            th { style: "text-align: center;", "Total" }
                         }
                     }
-                    tbody {
-                        for key in row_keys.iter() {
-                            {
-                                let (pid, tid) = *key;
-                                let proj = project_names.get(&pid).cloned().unwrap_or_else(|| pid.to_string());
-                                let task = task_names.get(&tid).cloned().unwrap_or_else(|| "\u{2014}".into());
-                                let row = row_map.get(key).copied().unwrap_or([0; 7]);
-                                let row_total: i32 = row.iter().sum();
-                                rsx! {
-                                    tr {
-                                        td { "{proj}" }
-                                        td { "{task}" }
-                                        for i in 0..7 {
-                                            {
-                                                let mins = row[i];
-                                                rsx! {
-                                                    td { class: "text-mono", style: "text-align: center;",
-                                                        if mins > 0 {
-                                                            "{format_decimal_hours(mins)}"
-                                                        } else {
-                                                            span { class: "text-muted", "\u{2014}" }
-                                                        }
+                    span { class: "ts-total-head", "Total" }
+                    span {}
+                }
+
+                if row_keys.is_empty() {
+                    div { class: "empty-state",
+                        div { class: "empty-state-icon", "🗓" }
+                        div { class: "empty-state-title", "No time this week" }
+                        p { class: "text-muted text-sm", "Add an entry to start filling your timesheet." }
+                    }
+                }
+
+                // Project rows
+                for key in row_keys.iter() {
+                    {
+                        let (pid, tid) = *key;
+                        let proj = project_names.get(&pid).cloned().unwrap_or_else(|| pid.to_string());
+                        let task = task_names.get(&tid).cloned().unwrap_or_else(|| "\u{2014}".into());
+                        let row = row_map.get(key).copied().unwrap_or([0; 7]);
+                        let row_total: i32 = row.iter().sum();
+                        rsx! {
+                            div { class: "ts-row ts-body",
+                                div { class: "ts-project",
+                                    button { class: "ts-project-icon", "aria-label": "Task", "▤" }
+                                    div {
+                                        div { class: "ts-project-title", strong { "{proj}" } }
+                                        div { class: "ts-project-task", "{task}" }
+                                    }
+                                }
+                                for i in 0..7 {
+                                    {
+                                        let mins = row[i];
+                                        let cls = if mins == 0 {
+                                            "ts-cell-box empty".to_string()
+                                        } else if today_off == Some(i) {
+                                            "ts-cell-box today".to_string()
+                                        } else {
+                                            "ts-cell-box".to_string()
+                                        };
+                                        rsx! {
+                                            div { class: "ts-cell",
+                                                div { class: "{cls}",
+                                                    if mins > 0 {
+                                                        "{format_hm(mins)}"
+                                                    } else {
+                                                        "\u{2013}"
                                                     }
                                                 }
                                             }
                                         }
-                                        td { class: "text-mono", style: "text-align: center; font-weight: 600;",
-                                            "{format_decimal_hours(row_total)}"
-                                        }
                                     }
                                 }
-                            }
-                        }
-                        // Totals row
-                        tr { style: "border-top: 2px solid var(--color-border); font-weight: 600;",
-                            td { colspan: "2", "Daily Totals" }
-                            for i in 0..7 {
-                                {
-                                    let t = daily_totals[i];
-                                    rsx! {
-                                        td { class: "text-mono", style: "text-align: center;",
-                                            if t > 0 {
-                                                "{format_decimal_hours(t)}"
-                                            } else {
-                                                span { class: "text-muted", "\u{2014}" }
-                                            }
-                                        }
-                                    }
+                                div { class: "ts-rowtotal", "{format_hm(row_total)}" }
+                                div { style: "text-align: center;",
+                                    button { class: "ts-del", "aria-label": "Remove row", "\u{00d7}" }
                                 }
-                            }
-                            td { class: "text-mono", style: "text-align: center; color: var(--color-primary);",
-                                "{format_decimal_hours(daily_totals.iter().sum::<i32>())}"
                             }
                         }
                     }
+                }
+
+                // Footer: add-row + column totals
+                div { class: "ts-row ts-foot",
+                    div {
+                        Link { to: Route::TimeList {}, class: "ts-addrow",
+                            span { class: "plus", "\u{ff0b}" }
+                            "Add row"
+                        }
+                    }
+                    for i in 0..7 {
+                        {
+                            let t = daily_totals[i];
+                            let cls = if t == 0 {
+                                "ts-coltotal empty".to_string()
+                            } else if today_off == Some(i) {
+                                "ts-coltotal today".to_string()
+                            } else {
+                                "ts-coltotal".to_string()
+                            };
+                            rsx! {
+                                div { class: "{cls}",
+                                    if t > 0 {
+                                        "{format_hm(t)}"
+                                    } else {
+                                        "0"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    div { class: "ts-grandtotal", "{format_hm(daily_totals.iter().sum::<i32>())}" }
+                    div {}
                 }
             }
         }
