@@ -9,6 +9,11 @@ pub fn App() -> Element {
             rel: "stylesheet",
             href: asset!("/assets/css/horae.css"),
         }
+        // Generated utility layer (see crates/cssgen); tokens/components live in horae.css.
+        document::Link {
+            rel: "stylesheet",
+            href: asset!("/assets/css/horae-utils.css"),
+        }
         Router::<Route> {}
     }
 }
