@@ -157,19 +157,20 @@ h1, h2, h3, h4, h5, h6 {
 /* Brand row */
 .sidebar-brand { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-6); }
 .sidebar-brand-name {
-  font-family: var(--font-family-display); font-size: 1.4rem; font-weight: 600;
+  font-family: var(--font-family-display); font-size: var(--font-size-2xl); font-weight: 600;
   letter-spacing: -0.01em; color: var(--color-text);
 }
 /* The signature golden dot after the Horae wordmark */
 .sidebar-brand-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: var(--color-accent);
+  width: 5px; height: 5px; border-radius: var(--radius-full); background: var(--color-accent);
   align-self: flex-end; margin: 0 0 7px 3px; flex-shrink: 0;
 }
 
-/* Horae mark — rising sun over a horizon in a clipped pine tile */
+/* Horae mark — a self-contained logo tile; its inner geometry and palette are
+   intrinsic to the mark, so they stay literals rather than design tokens. */
 .horae-mark {
   position: relative; width: 28px; height: 28px; flex-shrink: 0;
-  border-radius: 7px; background: var(--color-pine); overflow: hidden;
+  border-radius: var(--radius-btn); background: var(--color-pine); overflow: hidden;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 .horae-mark .ray {
@@ -181,24 +182,24 @@ h1, h2, h3, h4, h5, h6 {
 .horae-mark .ray-r { transform: translateX(-50%) rotate(34deg); background: #E4B061; }
 .horae-mark .sun {
   position: absolute; left: 50%; bottom: 7px; width: 13px; height: 13px;
-  border-radius: 50%; background: var(--color-accent); transform: translateX(-50%);
+  border-radius: var(--radius-full); background: var(--color-accent); transform: translateX(-50%);
   box-shadow: 0 0 8px -1px rgba(217, 154, 60, 0.5);
 }
 .horae-mark .horizon-line { position: absolute; left: 0; right: 0; bottom: 8px; height: 1px; background: #0F3D33; }
 .horae-mark .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: #164034; }
 .sidebar-collapse {
   margin-left: auto; align-self: center; width: 30px; height: 30px; line-height: 1;
-  background: transparent; border: 1px solid var(--color-border); border-radius: 8px;
-  color: var(--color-text-muted); cursor: pointer; font-size: 14px;
+  background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-btn);
+  color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-sm);
 }
 .sidebar-collapse:hover { color: var(--color-text); background: var(--color-bg-tertiary); }
 
 /* Start-timer button */
 .sidebar-timer {
   display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: 10px 14px; margin-bottom: var(--space-6);
+  padding: var(--space-2) var(--space-4); margin-bottom: var(--space-6);
   background: var(--color-primary); color: var(--color-on-primary);
-  border: none; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 700;
+  border: none; border-radius: var(--radius-btn); font: inherit; font-size: var(--font-size-sm); font-weight: 700;
   cursor: pointer; text-decoration: none;
 }
 .sidebar-timer:hover { background: var(--color-primary-dark); color: var(--color-on-primary); text-decoration: none; }
@@ -212,35 +213,36 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Sections */
-.sidebar-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: var(--space-6); }
+.sidebar-group { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-6); }
 .sidebar-section {
+  /* 10.5px is an intentional micro-label, smaller than --font-size-xs */
   font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--color-text-muted); padding: 0 10px 10px;
+  color: var(--color-text-muted); padding: 0 var(--space-2) var(--space-2);
 }
 .sidebar-spacer { flex: 1; }
 
 /* Footer: current user (opens an account popover) */
 .sidebar-userbox { position: relative; }
 .sidebar-footer {
-  display: flex; align-items: center; gap: 11px; width: 100%;
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
   padding: var(--space-3) var(--space-2) var(--space-1);
   border: none; border-top: 1px solid var(--color-border);
   background: none; font: inherit; text-align: left; cursor: pointer;
 }
 .sidebar-footer:hover .sidebar-user-name { color: var(--color-primary-light); }
 .sidebar-user { min-width: 0; flex: 1; }
-.sidebar-user-name { font-size: 13.5px; font-weight: 600; color: var(--color-text); }
-.sidebar-user-sub { font-size: 12px; color: var(--color-text-muted); text-transform: capitalize; }
-.sidebar-user-caret { color: var(--color-text-muted); font-size: 13px; flex-shrink: 0; }
+.sidebar-user-name { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
+.sidebar-user-sub { font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: capitalize; }
+.sidebar-user-caret { color: var(--color-text-muted); font-size: var(--font-size-sm); flex-shrink: 0; }
 
 /* Account popover */
 .sidebar-menu {
-  position: absolute; bottom: calc(100% + 6px); left: 0; right: 0;
+  position: absolute; bottom: calc(100% + var(--space-2)); left: 0; right: 0;
   background: var(--color-bg-overlay); border: 1px solid var(--color-border-input);
-  border-radius: 13px; overflow: hidden; box-shadow: var(--shadow-md); z-index: 30;
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); z-index: 30;
 }
 .sidebar-menu-head {
-  display: flex; align-items: center; gap: 11px;
+  display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
 }
@@ -248,8 +250,8 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-menu-foot { border-top: 1px solid var(--color-border); }
 .sidebar-menu-item {
   display: block; width: 100%; text-align: left;
-  padding: 9px 10px; border: none; background: none; border-radius: 8px;
-  font: inherit; font-size: 14px; color: var(--color-text);
+  padding: var(--space-2); border: none; background: none; border-radius: var(--radius-btn);
+  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
   cursor: pointer; text-decoration: none;
 }
 .sidebar-menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
@@ -267,7 +269,7 @@ h1, h2, h3, h4, h5, h6 {
 .app-shell.collapsed .sidebar-brand { flex-direction: column; gap: var(--space-2); }
 .app-shell.collapsed .sidebar-collapse { margin-left: 0; }
 .app-shell.collapsed .nav-item,
-.app-shell.collapsed .sidebar-timer { justify-content: center; padding: 10px; }
+.app-shell.collapsed .sidebar-timer { justify-content: center; padding: var(--space-2); }
 .app-shell.collapsed .sidebar-footer { justify-content: center; }
 
 /* Cards */
@@ -682,9 +684,9 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
    hairline, pine-tinted marker, brighter bold label) */
 .nav-item {
   display: flex; align-items: center; gap: var(--space-3); width: 100%;
-  padding: 10px 12px;
-  background: none; border: 1px solid transparent; border-radius: 9px;
-  color: var(--color-text-secondary); font: inherit; font-size: 14.5px;
+  padding: var(--space-2) var(--space-3);
+  background: none; border: 1px solid transparent; border-radius: var(--radius-btn);
+  color: var(--color-text-secondary); font: inherit; font-size: var(--font-size-sm);
   text-align: left; text-decoration: none; cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
