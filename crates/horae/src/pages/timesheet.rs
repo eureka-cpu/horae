@@ -61,6 +61,7 @@ pub fn Timesheet() -> Element {
     });
     let projects = use_resource(|| async move { server_fns::list_projects(None, false).await });
     let tasks = use_resource(|| async move { server_fns::list_tasks().await });
+    let clients = use_resource(|| async move { server_fns::list_clients(true).await });
 
     let project_names: HashMap<Uuid, String> = projects
         .read()
@@ -68,6 +69,30 @@ pub fn Timesheet() -> Element {
         .and_then(|r| r.as_ref().ok())
         .map(|ps| ps.iter().map(|p| (p.id, p.name.clone())).collect())
         .unwrap_or_default();
+
+    // project_id -> (client name, project currency), for the calendar event's
+    // "Client · CUR" line.
+    let project_client: HashMap<Uuid, (String, String)> = {
+        let client_names: HashMap<Uuid, String> = clients
+            .read()
+            .as_ref()
+            .and_then(|r| r.as_ref().ok())
+            .map(|cs| cs.iter().map(|c| (c.id, c.name.clone())).collect())
+            .unwrap_or_default();
+        projects
+            .read()
+            .as_ref()
+            .and_then(|r| r.as_ref().ok())
+            .map(|ps| {
+                ps.iter()
+                    .map(|p| {
+                        let name = client_names.get(&p.client_id).cloned().unwrap_or_default();
+                        (p.id, (name, p.currency.clone()))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
 
     let task_names: HashMap<Uuid, String> = tasks
         .read()
@@ -235,7 +260,7 @@ pub fn Timesheet() -> Element {
                         {render_day_view(&by_day, daily_totals.as_slice(), ws, sel_offset, selected_day_offset, &project_names, &task_names)}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day, &daily_totals, ws, &project_names, &task_names)}
+                        {render_calendar_view(&by_day, &daily_totals, week_total, ws, today, &CalLabels { projects: &project_names, tasks: &task_names, clients: &project_client })}
                     },
                 },
             }
@@ -243,74 +268,143 @@ pub fn Timesheet() -> Element {
     }
 }
 
+/// Label lookups shared by the calendar renderer.
+struct CalLabels<'a> {
+    projects: &'a HashMap<Uuid, String>,
+    tasks: &'a HashMap<Uuid, String>,
+    /// project_id -> (client name, currency).
+    clients: &'a HashMap<Uuid, (String, String)>,
+}
+
+/// A calendar event's pre-computed placement and labels.
+struct CalEvent {
+    top: i32,
+    height: i32,
+    project: String,
+    task: String,
+    duration: String,
+    client: String,
+}
+
 fn render_calendar_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
+    week_total: i32,
     week_start: NaiveDate,
-    project_names: &HashMap<Uuid, String>,
-    task_names: &HashMap<Uuid, String>,
+    today: NaiveDate,
+    labels: &CalLabels,
 ) -> Element {
+    // Pixels per hour. Entries are placed by *duration* (Harvest's duration mode):
+    // stacked from the top of the day, height proportional to minutes.
+    const CAL_HOUR: i32 = 48;
+    let max_min = daily_totals.iter().copied().max().unwrap_or(0);
+    // At least 8 rows so a light week still reads as a calendar.
+    let max_hours = ((max_min + 59) / 60).max(8);
+
+    let today_off = {
+        let o = (today - week_start).num_days();
+        (0..7).contains(&o).then_some(o as usize)
+    };
+    let col_class = |i: usize| {
+        if today_off == Some(i) {
+            "ts-cal-col today"
+        } else if i >= 5 {
+            "ts-cal-col weekend"
+        } else {
+            "ts-cal-col"
+        }
+    };
+    let head_class = |i: usize| {
+        if today_off == Some(i) {
+            "ts-cal-dayhead today"
+        } else if i >= 5 {
+            "ts-cal-dayhead weekend"
+        } else {
+            "ts-cal-dayhead"
+        }
+    };
+
+    // Pre-compute each entry's placement, stacked from the top of its day.
+    let mut day_events: Vec<Vec<CalEvent>> = Vec::with_capacity(7);
+    for day in by_day.iter() {
+        let mut cum = 0i32;
+        let mut evs = Vec::new();
+        for e in day {
+            let top = cum * CAL_HOUR / 60;
+            let height = (e.minutes * CAL_HOUR / 60).max(20);
+            cum += e.minutes;
+            let client = labels
+                .clients
+                .get(&e.project_id)
+                .map(|(name, currency)| format!("{name} · {currency}"))
+                .unwrap_or_default();
+            evs.push(CalEvent {
+                top,
+                height,
+                project: labels
+                    .projects
+                    .get(&e.project_id)
+                    .cloned()
+                    .unwrap_or_else(|| "Untitled".into()),
+                task: labels.tasks.get(&e.task_id).cloned().unwrap_or_default(),
+                duration: format_hm(e.minutes),
+                client,
+            });
+        }
+        day_events.push(evs);
+    }
+
     rsx! {
-        div { class: "card",
-            // Header row
-            div { style: "display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 0.5rem;",
-                for i in 0..7 {
-                    {
-                        let day_date = week_start + Duration::days(i as i64);
-                        let label = DAY_LABELS[i];
-                        rsx! {
-                            div { style: "text-align: center; padding: 0.5rem;",
-                                div { style: "font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);",
-                                    "{label}"
-                                }
-                                div { class: "text-mono", style: "font-size: 0.8rem; color: var(--color-text-secondary);",
-                                    "{day_date.format(\"%d\")}"
+        div { class: "ts-cal",
+            div { class: "ts-cal-scroll",
+                div { class: "ts-cal-head",
+                    span {}
+                    for i in 0..7 {
+                        {
+                            let d = week_start + Duration::days(i as i64);
+                            rsx! {
+                                div { class: "{head_class(i)}",
+                                    div { class: "ts-cal-dayname", "{DAY_LABELS[i]} {d.day()}" }
+                                    div { class: "ts-cal-daytotal", "{format_hm(daily_totals[i])}" }
                                 }
                             }
                         }
+                    }
+                    div { class: "ts-cal-weektot",
+                        div { class: "ts-cal-weektot-label", "Week total" }
+                        div { class: "ts-cal-weektot-value", "{format_hm(week_total)}" }
                     }
                 }
-            }
 
-            // Entry grid
-            div { style: "display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; min-height: 200px;",
-                for i in 0..7 {
-                    {
-                        let day_entries = &by_day[i];
-                        let total = daily_totals[i];
-                        rsx! {
-                            div { style: "display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--color-border-light); padding: 0 4px; min-height: 150px;",
-                                for entry in day_entries.iter() {
-                                    {
-                                        let proj = project_names.get(&entry.project_id).cloned().unwrap_or_else(|| "Unknown".into());
-                                        let task = task_names.get(&entry.task_id).cloned().unwrap_or_else(|| "\u{2014}".into());
-                                        let dur = entry.format_duration();
-                                        rsx! {
-                                            div { style: "background: var(--color-primary-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 0.5rem; font-size: 0.8rem;",
-                                                div { style: "font-weight: 500; color: var(--color-text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
-                                                    "{proj}"
-                                                }
-                                                div { style: "color: var(--color-text-secondary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
-                                                    "{task}"
-                                                }
-                                                div { class: "text-mono", style: "color: var(--color-primary); font-size: 0.75rem; margin-top: 2px;",
-                                                    "{dur}"
-                                                }
-                                            }
-                                        }
+                div { class: "ts-cal-grid",
+                    div { class: "ts-cal-rail",
+                        for h in 0..max_hours {
+                            div { class: "ts-cal-hour",
+                                span { class: "ts-cal-hour-label", "{h + 1}hr" }
+                            }
+                        }
+                    }
+                    for i in 0..7 {
+                        div { class: "{col_class(i)}",
+                            for ev in day_events[i].iter() {
+                                div {
+                                    class: "ts-cal-event",
+                                    style: "top: {ev.top}px; height: {ev.height}px;",
+                                    div { class: "ts-cal-ev-project",
+                                        span { class: "ts-cal-ev-name", "{ev.project}" }
+                                        span { class: "ts-cal-ev-dur", "{ev.duration}" }
                                     }
-                                }
-                                // Day total at bottom
-                                if total > 0 {
-                                    div { style: "margin-top: auto; text-align: center; padding: 0.25rem; border-top: 1px solid var(--color-border-light);",
-                                        span { class: "text-mono text-sm", style: "color: var(--color-text-secondary);",
-                                            "{format_decimal_hours(total)}"
-                                        }
+                                    if !ev.task.is_empty() {
+                                        div { class: "ts-cal-ev-task", "{ev.task}" }
+                                    }
+                                    if !ev.client.is_empty() {
+                                        div { class: "ts-cal-ev-client", "{ev.client}" }
                                     }
                                 }
                             }
                         }
                     }
+                    div { class: "ts-cal-tail" }
                 }
             }
         }
