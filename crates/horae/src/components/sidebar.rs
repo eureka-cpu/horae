@@ -16,6 +16,7 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
             div { class: "sidebar-brand",
                 HoraeMark {}
                 span { class: "sidebar-brand-name", "Horae" }
+                span { class: "sidebar-brand-dot" }
                 button {
                     class: "sidebar-collapse",
                     title: "Collapse sidebar",
