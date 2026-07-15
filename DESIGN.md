@@ -126,6 +126,24 @@ Pill shape (9999px radius). Each semantic badge includes a 7px colored dot (via 
 - State uses `use_signal` (local) or `use_resource` (async server data)
 - No global mutable state — pass data down via props or context
 
+## Tokens & utilities
+
+Everything is driven by CSS custom properties in `:root` (`assets/css/horae.css`) —
+never hardcode a colour, spacing, or radius in a rule; reference the token so the
+palette stays themeable and consistent. Notable token groups:
+
+- Colour: `--color-{bg,bg-secondary,bg-tertiary,bg-overlay}`, `--color-{text,text-secondary,text-muted}`, `--color-primary*`, `--color-accent*`, and semantic `--color-{success,warning,danger,info}` with `-bg` / `-fg` / `-line` tints.
+- Foreground-on-fill: `--color-on-{primary,accent,pine}` (text over a solid control).
+- Chrome: `--color-border`, `--color-border-input`, `--color-border-danger`, `--ring` / `--ring-soft` (focus glows).
+- Scale: `--space-1..16`, `--font-size-*`, `--radius-*`.
+
+On top of the tokens is a small **Tailwind-style utility layer** (plain CSS, no
+build step) — `flex`, `items-center`, `justify-between`, `gap-4`, `p-4`, `text-sm`,
+`font-semibold`, `text-secondary`, `bg-secondary`, `rounded-lg`, … The numeric
+spacing scale matches Tailwind's (`p-4` = `--space-4` = 1rem). Compose utilities in
+markup for layout/spacing; reach for a semantic component class (`.btn`, `.card`,
+`.badge`, `.nav-item`) for anything reused.
+
 ## Pages
 
 | Route | Component | Description |

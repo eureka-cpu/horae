@@ -24,12 +24,19 @@ pub fn Avatar(
     }
 }
 
-/// A compact person/entity chip with a leading avatar.
+/// A compact chip. By default it leads with an avatar (a person chip); set
+/// `plain` for an avatar-less tag chip (e.g. "Time & Materials").
 #[component]
-pub fn Chip(label: String, #[props(default)] initials: String) -> Element {
+pub fn Chip(
+    label: String,
+    #[props(default)] initials: String,
+    #[props(default)] plain: bool,
+) -> Element {
     rsx! {
-        span { class: "chip",
-            Avatar { initials: if initials.is_empty() { first_initial(&label) } else { initials } }
+        span { class: if plain { "chip chip-plain" } else { "chip" },
+            if !plain {
+                Avatar { initials: if initials.is_empty() { first_initial(&label) } else { initials } }
+            }
             "{label}"
         }
     }

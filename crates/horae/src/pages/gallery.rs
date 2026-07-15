@@ -6,6 +6,7 @@ use crate::components::button::{Button, IconButton, SplitButton};
 use crate::components::card::{Card, MetricCard};
 use crate::components::controls::{Checkbox, Radio, Segmented, Toggle};
 use crate::components::form::{FormGroup, Input, Select, Textarea};
+use crate::components::nav::NavItem;
 use crate::components::table::DataTable;
 use crate::components::toast::Toast;
 
@@ -29,6 +30,7 @@ pub fn Gallery() -> Element {
                 h2 { class: "gallery-heading", "Buttons" }
                 div { class: "gallery-row",
                     Button { variant: "primary", "Primary" }
+                    Button { variant: "solid", "Submit week" }
                     Button { variant: "secondary", "Secondary" }
                     Button { variant: "accent", "Send invoice" }
                     Button { variant: "danger", "Delete" }
@@ -71,6 +73,11 @@ pub fn Gallery() -> Element {
                     div { style: "min-width: 220px",
                         FormGroup { label: "Read only",
                             Input { value: "INV-2026-0007", readonly: true }
+                        }
+                    }
+                    div { style: "min-width: 220px",
+                        FormGroup { label: "Disabled",
+                            Input { placeholder: "Unavailable", disabled: true }
                         }
                     }
                     div { style: "min-width: 220px",
@@ -120,6 +127,16 @@ pub fn Gallery() -> Element {
                 }
             }
 
+            // ── Nav item ─────────────────────────────────────────────────
+            section { class: "gallery-section",
+                h2 { class: "gallery-heading", "Nav item" }
+                div { style: "max-width: 240px; display: flex; flex-direction: column; gap: 4px",
+                    NavItem { icon: "◷", label: "Timesheet", active: true }
+                    NavItem { icon: "▤", label: "Approvals" }
+                    NavItem { icon: "◑", label: "Reports" }
+                }
+            }
+
             // ── Avatar & chips ───────────────────────────────────────────
             section { class: "gallery-section",
                 h2 { class: "gallery-heading", "Avatar & chips" }
@@ -129,6 +146,8 @@ pub fn Gallery() -> Element {
                     Avatar { initials: "LE", size: "lg" }
                     Chip { label: "Lars Ericsson" }
                     Chip { label: "Casey Rivera" }
+                    Chip { label: "Time & Materials", plain: true }
+                    Chip { label: "Manager", plain: true }
                 }
             }
 
@@ -153,22 +172,29 @@ pub fn Gallery() -> Element {
                             tr {
                                 th { "Teammate" }
                                 th { "Project" }
-                                th { "Hours" }
+                                th { class: "text-right", "Hours" }
                                 th { "Status" }
+                                th { class: "text-right", "Action" }
                             }
                         }
                         tbody {
                             tr {
                                 td { Chip { label: "Lars Ericsson" } }
                                 td { "Acme redesign" }
-                                td { class: "text-mono", "12.0" }
+                                td { class: "text-mono text-right", "12.0" }
                                 td { Badge { variant: "success", "Approved" } }
+                                td { class: "text-right",
+                                    Button { variant: "ghost", size: "sm", "Reopen" }
+                                }
                             }
                             tr {
                                 td { Chip { label: "Casey Rivera" } }
                                 td { "Globex API" }
-                                td { class: "text-mono", "6.5" }
+                                td { class: "text-mono text-right", "6.5" }
                                 td { Badge { variant: "warning", "Awaiting" } }
+                                td { class: "text-right",
+                                    Button { variant: "primary", size: "sm", "Approve" }
+                                }
                             }
                         }
                     }

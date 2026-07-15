@@ -8,10 +8,12 @@ pub fn Segmented(
     #[props(default)] onselect: EventHandler<String>,
 ) -> Element {
     rsx! {
-        div { class: "segmented",
+        div { class: "segmented", role: "tablist",
             for item in items {
                 button {
+                    r#type: "button",
                     class: if item == active { "segmented-item active" } else { "segmented-item" },
+                    "aria-selected": item == active,
                     onclick: {
                         let item = item.clone();
                         move |_| onselect.call(item.clone())
@@ -23,7 +25,8 @@ pub fn Segmented(
     }
 }
 
-/// An on/off switch with a trailing label.
+/// An on/off switch with a trailing label. A `<button>` so it is focusable and
+/// toggles on Enter/Space without extra key handling.
 #[component]
 pub fn Toggle(
     on: bool,
@@ -31,7 +34,8 @@ pub fn Toggle(
     #[props(default)] onclick: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {
-        div {
+        button {
+            r#type: "button",
             class: if on { "toggle on" } else { "toggle" },
             role: "switch",
             "aria-checked": "{on}",
@@ -52,7 +56,8 @@ pub fn Checkbox(
     #[props(default)] onclick: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {
-        div {
+        button {
+            r#type: "button",
             class: if checked { "choice checked" } else { "choice" },
             role: "checkbox",
             "aria-checked": "{checked}",
@@ -71,7 +76,8 @@ pub fn Radio(
     #[props(default)] onclick: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {
-        div {
+        button {
+            r#type: "button",
             class: if selected { "choice checked" } else { "choice" },
             role: "radio",
             "aria-checked": "{selected}",
