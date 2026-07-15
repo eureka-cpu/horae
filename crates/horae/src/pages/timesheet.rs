@@ -144,6 +144,73 @@ pub fn Timesheet() -> Element {
 
     let submit_status = use_signal(|| None::<String>);
 
+    // Add–entry modal state. `add_open` holds the date the new entry is for
+    // (None = closed); the rest back the form fields.
+    let mut add_open = use_signal(|| None::<NaiveDate>);
+    let mut add_project = use_signal(String::new);
+    let mut add_task = use_signal(String::new);
+    let mut add_notes = use_signal(String::new);
+    let mut add_duration = use_signal(|| "0:00".to_string());
+    let mut add_error = use_signal(|| None::<String>);
+    let mut add_saving = use_signal(|| false);
+
+    // Open the modal for `date`, defaulting the selects to the first project/task.
+    let open_add = use_callback(move |date: NaiveDate| {
+        let first_project = projects
+            .read()
+            .as_ref()
+            .and_then(|r| r.as_ref().ok())
+            .and_then(|ps| ps.first().map(|p| p.id.to_string()))
+            .unwrap_or_default();
+        let first_task = tasks
+            .read()
+            .as_ref()
+            .and_then(|r| r.as_ref().ok())
+            .and_then(|ts| ts.first().map(|t| t.id.to_string()))
+            .unwrap_or_default();
+        add_project.set(first_project);
+        add_task.set(first_task);
+        add_notes.set(String::new());
+        add_duration.set("0:00".to_string());
+        add_error.set(None);
+        add_open.set(Some(date));
+    });
+
+    // Options for the modal selects: (id, label).
+    let project_options: Vec<(String, String)> = projects
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|ps| {
+            ps.iter()
+                .map(|p| {
+                    let label = match &p.code {
+                        Some(code) => format!("[{code}] {}", p.name),
+                        None => p.name.clone(),
+                    };
+                    (p.id.to_string(), label)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let task_options: Vec<(String, String)> = tasks
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|ts| {
+            ts.iter()
+                .map(|t| (t.id.to_string(), t.name.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // The "+" button adds for today when it's in the viewed week, else Monday.
+    let add_default_date = if (0..7).contains(&(today - ws).num_days()) {
+        today
+    } else {
+        ws
+    };
+
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();
     let is_this_week = ws == iso_week_monday(today);
@@ -178,7 +245,12 @@ pub fn Timesheet() -> Element {
 
             // Toolbar: add entry + week pager
             div { class: "ts-toolbar",
-                Link { to: Route::TimeList {}, class: "ts-add", "aria-label": "Add entry", "+" }
+                button {
+                    class: "ts-add",
+                    "aria-label": "Add entry",
+                    onclick: move |_| open_add.call(add_default_date),
+                    "+"
+                }
                 div { class: "ts-pager",
                     button {
                         class: "ts-pager-btn prev",
@@ -260,9 +332,118 @@ pub fn Timesheet() -> Element {
                         {render_day_view(&by_day, daily_totals.as_slice(), ws, sel_offset, selected_day_offset, &project_names, &task_names)}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day, &daily_totals, week_total, ws, today, &CalLabels { projects: &project_names, tasks: &task_names, clients: &project_client })}
+                        {render_calendar_view(&by_day, &daily_totals, week_total, ws, today, &CalLabels { projects: &project_names, tasks: &task_names, clients: &project_client }, open_add)}
                     },
                 },
+            }
+
+            // Add–entry modal (opened by "+" or by clicking a calendar day).
+            if let Some(date) = *add_open.read() {
+                div {
+                    class: "ts-modal-overlay",
+                    onclick: move |_| add_open.set(None),
+                    div {
+                        class: "ts-modal",
+                        onclick: move |e| e.stop_propagation(),
+                        div { class: "ts-modal-title", "New time entry for {date.format(\"%A, %-d %b\")}" }
+                        div { class: "ts-modal-body",
+                            label { class: "form-label", "Project / Task" }
+                            select {
+                                class: "form-select",
+                                value: "{add_project}",
+                                onchange: move |e| add_project.set(e.value()),
+                                for (id , label) in project_options.iter() {
+                                    option { value: "{id}", "{label}" }
+                                }
+                            }
+                            select {
+                                class: "form-select",
+                                value: "{add_task}",
+                                onchange: move |e| add_task.set(e.value()),
+                                for (id , label) in task_options.iter() {
+                                    option { value: "{id}", "{label}" }
+                                }
+                            }
+                            div { class: "ts-modal-row",
+                                input {
+                                    class: "form-input ts-modal-notes",
+                                    placeholder: "Notes (optional)",
+                                    value: "{add_notes}",
+                                    oninput: move |e| add_notes.set(e.value()),
+                                }
+                                input {
+                                    class: "form-input ts-modal-duration",
+                                    "aria-label": "Duration",
+                                    value: "{add_duration}",
+                                    oninput: move |e| add_duration.set(e.value()),
+                                }
+                            }
+                            if let Some(err) = &*add_error.read() {
+                                div { class: "ts-modal-error", "{err}" }
+                            }
+                            div { class: "ts-modal-actions",
+                                button {
+                                    class: "btn btn-primary",
+                                    disabled: add_saving(),
+                                    onclick: move |_| {
+                                        let project_id = add_project.read().clone();
+                                        let task_id = add_task.read().clone();
+                                        if project_id.is_empty() || task_id.is_empty() {
+                                            add_error.set(Some("Select a project and task.".to_string()));
+                                            return;
+                                        }
+                                        let minutes = match horae_core::duration::parse(&add_duration.read()) {
+                                            Ok(m) => m as i32,
+                                            Err(_) => {
+                                                add_error
+                                                    .set(Some("Enter a duration like 1:30.".to_string()));
+                                                return;
+                                            }
+                                        };
+                                        if minutes <= 0 {
+                                            add_error
+                                                .set(Some("Duration must be greater than zero.".to_string()));
+                                            return;
+                                        }
+                                        let notes = {
+                                            let n = add_notes.read().trim().to_string();
+                                            (!n.is_empty()).then_some(n)
+                                        };
+                                        let spent = date.to_string();
+                                        let mut entries = entries;
+                                        add_saving.set(true);
+                                        add_error.set(None);
+                                        spawn(async move {
+                                            match server_fns::create_time_entry(
+                                                    project_id,
+                                                    task_id,
+                                                    spent,
+                                                    minutes,
+                                                    notes,
+                                                    true,
+                                                )
+                                                .await
+                                            {
+                                                Ok(_) => {
+                                                    add_open.set(None);
+                                                    entries.restart();
+                                                }
+                                                Err(e) => add_error.set(Some(format!("Could not save: {e}"))),
+                                            }
+                                            add_saving.set(false);
+                                        });
+                                    },
+                                    if add_saving() { "Saving…" } else { "Save entry" }
+                                }
+                                button {
+                                    class: "btn btn-ghost",
+                                    onclick: move |_| add_open.set(None),
+                                    "Cancel"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -293,6 +474,7 @@ fn render_calendar_view(
     week_start: NaiveDate,
     today: NaiveDate,
     labels: &CalLabels,
+    open_add: Callback<NaiveDate>,
 ) -> Element {
     // Pixels per hour. Entries are placed by *duration* (Harvest's duration mode):
     // stacked from the top of the day, height proportional to minutes.
@@ -385,7 +567,9 @@ fn render_calendar_view(
                         }
                     }
                     for i in 0..7 {
-                        div { class: "{col_class(i)}",
+                        div {
+                            class: "{col_class(i)}",
+                            onclick: move |_| open_add.call(week_start + Duration::days(i as i64)),
                             for ev in day_events[i].iter() {
                                 div {
                                     class: "ts-cal-event",

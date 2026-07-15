@@ -841,7 +841,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-hour { position: relative; height: 48px; }
 .ts-cal-hour-label { position: absolute; top: 50%; transform: translateY(-50%); right: var(--space-2); font-family: var(--font-family-mono); font-size: 11px; color: #5a5446; }
 /* Striped hour bands (47px band + 1px line = 48px). Design-exact darks, not tokens. */
-.ts-cal-col { position: relative; border-left: 1px solid var(--color-border-light); background: repeating-linear-gradient(#100f0c 0 47px, #1c1a15 47px 48px); }
+.ts-cal-col { position: relative; cursor: pointer; border-left: 1px solid var(--color-border-light); background: repeating-linear-gradient(#100f0c 0 47px, #1c1a15 47px 48px); }
 .ts-cal-col.today { background: repeating-linear-gradient(#151109 0 47px, #1c150c 47px 48px); }
 .ts-cal-col.weekend { background: repeating-linear-gradient(#0d0c0a 0 47px, #151410 47px 48px); }
 .ts-cal-tail { border-left: 1px solid var(--color-border-light); }
@@ -859,6 +859,19 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-col.today .ts-cal-ev-task { color: #4a3208; }
 .ts-cal-ev-client { font-size: 10.5px; color: #8fc4b3; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-col.today .ts-cal-ev-client { color: #6b4a10; }
+
+/* Add–entry modal: opened by the "+" toolbar button or by clicking a calendar
+   day. Dark card centred near the top, matching the design's entry dialog. */
+.ts-modal-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding-top: 120px; background: rgba(8, 7, 5, 0.68); }
+.ts-modal { width: 640px; max-width: 92vw; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8); }
+.ts-modal-title { padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--color-border); text-align: center; font-family: var(--font-family-display); font-size: 18px; font-weight: 600; color: var(--color-text); }
+.ts-modal-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
+.ts-modal-body .form-label { margin-bottom: 0; }
+.ts-modal-row { display: flex; gap: var(--space-3); }
+.ts-modal-notes { flex: 1; }
+.ts-modal-duration { width: 130px; text-align: right; font-family: var(--font-family-mono); font-size: 20px; }
+.ts-modal-error { font-size: var(--font-size-sm); color: var(--color-danger); }
+.ts-modal-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
 
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — run `cargo run -p cssgen` to regenerate (see crates/cssgen).
