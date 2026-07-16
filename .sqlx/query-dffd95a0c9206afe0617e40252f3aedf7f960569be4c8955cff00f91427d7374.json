@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n                 FROM users\n                WHERE org_id = $1 AND id <> $2 AND active = true AND org_role = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "org_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "manager",
+                "member"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "dffd95a0c9206afe0617e40252f3aedf7f960569be4c8955cff00f91427d7374"
+}
