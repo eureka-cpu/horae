@@ -97,7 +97,7 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5);
 
   /* Layout — some values are overridden per breakpoint below */
-  --sidebar-width: 240px;
+  --sidebar-width: 264px;
   --nav-height: 56px;
   --app-pad: var(--space-8);   /* main content padding; tightens on small screens */
 }
@@ -140,72 +140,139 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Layout */
-.app-layout { display: flex; flex-direction: column; min-height: 100vh; }
-.app-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: var(--nav-height);
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
-  display: flex; align-items: center; padding: 0 var(--space-4);
-  gap: var(--space-4);
-  box-shadow: var(--shadow-sm);
-}
-.app-nav .nav-brand {
-  font-family: var(--font-family-display);
-  font-size: var(--font-size-xl);
-  font-weight: 500;
-  color: var(--color-primary);
-  letter-spacing: -0.015em;
-}
-.app-nav .nav-spacer { flex: 1; }
-.app-nav .nav-link {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius);
-}
-.app-nav .nav-link:hover { color: var(--color-text); text-decoration: none; background: var(--color-bg-tertiary); }
-.app-body { display: flex; margin-top: var(--nav-height); flex: 1; }
+/* App shell — a full-height sidebar next to scrolling main content. No top bar:
+   the brand lives at the top of the sidebar (per the design). */
+.app-shell { display: flex; min-height: 100vh; }
 .app-sidebar {
-  width: var(--sidebar-width);
-  flex-shrink: 0;
+  width: var(--sidebar-width); flex-shrink: 0;
+  height: 100vh; position: sticky; top: 0;
   background: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
-  min-height: calc(100vh - var(--nav-height));
-  padding: var(--space-4) 0;
-  position: fixed;
-  top: var(--nav-height);
-  bottom: 0;
+  padding: 1.25rem var(--space-4);
+  display: flex; flex-direction: column;
   overflow-y: auto;
 }
-.app-content {
-  flex: 1;
-  margin-left: var(--sidebar-width);
-  padding: var(--space-8);
-  max-width: 1200px;
+.app-content { flex: 1; min-width: 0; padding: var(--space-8); }
+
+/* Brand row */
+.sidebar-brand { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-6); }
+.sidebar-brand-name {
+  font-family: var(--font-family-display); font-size: var(--font-size-2xl); font-weight: 600;
+  letter-spacing: -0.01em; color: var(--color-text);
+}
+/* The signature golden dot after the Horae wordmark */
+.sidebar-brand-dot {
+  width: 5px; height: 5px; border-radius: var(--radius-full); background: var(--color-accent);
+  align-self: flex-end; margin: 0 0 7px 3px; flex-shrink: 0;
 }
 
-/* Sidebar nav */
-.sidebar-nav { list-style: none; margin: 0; padding: 0; }
-.sidebar-nav a {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  color: var(--color-text-secondary);
-  border-radius: var(--radius);
-  margin: 0 var(--space-2);
-  font-size: var(--font-size-sm);
+/* Horae mark — a self-contained logo tile; its inner geometry and palette are
+   intrinsic to the mark, so they stay literals rather than design tokens. */
+.horae-mark {
+  position: relative; width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: var(--radius-btn); background: var(--color-pine); overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
-.sidebar-nav a:hover { background: var(--color-bg-tertiary); color: var(--color-text); text-decoration: none; }
-.sidebar-nav a.active { background: var(--color-primary-bg); color: var(--color-primary-light); font-weight: 600; }
+.horae-mark .ray {
+  position: absolute; left: 50%; top: 3.5px; width: 2px; height: 6px;
+  border-radius: 2px; background: #E7C079; transform-origin: bottom center;
+}
+.horae-mark .ray-c { transform: translateX(-50%); }
+.horae-mark .ray-l { transform: translateX(-50%) rotate(-34deg); background: #E4B061; }
+.horae-mark .ray-r { transform: translateX(-50%) rotate(34deg); background: #E4B061; }
+.horae-mark .sun {
+  position: absolute; left: 50%; bottom: 7px; width: 13px; height: 13px;
+  border-radius: var(--radius-full); background: var(--color-accent); transform: translateX(-50%);
+  box-shadow: 0 0 8px -1px rgba(217, 154, 60, 0.5);
+}
+.horae-mark .horizon-line { position: absolute; left: 0; right: 0; bottom: 8px; height: 1px; background: #0F3D33; }
+.horae-mark .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: #164034; }
+.sidebar-collapse {
+  margin-left: auto; align-self: center; width: 30px; height: 30px; line-height: 1;
+  background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-btn);
+  color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-sm);
+}
+.sidebar-collapse:hover { color: var(--color-text); background: var(--color-bg-tertiary); }
+
+/* Start-timer button */
+.sidebar-timer {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4); margin-bottom: var(--space-6);
+  background: var(--color-primary); color: var(--color-on-primary);
+  border: none; border-radius: var(--radius-btn); font: inherit; font-size: var(--font-size-sm); font-weight: 700;
+  cursor: pointer; text-decoration: none;
+}
+.sidebar-timer:hover { background: var(--color-primary-dark); color: var(--color-on-primary); text-decoration: none; }
+.sidebar-timer-icon {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; position: relative;
+  border: 2px solid var(--color-on-primary);
+}
+.sidebar-timer-icon::after {
+  content: ''; position: absolute; left: 50%; top: 2px; width: 1.5px; height: 4px;
+  background: var(--color-on-primary); transform: translateX(-50%);
+}
+
+/* Sections */
+.sidebar-group { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-6); }
 .sidebar-section {
-  padding: var(--space-4) var(--space-4) var(--space-2);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--color-text-muted);
+  /* 10.5px is an intentional micro-label, smaller than --font-size-xs */
+  font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--color-text-muted); padding: 0 var(--space-2) var(--space-2);
 }
+.sidebar-spacer { flex: 1; }
+
+/* Footer: current user (opens an account popover) */
+.sidebar-userbox { position: relative; }
+.sidebar-footer {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: var(--space-3) var(--space-2) var(--space-1);
+  border: none; border-top: 1px solid var(--color-border);
+  background: none; font: inherit; text-align: left; cursor: pointer;
+}
+.sidebar-footer:hover .sidebar-user-name { color: var(--color-primary-light); }
+.sidebar-user { min-width: 0; flex: 1; }
+.sidebar-user-name { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
+.sidebar-user-sub { font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: capitalize; }
+.sidebar-user-caret { color: var(--color-text-muted); font-size: var(--font-size-sm); flex-shrink: 0; }
+
+/* Account popover */
+.sidebar-menu {
+  position: absolute; bottom: calc(100% + var(--space-2)); left: 0; right: 0;
+  background: var(--color-bg-overlay); border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); z-index: 30;
+}
+.sidebar-menu-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.sidebar-menu-list, .sidebar-menu-foot { padding: var(--space-2); }
+.sidebar-menu-foot { border-top: 1px solid var(--color-border); }
+.sidebar-menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: var(--space-2); border: none; background: none; border-radius: var(--radius-btn);
+  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
+  cursor: pointer; text-decoration: none;
+}
+.sidebar-menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
+.sidebar-menu-item.danger { color: var(--color-danger); }
+
+/* Collapsed rail (icon strip) */
+.app-shell.collapsed .app-sidebar { width: 68px; padding-left: var(--space-2); padding-right: var(--space-2); }
+.app-shell.collapsed .sidebar-brand-name,
+.app-shell.collapsed .sidebar-brand-dot,
+.app-shell.collapsed .sidebar-section,
+.app-shell.collapsed .nav-item-label,
+.app-shell.collapsed .sidebar-timer-label,
+.app-shell.collapsed .sidebar-user,
+.app-shell.collapsed .sidebar-user-caret { display: none; }
+.app-shell.collapsed .sidebar-brand { flex-direction: column; gap: var(--space-2); }
+.app-shell.collapsed .sidebar-collapse { margin-left: 0; }
+.app-shell.collapsed .nav-item,
+.app-shell.collapsed .sidebar-timer { justify-content: center; padding: var(--space-2); }
+.app-shell.collapsed .sidebar-footer { justify-content: center; }
+/* The rail is too narrow to hold the popover, so give it a usable fixed width */
+.app-shell.collapsed .sidebar-menu { right: auto; width: 224px; }
 
 /* Cards */
 .card {
@@ -615,22 +682,35 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .toast.warning { border-left-color: var(--color-warning); }
 .toast.info { border-left-color: var(--color-primary); }
 
-/* Nav item — sidebar rail row */
+/* Nav item — sidebar rail row (design: icon + label; active = raised surface,
+   hairline, pine-tinted marker, brighter bold label) */
 .nav-item {
   display: flex; align-items: center; gap: var(--space-3); width: 100%;
   padding: var(--space-2) var(--space-3);
-  background: none; border: 1px solid transparent; border-radius: var(--radius);
+  background: none; border: 1px solid transparent; border-radius: var(--radius-btn);
   color: var(--color-text-secondary); font: inherit; font-size: var(--font-size-sm);
-  text-align: left; cursor: pointer; transition: background 0.15s, color 0.15s;
+  text-align: left; text-decoration: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
-.nav-item:hover { background: var(--color-bg-tertiary); color: var(--color-text); }
+.nav-item:hover { background: var(--color-bg-tertiary); color: var(--color-text); text-decoration: none; }
 .nav-item.active {
-  background: var(--color-bg-overlay); color: var(--color-text);
+  background: var(--color-bg-tertiary); color: var(--color-text);
   border-color: var(--color-border); font-weight: 600;
 }
-.nav-item-icon { width: 18px; text-align: center; flex-shrink: 0; }
+.nav-item-icon {
+  width: 16px; height: 16px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--color-text-muted);
+}
+.nav-item:hover .nav-item-icon { color: var(--color-text-secondary); }
+/* Active swaps the glyph for a leading pine dot (design rail language) */
+.nav-item.active .nav-item-icon { display: none; }
+.nav-item-dot {
+  display: none; width: 8px; height: 8px; margin: 0 4px;
+  border-radius: 50%; background: var(--color-primary); flex-shrink: 0;
+}
+.nav-item.active .nav-item-dot { display: inline-block; }
 .nav-item-label { flex: 1; }
-.nav-item-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
 
 /* Component gallery */
 .gallery-section { margin-bottom: var(--space-12); }
