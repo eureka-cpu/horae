@@ -271,6 +271,8 @@ h1, h2, h3, h4, h5, h6 {
 .app-shell.collapsed .nav-item,
 .app-shell.collapsed .sidebar-timer { justify-content: center; padding: var(--space-2); }
 .app-shell.collapsed .sidebar-footer { justify-content: center; }
+/* The rail is too narrow to hold the popover, so give it a usable fixed width */
+.app-shell.collapsed .sidebar-menu { right: auto; width: 224px; }
 
 /* Cards */
 .card {

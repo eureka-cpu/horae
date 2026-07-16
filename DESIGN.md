@@ -80,19 +80,14 @@ Three typefaces loaded from Google Fonts:
 
 ## Layout
 
-- **Top nav** (`--nav-height: 56px`): warm dark `#1A1813` background, Newsreader brand text in pine-300, 1px bottom border.
-- **Sidebar** (`--sidebar-width: 240px`): same warm surface as nav, fixed position.
-- **Content area**: scrollable, `max-width: 1200px`, generous padding, `--color-bg` (`#100F0C`) background.
+- **Sidebar** (`--sidebar-width: 264px`): full-height left rail on the warm dark surface (`--color-bg-secondary`), 1px right border, sticky. Holds the brand, a start-timer action, grouped navigation, and the signed-in user; there is no separate top nav. Collapses to a 68px icon strip.
+- **Content area**: scrollable, generous padding, `--color-bg` (`#100F0C`) background.
 
 ## Component Inventory
 
-### Navigation (`src/components/nav.rs`)
-
-Warm dark bar (`--color-bg-secondary`), Newsreader brand text in pine-300, secondary nav links that lighten on hover.
-
 ### Sidebar (`src/components/sidebar.rs`)
 
-Fixed left sidebar. Links default to `--color-text-secondary`; hover darkens background to `--color-bg-tertiary`; active uses pine tint background + `--color-primary-light` text. Section labels: all-caps, 0.14em letter-spacing, muted warm gray.
+Full-height left rail. The brand row leads with the Horae mark and wordmark plus the golden accent dot. Nav rows default to `--color-text-secondary`; hover darkens the background to `--color-bg-tertiary`; the active row raises to `--color-bg-tertiary` with a `--color-border` hairline and swaps its glyph for a leading pine dot. Section labels: all-caps, wide letter-spacing, muted warm gray.
 
 ### Timer Widget (`src/components/timer_widget.rs`)
 
