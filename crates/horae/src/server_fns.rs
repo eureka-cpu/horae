@@ -2198,6 +2198,27 @@ pub async fn create_user(email: String, name: String, role: String) -> Result<Us
     Ok(user)
 }
 
+/// The target user's current `(active, org_role)` within the org, if they exist.
+/// Read before a role/active change to drive both the plugin event and the
+/// last-admin guard.
+#[cfg(feature = "server")]
+async fn user_active_role(
+    db: &sqlx::PgPool,
+    user_id: uuid::Uuid,
+    org_id: uuid::Uuid,
+) -> Result<Option<(bool, OrgRole)>, ServerFnError> {
+    let row = sqlx::query!(
+        r#"SELECT active, org_role as "org_role: OrgRole"
+             FROM users WHERE id = $1 AND org_id = $2"#,
+        user_id,
+        org_id,
+    )
+    .fetch_optional(db)
+    .await
+    .map_err(server_err)?;
+    Ok(row.map(|r| (r.active, r.org_role)))
+}
+
 /// Guard against removing the org's last active admin. `exclude` is the user
 /// being changed (deactivated or demoted), so they are not counted among the
 /// admins that must remain — otherwise a lone admin could lock everyone out and
@@ -2242,22 +2263,13 @@ pub async fn set_user_role(user_id: String, role: String) -> Result<User, Server
 
     // Read the prior role/active so the event reports the transition (a no-op
     // role change emits nothing, FR-012) and so we can refuse demoting the last
-    // active admin.
-    let current = sqlx::query!(
-        r#"SELECT active, org_role as "org_role: OrgRole"
-             FROM users WHERE id = $1 AND org_id = $2"#,
-        user_id,
-        admin.org_id,
-    )
-    .fetch_optional(&state.db)
-    .await
-    .map_err(server_err)?;
-    let previous: Option<OrgRole> = current.as_ref().map(|c| c.org_role);
+    // active admin — including an admin dropping their own role.
+    let current = user_active_role(&state.db, user_id, admin.org_id).await?;
+    let previous: Option<OrgRole> = current.map(|(_, role)| role);
 
-    // Demoting the last active admin would lock the org out.
-    let demoting_active_admin = current
-        .as_ref()
-        .is_some_and(|c| c.active && c.org_role == OrgRole::Admin && org_role != OrgRole::Admin);
+    let demoting_active_admin = current.is_some_and(|(active, role)| {
+        active && role == OrgRole::Admin && org_role != OrgRole::Admin
+    });
     if demoting_active_admin {
         ensure_other_active_admin(&state.db, admin.org_id, user_id).await?;
     }
@@ -2304,22 +2316,12 @@ pub async fn set_user_active(user_id: String, active: bool) -> Result<User, Serv
     let state = crate::state::global_state().await;
     let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
 
-    let current = sqlx::query!(
-        r#"SELECT active, org_role as "org_role: OrgRole"
-             FROM users WHERE id = $1 AND org_id = $2"#,
-        user_id,
-        admin.org_id,
-    )
-    .fetch_optional(&state.db)
-    .await
-    .map_err(server_err)?;
-    let was_active: Option<bool> = current.as_ref().map(|c| c.active);
+    let current = user_active_role(&state.db, user_id, admin.org_id).await?;
+    let was_active: Option<bool> = current.map(|(active, _)| active);
 
     // Deactivating the last active admin would lock the org out.
-    let deactivating_active_admin = !active
-        && current
-            .as_ref()
-            .is_some_and(|c| c.active && c.org_role == OrgRole::Admin);
+    let deactivating_active_admin =
+        !active && current.is_some_and(|(a, role)| a && role == OrgRole::Admin);
     if deactivating_active_admin {
         ensure_other_active_admin(&state.db, admin.org_id, user_id).await?;
     }
