@@ -78,7 +78,7 @@ const HEADER: &str = "\
 
 fn space() -> Vec<(&'static str, String)> {
     let mut v = vec![("0", "0".to_string())];
-    for n in ["1", "2", "3", "4", "5", "6", "8"] {
+    for n in ["1", "2", "3", "4", "6", "8"] {
         v.push((n, format!("var(--space-{n})")));
     }
     v
