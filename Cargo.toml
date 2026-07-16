@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/horae", "crates/core", "crates/cssgen"]
+members = ["crates/horae", "crates/core"]
 exclude = ["crates/test-plugins/echo-plugin", "crates/test-plugins/fail-plugin"]
 resolver = "2"
 
