@@ -46,12 +46,12 @@ pub fn Approvals() -> Element {
             }
 
             if !is_manager {
-                div { class: "card", style: "padding: 2rem; text-align: center;",
+                div { class: "card p-8 text-center",
                     p { class: "text-muted", "Manager or admin access is required to review approvals." }
                 }
             } else {
                 // Filter tabs
-                div { style: "display: flex; gap: 0.25rem; margin-bottom: 1.5rem;",
+                div { class: "flex gap-1 mb-6",
                     button {
                         class: if current_filter.as_deref() == Some("submitted") { "btn btn-primary" } else { "btn btn-secondary" },
                         onclick: move |_| status_filter.set(Some("submitted".to_string())),
@@ -70,14 +70,14 @@ pub fn Approvals() -> Element {
                 }
 
                 if let Some(err) = &*action_error.read() {
-                    div { class: "alert alert-danger", style: "margin-bottom: 1rem;", "{err}" }
+                    div { class: "alert alert-danger mb-4", "{err}" }
                 }
 
                 match &*approvals.read() {
                     None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
                     Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
                     Some(Ok(items)) if items.is_empty() => rsx! {
-                        div { class: "card", style: "padding: 2rem; text-align: center;",
+                        div { class: "card p-8 text-center",
                             p { class: "text-muted", "No approvals found." }
                         }
                     },
@@ -125,7 +125,7 @@ pub fn Approvals() -> Element {
                                                         }
                                                         td {
                                                             if is_pending {
-                                                                div { style: "display: flex; gap: 0.5rem;",
+                                                                div { class: "flex gap-2",
                                                                     button {
                                                                         class: "btn btn-primary",
                                                                         style: "padding: 0.25rem 0.75rem; font-size: 0.85rem;",
