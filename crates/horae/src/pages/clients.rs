@@ -57,8 +57,8 @@ pub fn ClientList() -> Element {
 
             if show_form() && is_manager {
                 div { class: "card",
-                    div { style: "padding: 1.25rem;",
-                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);",
+                    div { class: "p-5",
+                        h3 { class: "text-sm mb-4 uppercase tracking-wide text-faint",
                             if editing_id().is_some() { "Edit Client" } else { "New Client" }
                         }
                         if let Some(err) = &*error.read() {
