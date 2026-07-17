@@ -49,7 +49,7 @@ pub fn Reports() -> Element {
         div {
             div { class: "page-header",
                 h1 { class: "page-title", "Reports" }
-                div { class: "page-actions", style: "display: flex; gap: 0.5rem;",
+                div { class: "page-actions",
                     a {
                         class: "btn btn-secondary",
                         href: "{export_csv_url}",
@@ -99,7 +99,7 @@ pub fn Reports() -> Element {
             }
 
             // Tabs
-            div { class: "mt-4", style: "display: flex; gap: 0; border-bottom: 1px solid var(--color-border);",
+            div { class: "mt-4 flex gap-0 border-b",
                 button {
                     class: "btn btn-ghost",
                     style: if *active_tab.read() == "summary" {

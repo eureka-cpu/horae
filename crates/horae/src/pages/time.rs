@@ -168,7 +168,7 @@ pub fn TimeList() -> Element {
                                 }
                             }
                         }
-                        div { class: "form-group", style: "margin-top: 1rem;",
+                        div { class: "form-group mt-4",
                             label { class: "form-label", "Notes" }
                             input {
                                 class: "form-input",
@@ -178,7 +178,7 @@ pub fn TimeList() -> Element {
                                 oninput: move |e| form_notes.set(e.value()),
                             }
                         }
-                        div { class: "form-group", style: "margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;",
+                        div { class: "form-group mt-3 flex items-center gap-2",
                             input {
                                 r#type: "checkbox",
                                 checked: *form_billable.read(),
@@ -186,9 +186,9 @@ pub fn TimeList() -> Element {
                                     form_billable.set(e.value() == "true");
                                 },
                             }
-                            label { class: "form-label", style: "margin: 0;", "Billable" }
+                            label { class: "form-label m-0", "Billable" }
                         }
-                        div { style: "margin-top: 1rem;",
+                        div { class: "mt-4",
                             button { class: "btn btn-primary", r#type: "submit", "Save Entry" }
                         }
                     }
@@ -280,7 +280,7 @@ pub fn TimeList() -> Element {
                                                                 "{entry.notes.as_deref().unwrap_or(\"-\")}"
                                                             }
                                                         }
-                                                        td { style: "display: flex; gap: 0.25rem;",
+                                                        td { class: "flex gap-1",
                                                             if is_editing {
                                                                 button {
                                                                     class: "btn btn-primary btn-sm",
