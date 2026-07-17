@@ -98,7 +98,7 @@ pub fn Dashboard() -> Element {
             div { class: "card mt-4",
                 h2 { class: "card-title", "Recent Time Entries" }
                 if recent_entries.is_empty() {
-                    div { class: "text-muted text-sm", style: "padding: 1rem;",
+                    div { class: "text-muted text-sm p-4",
                         "No time entries yet. Use the timer or log time manually."
                     }
                 } else {
@@ -147,7 +147,7 @@ fn PluginWidgets() -> Element {
 
     match &*widgets.read() {
         Some(Ok(ws)) if !ws.is_empty() => rsx! {
-            div { class: "grid-stats", style: "margin-top: 1rem;",
+            div { class: "grid-stats mt-4",
                 for w in ws.iter() {
                     div { class: "stat-card", key: "{w.plugin_name}",
                         div { class: "stat-label", "{w.title}" }
