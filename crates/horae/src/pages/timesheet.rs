@@ -278,7 +278,7 @@ pub fn Timesheet() -> Element {
                         "←"
                     }
                     div { class: "ts-pager-label",
-                        span { style: "color: var(--color-text-muted);", "▦" }
+                        span { class: "text-faint", "▦" }
                         span { class: "cur", if is_this_week { "This week" } else { "Week" } }
                         span { class: "ts-pager-range", "{range_label}" }
                     }
@@ -341,7 +341,7 @@ pub fn Timesheet() -> Element {
                                 }
                             }
                             if let Some(err) = &*submit_status.read() {
-                                span { style: "color: var(--color-danger); font-size: var(--font-size-sm); margin-left: var(--space-3);",
+                                span { class: "text-danger text-sm ml-3",
                                     "{err}"
                                 }
                             }
@@ -619,7 +619,7 @@ fn render_day_view(
 
     rsx! {
         // Day selector tabs
-        div { style: "display: flex; gap: 0.25rem; margin-bottom: 1rem;",
+        div { class: "flex gap-1 mb-4",
             for i in 0i64..7 {
                 {
                     let d = week_start + Duration::days(i);
@@ -637,12 +637,12 @@ fn render_day_view(
         }
 
         div { class: "card",
-            h3 { style: "margin-bottom: 1rem; color: var(--color-text);",
+            h3 { class: "mb-4 text-default",
                 "{day_date.format(\"%A, %B %d, %Y\")}"
             }
 
             if day_entries.is_empty() {
-                div { class: "text-muted text-sm", style: "padding: 2rem; text-align: center;",
+                div { class: "text-muted text-sm p-8 text-center",
                     "No entries for this day."
                 }
             } else {
@@ -690,9 +690,9 @@ fn render_day_view(
                 }
             }
 
-            div { style: "margin-top: 1rem; text-align: right; padding: 0.5rem;",
+            div { class: "mt-4 text-right p-2",
                 span { class: "text-muted text-sm", "Day total: " }
-                span { class: "text-mono", style: "font-weight: 600; color: var(--color-primary);",
+                span { class: "text-mono font-semibold text-primary",
                     "{format_hm(total)}"
                 }
             }
@@ -792,7 +792,7 @@ fn render_week_view(
                                     }
                                 }
                                 div { class: "ts-rowtotal", "{format_hm(row_total)}" }
-                                div { style: "text-align: center;",
+                                div { class: "text-center",
                                     button { class: "ts-del", "aria-label": "Remove row", "\u{00d7}" }
                                 }
                             }
