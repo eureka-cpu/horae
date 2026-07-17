@@ -35,7 +35,7 @@ pub fn AdminUsers() -> Element {
             if show_user_form() {
                 div { class: "card",
                     div { style: "padding: 1.25rem;",
-                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);", "New User" }
+                        h3 { class: "text-sm mb-4 uppercase tracking-wide text-faint", "New User" }
                         if let Some(err) = &*user_error.read() {
                             div { class: "alert alert-danger", "{err}" }
                         }
@@ -126,8 +126,8 @@ pub fn AdminUsers() -> Element {
                                                     td { "{user.email}" }
                                                     td {
                                                         select {
-                                                            class: "form-input",
-                                                            style: "width: auto; padding: 0.25rem 0.5rem; font-size: 0.8125rem;",
+                                                            class: "form-input py-1 px-2",
+                                                            style: "width: auto; font-size: 0.8125rem;",
                                                             value: "{current_role}",
                                                             onchange: {
                                                                 let uid = uid.clone();
@@ -183,9 +183,9 @@ pub fn AdminUsers() -> Element {
             }
 
             // ── Tasks section ───────────────────────────────────────────
-            div { style: "margin-top: 2rem;",
+            div { class: "mt-8",
                 div { class: "page-header",
-                    h2 { class: "page-title", style: "font-size: 1.25rem;", "Tasks" }
+                    h2 { class: "page-title text-xl", "Tasks" }
                     div { class: "page-actions",
                         button {
                             class: "btn btn-primary",
@@ -198,7 +198,7 @@ pub fn AdminUsers() -> Element {
                 if show_task_form() {
                     div { class: "card",
                         div { style: "padding: 1.25rem;",
-                            h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);", "New Task" }
+                            h3 { class: "text-sm mb-4 uppercase tracking-wide text-faint", "New Task" }
                             if let Some(err) = &*task_error.read() {
                                 div { class: "alert alert-danger", "{err}" }
                             }
@@ -214,7 +214,7 @@ pub fn AdminUsers() -> Element {
                                 }
                             }
                             div { class: "form-group",
-                                label { class: "form-label", style: "display: flex; align-items: center; gap: 0.5rem;",
+                                label { class: "form-label flex items-center gap-2",
                                     input {
                                         r#type: "checkbox",
                                         checked: task_billable(),
