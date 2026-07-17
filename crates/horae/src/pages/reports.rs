@@ -49,7 +49,7 @@ pub fn Reports() -> Element {
         div {
             div { class: "page-header",
                 h1 { class: "page-title", "Reports" }
-                div { class: "page-actions flex gap-2",
+                div { class: "page-actions",
                     a {
                         class: "btn btn-secondary",
                         href: "{export_csv_url}",
