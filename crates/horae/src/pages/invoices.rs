@@ -55,7 +55,7 @@ pub fn InvoiceList() -> Element {
             if show_form() {
                 div { class: "card",
                     div { style: "padding: 1.25rem;",
-                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);",
+                        h3 { class: "text-sm mb-4 uppercase tracking-wide text-faint",
                             "Generate Invoice"
                         }
                         if let Some(err) = &*error.read() {
@@ -306,9 +306,9 @@ pub fn InvoiceDetail(id: Uuid) -> Element {
                             div { class: "alert alert-danger", "{err}" }
                         }
 
-                        div { class: "card", style: "margin-bottom: 1.5rem;",
+                        div { class: "card mb-6",
                             div { style: "padding: 1.25rem;",
-                                div { style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;",
+                                div { class: "grid gap-4", style: "grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));",
                                     div {
                                         div { class: "text-sm text-muted", "Client" }
                                         div { "{cname}" }
@@ -372,8 +372,8 @@ pub fn InvoiceDetail(id: Uuid) -> Element {
                                     }
                                     tfoot {
                                         tr {
-                                            td { colspan: "3", class: "text-right", style: "font-weight: 600;", "Total" }
-                                            td { class: "text-mono text-right", style: "font-weight: 600;",
+                                            td { colspan: "3", class: "text-right font-semibold", "Total" }
+                                            td { class: "text-mono text-right font-semibold",
                                                 { format!("{} {:.2}", inv.currency.trim(), inv.total_cents as f64 / 100.0) }
                                             }
                                         }
