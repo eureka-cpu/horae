@@ -140,19 +140,16 @@ On top of the tokens is a **Tailwind-style utility layer** — `flex`,
 for a semantic component class (`.btn`, `.card`, `.badge`, `.nav-item`) for
 anything reused.
 
-This layer is **generated** from the design scale by the `cssgen` crate (the
+This layer is **generated** from the design scale by `crates/horae/build.rs` (the
 Node-free equivalent of a Tailwind build) into `assets/css/horae-utils.css`, which
-`app.rs` loads alongside `horae.css`. It is plain committed CSS at runtime — no
-build step in the app. After changing the scale in `crates/cssgen/src/main.rs`:
+`app.rs` loads alongside `horae.css`. It is plain committed CSS at runtime. The
+build script regenerates it on `cargo build` and only rewrites the file when the
+content changes — so editing the scale in `crates/horae/build.rs` and rebuilding
+keeps `horae-utils.css` in sync, and a stale committed copy can't slip through
+(the sandboxed `nix build` fails if the checked-in file doesn't match).
 
-```sh
-cargo run -p cssgen        # regenerate and commit horae-utils.css
-cargo run -p cssgen -- --check   # CI parity: fails if the committed file is stale
-```
-
-`nix flake check` runs the `--check` so drift can't merge. Tokens and semantic
-component classes stay hand-written in `horae.css`; the generator owns only the
-mechanical utility + responsive matrix.
+Tokens and semantic component classes stay hand-written in `horae.css`; the
+generator owns only the mechanical utility + responsive matrix.
 
 ## Pages
 

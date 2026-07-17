@@ -78,7 +78,9 @@ const HEADER: &str = "\
 
 fn space() -> Vec<(&'static str, String)> {
     let mut v = vec![("0", "0".to_string())];
-    for n in ["1", "2", "3", "4", "6", "8"] {
+    // Full scale — every step here must have a matching `--space-N` token in
+    // horae.css `:root`, or the generated `var(--space-N)` resolves to nothing.
+    for n in ["1", "2", "3", "4", "5", "6", "8", "10", "12", "16"] {
         v.push((n, format!("var(--space-{n})")));
     }
     v
@@ -125,6 +127,18 @@ fn families() -> Vec<Family> {
                 (
                     "grid-cols-4",
                     "grid-template-columns: repeat(4, minmax(0, 1fr))",
+                ),
+                (
+                    "grid-cols-5",
+                    "grid-template-columns: repeat(5, minmax(0, 1fr))",
+                ),
+                (
+                    "grid-cols-6",
+                    "grid-template-columns: repeat(6, minmax(0, 1fr))",
+                ),
+                (
+                    "grid-cols-7",
+                    "grid-template-columns: repeat(7, minmax(0, 1fr))",
                 ),
             ],
         ),
@@ -173,6 +187,8 @@ fn families() -> Vec<Family> {
                 ("border-0", "border: none"),
                 ("border-t", "border-top: 1px solid var(--color-border)"),
                 ("border-b", "border-bottom: 1px solid var(--color-border)"),
+                ("border-l", "border-left: 1px solid var(--color-border)"),
+                ("border-r", "border-right: 1px solid var(--color-border)"),
                 ("rounded-sm", "border-radius: var(--radius-sm)"),
                 ("rounded", "border-radius: var(--radius)"),
                 ("rounded-lg", "border-radius: var(--radius-lg)"),
@@ -212,6 +228,8 @@ fn spacing_family() -> Family {
         rules.push((format!("m-{n}"), format!("margin: {v}")));
         rules.push((format!("mt-{n}"), format!("margin-top: {v}")));
         rules.push((format!("mb-{n}"), format!("margin-bottom: {v}")));
+        rules.push((format!("ml-{n}"), format!("margin-left: {v}")));
+        rules.push((format!("mr-{n}"), format!("margin-right: {v}")));
     }
     rules.push((
         "mx-auto".to_string(),
