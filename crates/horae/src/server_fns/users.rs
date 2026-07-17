@@ -61,11 +61,7 @@ pub async fn create_user(email: String, name: String, role: String) -> Result<Us
     .await
     .map_err(|e| {
         if e.to_string().contains("users_email_key") {
-            ServerFnError::ServerError {
-                message: "A user with this email already exists".into(),
-                code: CONFLICT,
-                details: None,
-            }
+            conflict("A user with this email already exists")
         } else {
             server_err(e)
         }
@@ -125,11 +121,9 @@ async fn ensure_other_active_admin(
     .map_err(server_err)?;
 
     if others == 0 {
-        return Err(ServerFnError::ServerError {
-            message: "The organization must keep at least one active admin.".into(),
-            code: CONFLICT,
-            details: None,
-        });
+        return Err(conflict(
+            "The organization must keep at least one active admin.",
+        ));
     }
     Ok(())
 }
@@ -139,7 +133,7 @@ async fn ensure_other_active_admin(
 pub async fn set_user_role(user_id: String, role: String) -> Result<User, ServerFnError> {
     let admin = require_admin().await?;
     let state = crate::state::global_state().await;
-    let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
+    let user_id = parse_uuid(&user_id, "user_id")?;
     let org_role = role
         .parse::<OrgRole>()
         .map_err(|_| server_err("Invalid role (use admin, manager, or member)"))?;
@@ -172,11 +166,7 @@ pub async fn set_user_role(user_id: String, role: String) -> Result<User, Server
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "User not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("User not found"))?;
 
     if let Some(prev) = previous.filter(|p| *p != user.org_role) {
         state
@@ -197,7 +187,7 @@ pub async fn set_user_role(user_id: String, role: String) -> Result<User, Server
 pub async fn set_user_active(user_id: String, active: bool) -> Result<User, ServerFnError> {
     let admin = require_admin().await?;
     let state = crate::state::global_state().await;
-    let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
+    let user_id = parse_uuid(&user_id, "user_id")?;
 
     let current = user_active_role(&state.db, user_id, admin.org_id).await?;
     let was_active: Option<bool> = current.map(|(active, _)| active);
@@ -224,11 +214,7 @@ pub async fn set_user_active(user_id: String, active: bool) -> Result<User, Serv
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "User not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("User not found"))?;
 
     // FR-005 defines only a deactivation event (no user_reactivated).
     if crate::plugin::event::active_transition(was_active, active)

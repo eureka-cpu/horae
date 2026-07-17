@@ -43,9 +43,7 @@ pub async fn list_invoices(status: Option<String>) -> Result<Vec<Invoice>, Serve
 pub async fn get_invoice(invoice_id: String) -> Result<InvoiceWithLines, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let id: uuid::Uuid = invoice_id
-        .parse()
-        .map_err(|_| server_err("Invalid invoice_id"))?;
+    let id = parse_uuid(&invoice_id, "invoice_id")?;
 
     let invoice = sqlx::query_as!(
         Invoice,
@@ -63,11 +61,7 @@ pub async fn get_invoice(invoice_id: String) -> Result<InvoiceWithLines, ServerF
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Invoice not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Invoice not found"))?;
 
     let lines = sqlx::query_as!(
         InvoiceLine,
@@ -93,9 +87,7 @@ pub async fn generate_invoice(
 ) -> Result<InvoiceWithLines, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let client_id: uuid::Uuid = client_id
-        .parse()
-        .map_err(|_| server_err("Invalid client_id"))?;
+    let client_id = parse_uuid(&client_id, "client_id")?;
     let from: chrono::NaiveDate = period_from
         .parse()
         .map_err(|_| server_err("Invalid period_from date"))?;
@@ -115,11 +107,7 @@ pub async fn generate_invoice(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Client not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Client not found"))?;
 
     // Fetch billable, un-invoiced entries for this client in the period,
     // with rate candidates from all cascade levels.
@@ -171,11 +159,9 @@ pub async fn generate_invoice(
     .map_err(server_err)?;
 
     if entries.is_empty() {
-        return Err(ServerFnError::ServerError {
-            message: "No billable, un-invoiced time found for this client and period.".into(),
-            code: NOT_FOUND,
-            details: None,
-        });
+        return Err(not_found(
+            "No billable, un-invoiced time found for this client and period.",
+        ));
     }
 
     // Generate invoice number: INV-YYYYMM-NNN
@@ -325,9 +311,7 @@ pub async fn update_invoice_status(
 ) -> Result<Invoice, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let id: uuid::Uuid = invoice_id
-        .parse()
-        .map_err(|_| server_err("Invalid invoice_id"))?;
+    let id = parse_uuid(&invoice_id, "invoice_id")?;
     let target: InvoiceStatus = new_status
         .parse()
         .map_err(|_| server_err("Invalid status"))?;
@@ -341,11 +325,7 @@ pub async fn update_invoice_status(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Invoice not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Invoice not found"))?;
 
     // Enforce state machine: draft->sent, sent->paid, draft|sent->void
     let valid = matches!(
@@ -356,14 +336,10 @@ pub async fn update_invoice_status(
             | (InvoiceStatus::Sent, InvoiceStatus::Void)
     );
     if !valid {
-        return Err(ServerFnError::ServerError {
-            message: format!(
-                "Cannot transition invoice from {} to {}",
-                current_status, target
-            ),
-            code: CONFLICT,
-            details: None,
-        });
+        return Err(conflict(format!(
+            "Cannot transition invoice from {} to {}",
+            current_status, target
+        )));
     }
 
     // On void: restore entries to open, un-invoiced state.

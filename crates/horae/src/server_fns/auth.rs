@@ -8,11 +8,9 @@ use super::*;
 #[server]
 pub async fn login(email: String, password: String) -> Result<(), ServerFnError> {
     let _ = (email, password);
-    Err(ServerFnError::ServerError {
-        message: "Direct login removed; navigate to /auth/login.".into(),
-        code: UNAUTHORIZED,
-        details: None,
-    })
+    Err(unauthorized(
+        "Direct login removed; navigate to /auth/login.",
+    ))
 }
 
 /// Destroy the current session (logout).
@@ -46,9 +44,5 @@ pub async fn get_me() -> Result<User, ServerFnError> {
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "User not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })
+    .ok_or_else(|| not_found("User not found"))
 }

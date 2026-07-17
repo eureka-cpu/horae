@@ -85,11 +85,7 @@ pub async fn submit_week(week_start: String) -> Result<Approval, ServerFnError> 
     .map_err(server_err)?;
 
     if result.rows_affected() == 0 {
-        return Err(ServerFnError::ServerError {
-            message: "No open entries found for this week".into(),
-            code: NOT_FOUND,
-            details: None,
-        });
+        return Err(not_found("No open entries found for this week"));
     }
 
     // Create approval row
@@ -174,17 +170,11 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
         EntryState::Approved,
         manager.org_role,
     ) {
-        return Err(ServerFnError::ServerError {
-            message: "Insufficient role to approve submissions".into(),
-            code: FORBIDDEN,
-            details: None,
-        });
+        return Err(forbidden("Insufficient role to approve submissions"));
     }
 
     let state = crate::state::global_state().await;
-    let approval_id: uuid::Uuid = approval_id
-        .parse()
-        .map_err(|_| server_err("Invalid approval_id"))?;
+    let approval_id = parse_uuid(&approval_id, "approval_id")?;
 
     // Update approval row
     let approval = sqlx::query_as!(
@@ -209,11 +199,7 @@ pub async fn approve_submission(approval_id: String) -> Result<Approval, ServerF
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Approval not found or not in 'submitted' state".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Approval not found or not in 'submitted' state"))?;
 
     // Transition corresponding time entries to approved
     sqlx::query!(
@@ -258,17 +244,11 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
 
     if !horae_core::state::can_transition(EntryState::Submitted, EntryState::Open, manager.org_role)
     {
-        return Err(ServerFnError::ServerError {
-            message: "Insufficient role to reject submissions".into(),
-            code: FORBIDDEN,
-            details: None,
-        });
+        return Err(forbidden("Insufficient role to reject submissions"));
     }
 
     let state = crate::state::global_state().await;
-    let approval_id: uuid::Uuid = approval_id
-        .parse()
-        .map_err(|_| server_err("Invalid approval_id"))?;
+    let approval_id = parse_uuid(&approval_id, "approval_id")?;
 
     // Fetch the approval to know user + period
     let approval = sqlx::query_as!(
@@ -286,11 +266,7 @@ pub async fn reject_submission(approval_id: String) -> Result<(), ServerFnError>
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Approval not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Approval not found"))?;
 
     // Reopen entries
     sqlx::query!(

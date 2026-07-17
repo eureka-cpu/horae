@@ -74,10 +74,8 @@ pub async fn start_timer(
 ) -> Result<TimeEntry, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
-    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    let task_id = parse_uuid(&task_id, "task_id")?;
 
     // Get user's org_id
     let user = sqlx::query_as!(
@@ -104,11 +102,7 @@ pub async fn start_timer(
     .unwrap_or(false);
 
     if existing {
-        return Err(ServerFnError::ServerError {
-            message: "A timer is already running. Stop it first.".into(),
-            code: CONFLICT,
-            details: None,
-        });
+        return Err(conflict("A timer is already running. Stop it first."));
     }
 
     let id = uuid::Uuid::now_v7();
@@ -147,9 +141,7 @@ pub async fn start_timer(
 pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let entry_id: uuid::Uuid = entry_id
-        .parse()
-        .map_err(|_| server_err("Invalid entry_id"))?;
+    let entry_id = parse_uuid(&entry_id, "entry_id")?;
 
     // Read the running entry's start time, then compute the exact elapsed
     // minutes in `horae-core` (floored to the minute, no artificial 1-minute
@@ -165,11 +157,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     .await
     .map_err(server_err)?
     .flatten()
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "No running timer found for this entry".into(),
-        code: axum::http::StatusCode::NOT_FOUND.as_u16(),
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("No running timer found for this entry"))?;
 
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
@@ -196,11 +184,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "No running timer found for this entry".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("No running timer found for this entry"))?;
 
     dispatch_time_entry_event(&entry, "time_entry_stopped").await;
     tokio::spawn(check_project_budget(state, entry.project_id));
@@ -246,10 +230,8 @@ pub async fn create_time_entry(
 ) -> Result<TimeEntry, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
-    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    let task_id = parse_uuid(&task_id, "task_id")?;
     let spent_date: chrono::NaiveDate = spent_date
         .parse()
         .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
@@ -275,11 +257,7 @@ pub async fn create_time_entry(
         .unwrap_or(false);
 
         if !assigned {
-            return Err(ServerFnError::ServerError {
-                message: "You are not assigned to this project".into(),
-                code: FORBIDDEN,
-                details: None,
-            });
+            return Err(forbidden("You are not assigned to this project"));
         }
     }
 
@@ -326,9 +304,7 @@ pub async fn update_time_entry(
 ) -> Result<TimeEntry, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let entry_id: uuid::Uuid = entry_id
-        .parse()
-        .map_err(|_| server_err("Invalid entry_id"))?;
+    let entry_id = parse_uuid(&entry_id, "entry_id")?;
 
     // Read current values first so a no-op update emits no event (FR-012).
     let before = sqlx::query!(
@@ -364,11 +340,7 @@ pub async fn update_time_entry(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Entry not found or is locked (not in 'open' state)".into(),
-        code: CONFLICT,
-        details: None,
-    })?;
+    .ok_or_else(|| conflict("Entry not found or is locked (not in 'open' state)"))?;
 
     let changed = before.is_none_or(|b| {
         b.minutes != minutes || b.notes.as_deref() != notes.as_deref() || b.billable != billable
@@ -392,9 +364,7 @@ pub async fn update_time_entry(
 pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let entry_id: uuid::Uuid = entry_id
-        .parse()
-        .map_err(|_| server_err("Invalid entry_id"))?;
+    let entry_id = parse_uuid(&entry_id, "entry_id")?;
 
     // Delete and capture the row in one statement so the "only open entries"
     // guard holds atomically (no TOCTOU) and the event carries the removed
@@ -417,11 +387,7 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Entry not found or is locked (not in 'open' state)".into(),
-        code: CONFLICT,
-        details: None,
-    })?;
+    .ok_or_else(|| conflict("Entry not found or is locked (not in 'open' state)"))?;
 
     state
         .plugins

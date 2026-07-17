@@ -74,9 +74,7 @@ pub async fn update_client(
 ) -> Result<Client, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let client_id: uuid::Uuid = client_id
-        .parse()
-        .map_err(|_| server_err("Invalid client_id"))?;
+    let client_id = parse_uuid(&client_id, "client_id")?;
     // Detect a real change so a no-op update emits nothing (FR-012).
     let changed: Option<bool> = sqlx::query_scalar::<_, bool>(
         "SELECT (name IS DISTINCT FROM $3 OR currency IS DISTINCT FROM $4
@@ -107,11 +105,7 @@ pub async fn update_client(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Client not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Client not found"))?;
 
     if changed == Some(true) {
         state
@@ -131,9 +125,7 @@ pub async fn update_client(
 pub async fn set_client_active(client_id: String, active: bool) -> Result<Client, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let client_id: uuid::Uuid = client_id
-        .parse()
-        .map_err(|_| server_err("Invalid client_id"))?;
+    let client_id = parse_uuid(&client_id, "client_id")?;
     // Detect a real flip so a no-op set emits nothing (FR-012).
     let was_active: Option<bool> =
         sqlx::query_scalar::<_, bool>("SELECT active FROM clients WHERE id = $1 AND org_id = $2")
@@ -154,11 +146,7 @@ pub async fn set_client_active(client_id: String, active: bool) -> Result<Client
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Client not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Client not found"))?;
 
     if let Some(t) = crate::plugin::event::active_transition(was_active, active) {
         let occurred_at = chrono::Utc::now();

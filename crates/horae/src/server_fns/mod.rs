@@ -40,20 +40,47 @@ pub(crate) async fn session_user_id() -> Result<uuid::Uuid, ServerFnError> {
 
     crate::auth::session::get_session_user_id(&session)
         .await
-        .ok_or_else(|| ServerFnError::ServerError {
-            message: "Not authenticated — please sign in.".into(),
-            code: UNAUTHORIZED,
-            details: None,
-        })
+        .ok_or_else(|| unauthorized("Not authenticated — please sign in."))
+}
+
+/// Build a `ServerFnError::ServerError` with a named status code, so error
+/// paths read as `not_found("…")` rather than a five-line struct literal.
+#[cfg(feature = "server")]
+pub(crate) fn err(code: u16, msg: impl std::fmt::Display) -> ServerFnError {
+    ServerFnError::ServerError {
+        message: msg.to_string(),
+        code,
+        details: None,
+    }
 }
 
 #[cfg(feature = "server")]
 pub(crate) fn server_err(msg: impl std::fmt::Display) -> ServerFnError {
-    ServerFnError::ServerError {
-        message: msg.to_string(),
-        code: INTERNAL_ERROR,
-        details: None,
-    }
+    err(INTERNAL_ERROR, msg)
+}
+#[cfg(feature = "server")]
+pub(crate) fn not_found(msg: impl std::fmt::Display) -> ServerFnError {
+    err(NOT_FOUND, msg)
+}
+#[cfg(feature = "server")]
+pub(crate) fn forbidden(msg: impl std::fmt::Display) -> ServerFnError {
+    err(FORBIDDEN, msg)
+}
+#[cfg(feature = "server")]
+pub(crate) fn conflict(msg: impl std::fmt::Display) -> ServerFnError {
+    err(CONFLICT, msg)
+}
+#[cfg(feature = "server")]
+pub(crate) fn unauthorized(msg: impl std::fmt::Display) -> ServerFnError {
+    err(UNAUTHORIZED, msg)
+}
+
+/// Parse a UUID argument, mapping a malformed value to a clear error naming the
+/// field (e.g. `parse_uuid(&entry_id, "entry_id")`).
+#[cfg(feature = "server")]
+pub(crate) fn parse_uuid(s: &str, field: &str) -> Result<uuid::Uuid, ServerFnError> {
+    s.parse()
+        .map_err(|_| server_err(format!("Invalid {field}")))
 }
 
 #[cfg(feature = "server")]
@@ -72,18 +99,10 @@ pub(crate) async fn require_admin() -> Result<crate::models::User, ServerFnError
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "User not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("User not found"))?;
 
     if !user.is_admin() {
-        return Err(ServerFnError::ServerError {
-            message: "Admin access required".into(),
-            code: FORBIDDEN,
-            details: None,
-        });
+        return Err(forbidden("Admin access required"));
     }
     Ok(user)
 }
@@ -104,18 +123,10 @@ pub(crate) async fn require_manager() -> Result<crate::models::User, ServerFnErr
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "User not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("User not found"))?;
 
     if !user.is_manager_or_above() {
-        return Err(ServerFnError::ServerError {
-            message: "Manager access required".into(),
-            code: FORBIDDEN,
-            details: None,
-        });
+        return Err(forbidden("Manager access required"));
     }
     Ok(user)
 }

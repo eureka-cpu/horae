@@ -44,9 +44,7 @@ pub async fn create_project(
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
-    let client_id: uuid::Uuid = client_id
-        .parse()
-        .map_err(|_| server_err("Invalid client_id"))?;
+    let client_id = parse_uuid(&client_id, "client_id")?;
     let pt = project_type
         .parse::<ProjectType>()
         .map_err(|_| server_err("Invalid project_type"))?;
@@ -96,9 +94,7 @@ pub async fn update_project(
 ) -> Result<Project, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
     // Detect a real change so a no-op update emits nothing (FR-012).
     let changed: Option<bool> = sqlx::query_scalar::<_, bool>(
         "SELECT (name IS DISTINCT FROM $3
@@ -144,11 +140,7 @@ pub async fn update_project(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Project not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Project not found"))?;
 
     if changed == Some(true) {
         state
@@ -171,9 +163,7 @@ pub async fn set_project_active(
 ) -> Result<Project, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
     // Detect a real flip so a no-op set emits nothing (FR-012).
     let was_active: Option<bool> =
         sqlx::query_scalar::<_, bool>("SELECT active FROM projects WHERE id = $1 AND org_id = $2")
@@ -198,11 +188,7 @@ pub async fn set_project_active(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Project not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Project not found"))?;
 
     if let Some(t) = crate::plugin::event::active_transition(was_active, active) {
         let occurred_at = chrono::Utc::now();
@@ -253,9 +239,7 @@ pub async fn list_tasks() -> Result<Vec<Task>, ServerFnError> {
 pub async fn list_project_tasks(project_id: String) -> Result<Vec<Task>, ServerFnError> {
     let _user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
 
     sqlx::query_as!(
         Task,
@@ -309,7 +293,7 @@ pub async fn update_task(
 ) -> Result<Task, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    let task_id = parse_uuid(&task_id, "task_id")?;
     // Detect a real change so a no-op update emits nothing (FR-012).
     let changed: Option<bool> = sqlx::query_scalar::<_, bool>(
         "SELECT (name IS DISTINCT FROM $3
@@ -340,11 +324,7 @@ pub async fn update_task(
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Task not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Task not found"))?;
 
     if changed == Some(true) {
         state
@@ -364,7 +344,7 @@ pub async fn update_task(
 pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    let task_id = parse_uuid(&task_id, "task_id")?;
     // Detect a real flip so a no-op set emits nothing (FR-012).
     let was_active: Option<bool> =
         sqlx::query_scalar::<_, bool>("SELECT active FROM tasks WHERE id = $1 AND org_id = $2")
@@ -385,11 +365,7 @@ pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, Serv
     .fetch_optional(&state.db)
     .await
     .map_err(server_err)?
-    .ok_or_else(|| ServerFnError::ServerError {
-        message: "Task not found".into(),
-        code: NOT_FOUND,
-        details: None,
-    })?;
+    .ok_or_else(|| not_found("Task not found"))?;
 
     if let Some(t) = crate::plugin::event::active_transition(was_active, active) {
         let occurred_at = chrono::Utc::now();
@@ -421,10 +397,8 @@ pub async fn set_task_active(task_id: String, active: bool) -> Result<Task, Serv
 pub async fn link_project_task(project_id: String, task_id: String) -> Result<(), ServerFnError> {
     let manager = require_manager().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
-    let task_id: uuid::Uuid = task_id.parse().map_err(|_| server_err("Invalid task_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    let task_id = parse_uuid(&task_id, "task_id")?;
 
     let result = sqlx::query(
         "INSERT INTO project_tasks (project_id, task_id, billable, rate_cents)
@@ -453,11 +427,7 @@ pub async fn link_project_task(project_id: String, task_id: String) -> Result<()
         .await
         .map_err(server_err)?;
         if !linked {
-            return Err(ServerFnError::ServerError {
-                message: "Project or task not found in this organization".into(),
-                code: NOT_FOUND,
-                details: None,
-            });
+            return Err(not_found("Project or task not found in this organization"));
         }
     }
     Ok(())
@@ -469,9 +439,7 @@ pub async fn link_project_task(project_id: String, task_id: String) -> Result<()
 pub async fn list_assignments(project_id: String) -> Result<Vec<Assignment>, ServerFnError> {
     let _user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
     sqlx::query_as!(
         Assignment,
         r#"SELECT id, project_id, user_id, role as "role: ProjectRole", rate_cents,
@@ -493,10 +461,8 @@ pub async fn create_assignment(
     let admin = require_admin().await?;
     let state = crate::state::global_state().await;
     let id = uuid::Uuid::now_v7();
-    let project_id: uuid::Uuid = project_id
-        .parse()
-        .map_err(|_| server_err("Invalid project_id"))?;
-    let user_id: uuid::Uuid = user_id.parse().map_err(|_| server_err("Invalid user_id"))?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    let user_id = parse_uuid(&user_id, "user_id")?;
     let pr = role
         .parse::<ProjectRole>()
         .map_err(|_| server_err("Invalid role"))?;
@@ -529,9 +495,7 @@ pub async fn create_assignment(
 pub async fn delete_assignment(assignment_id: String) -> Result<(), ServerFnError> {
     let admin = require_admin().await?;
     let state = crate::state::global_state().await;
-    let id: uuid::Uuid = assignment_id
-        .parse()
-        .map_err(|_| server_err("Invalid assignment_id"))?;
+    let id = parse_uuid(&assignment_id, "assignment_id")?;
     // Delete and capture the row atomically so the event carries its details
     // and a concurrent delete cannot double-notify.
     let removed = sqlx::query_as::<_, crate::models::Assignment>(
