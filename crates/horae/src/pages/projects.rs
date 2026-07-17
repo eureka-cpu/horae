@@ -62,8 +62,8 @@ pub fn ProjectList() -> Element {
 
             if show_form() && is_manager {
                 div { class: "card",
-                    div { style: "padding: 1.25rem;",
-                        h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);",
+                    div { class: "p-5",
+                        h3 { class: "text-sm mb-4 uppercase tracking-wide text-faint",
                             if editing_id().is_some() { "Edit Project" } else { "New Project" }
                         }
                         if let Some(err) = &*error.read() {
@@ -285,13 +285,13 @@ pub fn ProjectDetail(id: Uuid) -> Element {
                 h1 { class: "page-title", "Project" }
             }
             div { class: "card",
-                p { class: "text-muted", style: "padding: 1.25rem;", "Project detail for {id}" }
+                p { class: "text-muted p-5", "Project detail for {id}" }
             }
 
             // ── Assignments section ─────────────────────────────────────
-            div { style: "margin-top: 1.5rem;",
+            div { class: "mt-6",
                 div { class: "page-header",
-                    h2 { class: "page-title", style: "font-size: 1.25rem;", "Assignments" }
+                    h2 { class: "page-title text-xl", "Assignments" }
                     div { class: "page-actions",
                         if is_admin {
                             button {
@@ -305,8 +305,8 @@ pub fn ProjectDetail(id: Uuid) -> Element {
 
                 if show_assign_form() && is_admin {
                     div { class: "card",
-                        div { style: "padding: 1.25rem;",
-                            h3 { class: "text-sm", style: "margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);", "Assign User" }
+                        div { class: "p-5",
+                            h3 { class: "text-sm mb-4 uppercase tracking-wide text-faint", "Assign User" }
                             if let Some(err) = &*error.read() {
                                 div { class: "alert alert-danger", "{err}" }
                             }
@@ -365,7 +365,7 @@ pub fn ProjectDetail(id: Uuid) -> Element {
                 div { class: "card",
                     match &*assignments.read() {
                         Some(Ok(list)) if list.is_empty() => rsx! {
-                            p { class: "text-muted text-sm", style: "padding: 1.25rem;", "No users assigned yet." }
+                            p { class: "text-muted text-sm p-5", "No users assigned yet." }
                         },
                         Some(Ok(list)) => rsx! {
                             div { class: "table-container",
