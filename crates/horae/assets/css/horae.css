@@ -81,6 +81,7 @@
   --space-5: 1.25rem;   /* 20px — a Tailwind half-step the design leans on */
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
 
@@ -874,5 +875,5 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-modal-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
 
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
-   horae-utils.css — run `cargo run -p cssgen` to regenerate (see crates/cssgen).
+   horae-utils.css — regenerated automatically by crates/horae/build.rs on build.
    It is loaded alongside this file (see src/app.rs). */
