@@ -3,15 +3,8 @@
 use super::*;
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
-
-/// Stub login — the real auth flows go through Axum routes at `/auth/login`.
-#[server]
-pub async fn login(email: String, password: String) -> Result<(), ServerFnError> {
-    let _ = (email, password);
-    Err(unauthorized(
-        "Direct login removed; navigate to /auth/login.",
-    ))
-}
+// Login is not a server fn — the real flow goes through the Axum `/auth/login`
+// route (OIDC / dev-login); see `src/auth/`.
 
 /// Destroy the current session (logout).
 #[server]
