@@ -1,4 +1,9 @@
 {
+  nixConfig = {
+    extra-substituters = [ "https://horae.cachix.org" ];
+    extra-trusted-public-keys = [ "horae.cachix.org-1:TvN7wUWS/9SEUawZKAOJUC1Qu2F/m3XRPLkU+St6hsg=" ];
+  };
+
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
 
