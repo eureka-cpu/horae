@@ -4,6 +4,13 @@ This file provides guidance to coding agents (Claude Code and others) when worki
 
 Horae is a self-hostable time tracker (a Harvest/Kimai alternative) built as a Rust + [Dioxus](https://dioxuslabs.com/) fullstack app (SSR + WASM) on PostgreSQL/Axum.
 
+## Precedence
+
+- Follow repository documentation and checked-in project conventions first.
+- Use the guidance in this file when the repository does not specify an alternative.
+- Treat `Prefer` as a default choice, not an absolute rule.
+- Treat `Use` and `Do not` as stronger instructions.
+
 ## Commands
 
 Work inside the Nix dev shell; a running PostgreSQL is required for anything touching the database.
@@ -86,11 +93,50 @@ For custom PostgreSQL enum types, use type overrides in the SQL:
 
 `SPEC.md` is the authoritative Phase-1 build spec (schema, milestones, API contract). `DESIGN.md` is the design system (Invoicer aesthetic; tokens in `crates/horae/assets/css/horae.css`; components are one-per-file `#[component]` functions using `use_signal`/`use_resource`, with no global mutable UI state).
 
+## Skills
+
+The repo ships agent skills in `.agents/skills/` (surfaced to Claude Code through `.claude/skills/` symlinks). Invoke the relevant one before the matching task — they carry conventions this project relies on:
+
+- **`rust-best-practices`** — idiomatic Rust from Apollo's handbook: borrowing vs cloning, `Result`/error handling, performance, and the sqlx compile-time-macro and module-layout rules this repo follows. Use when writing, reviewing, or refactoring Rust.
+- **`rust-testing`** — unit, integration, async, and property-based testing patterns (TDD). Use when adding or changing tests; pairs with the `#[sqlx::test]` / `#[serial]` setup under *Commands → Test & lint*.
+- **`rust-async-patterns`** — Tokio, async traits, and concurrency patterns. Use for async server code or when debugging async behaviour.
+- **`ponytail`** — enforces the smallest solution that works (YAGNI, stdlib before deps, one line before fifty). Use on any coding task, especially before adding a dependency or abstraction.
+
+A `speckit-*` suite (`specify`, `plan`, `tasks`, `implement`, `analyze`, `checklist`, `clarify`, `constitution`, `converge`, `taskstoissues`) supports spec-driven development against `SPEC.md`.
+
 ## Conventions
 
-Project-specific rules on top of idiomatic Rust (see the `rust-best-practices` skill). These come from code review — follow them so the same notes don't recur:
+### General
+
+- Write for readers of the final code, not for the diff.
+- Prefer simple, direct code over clever or overly compact code.
+- Keep changes scoped to the task. Avoid incidental refactors unless they are necessary to make the change safe or understandable.
+- Prefer minimal diffs that solve the problem clearly.
+- Preserve existing naming, formatting, and architectural patterns unless there is a clear reason to change them.
+- Comments should explain why, constraints, or non-obvious tradeoffs, not restate what the code already says.
+- Do not leave comments that describe the editing process or previous instructions from the conversation.
+- When referring to code, reference stable symbols or files rather than line numbers. Line-number references go stale quickly.
+
+### Project-specific (from code review)
+
+Rules on top of idiomatic Rust (see the `rust-best-practices` skill). These come from code review — follow them so the same notes don't recur:
 
 - **Named status codes, not integer literals.** When building `ServerFnError::ServerError { code, .. }` in `server_fns.rs`, use named constants (e.g. `NOT_FOUND`, `FORBIDDEN`) rather than bare `404`/`403`, so error paths read at a glance.
 - **Avoid `Option<bool>` parameters.** `Some(false)` is ambiguous at the call site. For a two-state flag on a server function, prefer a plainly named `bool` with an obvious default, or a small purpose-named enum.
-- **Comment only what isn't obvious.** Add a comment when the code would not be clear to a senior developer reading it — the *why*, a non-obvious constraint, an invariant, a tradeoff, or a workaround (e.g. why a query is split in two, why a value clamps). Don't restate what the code already says or narrate the mechanics; if the code is self-evident, leave it uncommented. When the reason is genuinely subtle, a longer note is fine — clarity matters more than brevity.
 - **New modules use the `foo.rs` + `foo/` layout, not `foo/mod.rs`.** A multi-file module lives in `foo.rs` (the module root) beside a `foo/` directory of submodules — as `pages`, `models`, `components`, and `server_fns` already do. `mod.rs` is *not* deprecated (the Rust Reference keeps both forms working), but the Reference encourages the sibling-file form and it keeps the tree free of many identically-named `mod.rs` files. The remaining `auth/mod.rs`, `harvest/mod.rs`, and `plugin/mod.rs` predate this rule; convert them opportunistically, not in unrelated PRs.
+
+## Repository Hygiene
+
+- Write commit messages, branch names, PR titles, PR bodies, and issue comments as a human developer would in any repository.
+- Do not mention AI assistance, model names, model versions, or references that are not appropriate for the repository.
+- Do not use `Co-Authored-By` lines or other attribution that reveals AI involvement.
+- Describe only the user-visible change, bug fix, refactor, or implementation detail relevant to the repository.
+- Good examples:
+  - `Handle missing config file during startup`
+  - `Add validation for empty API responses`
+  - `Simplify cache invalidation logic`
+- Bad examples:
+  - `Generated with an AI assistant`
+  - `Tested with model-x experimental build`
+  - `Sync changes from internal-tooling branch`
+  - `Co-Authored-By: AI Assistant <assistant@example.com>`
