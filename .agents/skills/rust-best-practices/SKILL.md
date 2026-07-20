@@ -91,6 +91,13 @@ impl Connection<Connected> {
 - After adding/changing any query macro or migration, regenerate: `cargo sqlx prepare --workspace`
 - The `.sqlx/` directory must be committed to the repo; Nix builds use `SQLX_OFFLINE=true`
 
+### Module File Layout
+
+- For a multi-file module, prefer `foo.rs` (the module root) beside a `foo/` directory over `foo/mod.rs`
+- Both forms compile; `mod.rs` is **not** deprecated, but the [Rust Reference](https://doc.rust-lang.org/reference/items/modules.html) encourages the sibling-file form ("more consistent, and avoids having many files named `mod.rs`") since Rust 1.30
+- Don't mix the two for one module — `foo.rs` and `foo/mod.rs` together is a hard error
+- Convert legacy `mod.rs` opportunistically; don't churn unrelated modules in a feature PR
+
 ### Documentation
 
 - `//` comments explain *why* (safety, workarounds, design rationale)
