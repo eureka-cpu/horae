@@ -14,15 +14,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@baf7355748bb5651f08b839669d6bb39051b2874
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
         with:
           extra_nix_config: |
             extra-substituters = https://horae.cachix.org
             extra-trusted-public-keys = horae.cachix.org-1:TvN7wUWS/9SEUawZKAOJUC1Qu2F/m3XRPLkU+St6hsg=
       - name: Install and configure Cachix
-        uses: cachix/cachix-action@v17
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
         with:
           name: horae
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
