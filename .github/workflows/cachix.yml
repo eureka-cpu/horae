@@ -1,0 +1,33 @@
+name: Update Cachix Substituter
+on:
+  workflow_call:
+    secrets:
+      CACHIX_AUTH_TOKEN:
+        required: true
+jobs:
+  update-cachix:
+    name: Update Cachix Substituter
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@baf7355748bb5651f08b839669d6bb39051b2874
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
+        with:
+          extra_nix_config: |
+            extra-substituters = https://horae.cachix.org
+            extra-trusted-public-keys = horae.cachix.org-1:TvN7wUWS/9SEUawZKAOJUC1Qu2F/m3XRPLkU+St6hsg=
+      - name: Install and configure Cachix
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
+        with:
+          name: horae
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - name: Build Flake Checks
+        run: nix flake check --keep-going -L
+        continue-on-error: true
+      - name: Build devShell
+        run: nix develop --keep-going -L
