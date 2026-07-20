@@ -4,6 +4,8 @@ on:
     secrets:
       CACHIX_AUTH_TOKEN:
         required: true
+  push:
+    branches: [master]
 jobs:
   update-cachix:
     name: Update Cachix Substituter
