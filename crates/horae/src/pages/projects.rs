@@ -1,8 +1,38 @@
 use dioxus::prelude::*;
+use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::models::Project;
 use crate::route::Route;
 use crate::server_fns;
+use horae_core::types::{BudgetKind, ProjectType};
+
+/// Human label for the project-type pill (the `Display` impl is the snake_case
+/// wire form, which isn't what we want to show).
+fn type_label(t: ProjectType) -> &'static str {
+    match t {
+        ProjectType::TimeAndMaterials => "Time & Materials",
+        ProjectType::FixedFee => "Fixed Fee",
+        ProjectType::NonBillable => "Non-Billable",
+        ProjectType::Retainer => "Retainer",
+    }
+}
+
+/// Budget in the project's own unit. Monetary *spend* isn't resolved yet
+/// (needs FR-024 rate resolution), so this shows the configured budget only.
+fn budget_display(p: &Project) -> String {
+    match p.budget_kind {
+        BudgetKind::Amount => p
+            .budget_amount_cents
+            .map(|c| format!("{} {:.2}", p.currency.trim(), c as f64 / 100.0))
+            .unwrap_or_else(|| "—".to_string()),
+        BudgetKind::Hours => p
+            .budget_minutes
+            .map(|m| format!("{}h", horae_core::duration::format_decimal(m.max(0) as u32)))
+            .unwrap_or_else(|| "—".to_string()),
+        BudgetKind::None => "—".to_string(),
+    }
+}
 
 #[component]
 pub fn ProjectList() -> Element {
@@ -22,10 +52,26 @@ pub fn ProjectList() -> Element {
     let mut budget_kind = use_signal(|| "none".to_string());
     let mut error = use_signal(|| None::<String>);
 
+    // Filters over the loaded list (client-side; the design's status/client
+    // dropdowns and search all narrow the same set).
+    let mut query = use_signal(String::new);
+    let mut status_all = use_signal(|| false);
+    let mut client_filter = use_signal(String::new);
+
     let is_manager = match &*me.read() {
         Some(Ok(user)) => user.is_manager_or_above(),
         _ => false,
     };
+
+    let client_names: HashMap<Uuid, String> = match &*clients_res.read() {
+        Some(Ok(cs)) => cs.iter().map(|c| (c.id, c.name.clone())).collect(),
+        _ => HashMap::new(),
+    };
+    let (active_count, total_count) = match &*projects.read() {
+        Some(Ok(list)) => (list.iter().filter(|p| p.active).count(), list.len()),
+        _ => (0, 0),
+    };
+    let status_val = if status_all() { "all" } else { "active" };
 
     let mut reset_form = move || {
         editing_id.set(None);
@@ -42,19 +88,49 @@ pub fn ProjectList() -> Element {
         div {
             div { class: "page-header",
                 h1 { class: "page-title", "Projects" }
-                div { class: "page-actions",
-                    if is_manager {
-                        button {
-                            class: "btn btn-primary",
-                            onclick: move |_| {
-                                if show_form() {
-                                    reset_form();
-                                } else {
-                                    editing_id.set(None);
-                                    show_form.set(true);
-                                }
-                            },
-                            if show_form() { "Cancel" } else { "Add Project" }
+                div { class: "proj-search ml-auto",
+                    span { class: "proj-search-icon", "⌕" }
+                    input {
+                        class: "proj-search-input",
+                        r#type: "text",
+                        placeholder: "Search by project or client",
+                        value: "{query}",
+                        oninput: move |e| query.set(e.value()),
+                    }
+                }
+                if is_manager {
+                    button {
+                        class: "btn btn-primary",
+                        onclick: move |_| {
+                            if show_form() {
+                                reset_form();
+                            } else {
+                                editing_id.set(None);
+                                show_form.set(true);
+                            }
+                        },
+                        if show_form() { "Cancel" } else { "Add Project" }
+                    }
+                }
+            }
+
+            div { class: "flex items-center gap-4 mb-6",
+                select {
+                    class: "form-input",
+                    value: "{status_val}",
+                    oninput: move |e| status_all.set(e.value() == "all"),
+                    option { value: "active", "Active projects ({active_count})" }
+                    option { value: "all", "All projects ({total_count})" }
+                }
+                div { class: "flex-1" }
+                select {
+                    class: "form-input",
+                    value: "{client_filter}",
+                    oninput: move |e| client_filter.set(e.value()),
+                    option { value: "", "All clients" }
+                    if let Some(Ok(clients)) = &*clients_res.read() {
+                        for c in clients.iter() {
+                            option { value: "{c.id}", "{c.name}" }
                         }
                     }
                 }
@@ -165,78 +241,113 @@ pub fn ProjectList() -> Element {
                 }
             }
 
-            div { class: "card",
-                match &*projects.read() {
-                    Some(Ok(list)) => rsx! {
-                        div { class: "table-container",
-                            table {
-                                thead {
-                                    tr {
-                                        th { "Name" }
-                                        th { "Client" }
-                                        th { "Billing" }
-                                        th { "Status" }
-                                        th { "Actions" }
-                                    }
+            match &*projects.read() {
+                Some(Ok(list)) => {
+                    let q = query().to_lowercase();
+                    let cf = client_filter();
+                    let show_all = status_all();
+                    let mut items: Vec<Project> = list
+                        .iter()
+                        .filter(|p| {
+                            (show_all || p.active) && (cf.is_empty() || p.client_id.to_string() == cf)
+                        })
+                        .filter(|p| {
+                            if q.is_empty() {
+                                return true;
+                            }
+                            let cn = client_names.get(&p.client_id).cloned().unwrap_or_default();
+                            p.name.to_lowercase().contains(&q) || cn.to_lowercase().contains(&q)
+                        })
+                        .cloned()
+                        .collect();
+                    // Group by client, ordered by client name then project name.
+                    items.sort_by(|a, b| {
+                        let an = client_names.get(&a.client_id).cloned().unwrap_or_default();
+                        let bn = client_names.get(&b.client_id).cloned().unwrap_or_default();
+                        an.to_lowercase()
+                            .cmp(&bn.to_lowercase())
+                            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+                    });
+                    let mut groups: Vec<(String, Vec<Project>)> = Vec::new();
+                    for p in items {
+                        let cn = client_names
+                            .get(&p.client_id)
+                            .cloned()
+                            .unwrap_or_else(|| "Unknown client".to_string());
+                        match groups.last_mut() {
+                            Some((n, v)) if *n == cn => v.push(p),
+                            _ => groups.push((cn, vec![p])),
+                        }
+                    }
+                    if groups.is_empty() {
+                        rsx! {
+                            div { class: "proj-card",
+                                div { class: "proj-empty", "No projects match your filters." }
+                            }
+                        }
+                    } else {
+                        rsx! {
+                            div { class: "proj-card",
+                                div { class: "proj-head",
+                                    span { "Project" }
+                                    span { class: "text-right", "Budget" }
+                                    span { "Status" }
+                                    span {}
                                 }
-                                tbody {
-                                    for project in list.iter() {
-                                        {
-                                            let p = project.clone();
-                                            rsx! {
-                                                tr { key: "{p.id}",
-                                                    td { "{p.name}" }
-                                                    td { "{p.client_id}" }
-                                                    td { "{p.project_type}" }
-                                                    td {
-                                                        if p.active {
-                                                            span { class: "badge badge-success", "Active" }
-                                                        } else {
-                                                            span { class: "badge badge-neutral", "Inactive" }
-                                                        }
+                                for (group_name, group) in groups {
+                                    div { class: "proj-group", "{group_name}" }
+                                    for p in group {
+                                        div { class: "proj-row", key: "{p.id}",
+                                            div { class: "proj-name-cell",
+                                                span { class: "proj-name", "{p.name}" }
+                                                span { class: "badge badge-neutral", "{type_label(p.project_type)}" }
+                                            }
+                                            span { class: "font-mono text-right", "{budget_display(&p)}" }
+                                            span {
+                                                if p.active {
+                                                    span { class: "badge badge-success", "Active" }
+                                                } else {
+                                                    span { class: "badge badge-neutral", "Inactive" }
+                                                }
+                                            }
+                                            div { class: "flex items-center justify-end gap-3",
+                                                Link {
+                                                    to: Route::ProjectDetail { id: p.id },
+                                                    class: "btn btn-secondary btn-sm",
+                                                    "View"
+                                                }
+                                                if is_manager {
+                                                    button {
+                                                        class: "btn btn-secondary btn-sm",
+                                                        onclick: {
+                                                            let p = p.clone();
+                                                            move |_| {
+                                                                editing_id.set(Some(p.id));
+                                                                name.set(p.name.clone());
+                                                                project_type.set(p.project_type.to_string());
+                                                                currency.set(p.currency.clone());
+                                                                budget_kind.set(p.budget_kind.to_string());
+                                                                error.set(None);
+                                                                show_form.set(true);
+                                                            }
+                                                        },
+                                                        "Edit"
                                                     }
-                                                    td {
-                                                        Link {
-                                                            to: Route::ProjectDetail { id: p.id },
-                                                            class: "btn btn-secondary btn-sm",
-                                                            "View"
-                                                        }
-                                                        if is_manager {
-                                                            button {
-                                                                class: "btn btn-secondary btn-sm",
-                                                                style: "margin-left: 0.5rem;",
-                                                                onclick: {
-                                                                    let p = p.clone();
-                                                                    move |_| {
-                                                                        editing_id.set(Some(p.id));
-                                                                        name.set(p.name.clone());
-                                                                        project_type.set(p.project_type.to_string());
-                                                                        currency.set(p.currency.clone());
-                                                                        budget_kind.set(p.budget_kind.to_string());
-                                                                        error.set(None);
-                                                                        show_form.set(true);
+                                                    button {
+                                                        class: "btn btn-secondary btn-sm",
+                                                        onclick: {
+                                                            let id = p.id;
+                                                            let next_active = !p.active;
+                                                            move |_| {
+                                                                spawn(async move {
+                                                                    match server_fns::set_project_active(id.to_string(), next_active).await {
+                                                                        Ok(_) => projects.restart(),
+                                                                        Err(e) => error.set(Some(e.to_string())),
                                                                     }
-                                                                },
-                                                                "Edit"
+                                                                });
                                                             }
-                                                            button {
-                                                                class: "btn btn-secondary btn-sm",
-                                                                style: "margin-left: 0.5rem;",
-                                                                onclick: {
-                                                                    let id = p.id;
-                                                                    let next_active = !p.active;
-                                                                    move |_| {
-                                                                        spawn(async move {
-                                                                            match server_fns::set_project_active(id.to_string(), next_active).await {
-                                                                                Ok(_) => projects.restart(),
-                                                                                Err(e) => error.set(Some(e.to_string())),
-                                                                            }
-                                                                        });
-                                                                    }
-                                                                },
-                                                                if p.active { "Deactivate" } else { "Activate" }
-                                                            }
-                                                        }
+                                                        },
+                                                        if p.active { "Deactivate" } else { "Activate" }
                                                     }
                                                 }
                                             }
@@ -245,10 +356,10 @@ pub fn ProjectList() -> Element {
                                 }
                             }
                         }
-                    },
-                    Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
-                    None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
+                    }
                 }
+                Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
+                None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
             }
         }
     }

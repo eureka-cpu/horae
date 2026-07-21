@@ -874,6 +874,52 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-modal-error { font-size: var(--font-size-sm); color: var(--color-danger); }
 .ts-modal-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
 
+/* Projects — client-grouped budget table. Structural only (grid template,
+   grouped banding); colours/spacing come from tokens, layout from utilities. */
+.proj-search {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 300px; padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary); border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+}
+.proj-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+.proj-search-input {
+  flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+  color: var(--color-text); font: inherit; font-size: var(--font-size-sm);
+}
+.proj-search-input::placeholder { color: var(--color-text-muted); }
+
+.proj-card {
+  background: var(--color-bg-secondary); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.proj-head,
+.proj-row {
+  display: grid;
+  grid-template-columns: 1fr 160px 140px 220px;
+  align-items: center; gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+.proj-head {
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-xs); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.proj-group {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-secondary);
+}
+.proj-row { border-bottom: 1px solid var(--color-border-light); }
+.proj-row:last-child { border-bottom: none; }
+.proj-name-cell { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.proj-name { font-weight: 600; color: var(--color-text); }
+.proj-empty {
+  padding: var(--space-6) var(--space-5);
+  color: var(--color-text-secondary); font-size: var(--font-size-sm);
+}
+
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — regenerated automatically by crates/horae/build.rs on build.
    It is loaded alongside this file (see src/app.rs). */
