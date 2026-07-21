@@ -45,8 +45,9 @@ into this codebase.
    Compute what the schema supports; omit or defer the rest and **list the
    deviation in the PR body**. Backend/schema changes are a separate concern from a
    visual PR — keep scope tight; if a surface needs new data, confirm with the user.
-6. **Verify** (see Verification).
-7. **Open one scoped PR.** Human-style title/body, **no AI attribution / no
+6. **Cleanup & framework-consistency review** (see below) — before verifying.
+7. **Verify** (see Verification).
+8. **Open one scoped PR.** Human-style title/body, **no AI attribution / no
    `Co-Authored-By`** (`AGENTS.md` → Repository Hygiene). Stop at "PR opened for
    review"; never self-merge.
 
@@ -71,6 +72,27 @@ optional:
   — which regenerates `horae-utils.css`) rather than hardcoding at the call site.
 - Page-specific structural CSS goes in `horae.css` with a prefixed class family
   (e.g. `ts-*` for timesheet); reuse tokens inside it.
+
+## Cleanup & framework-consistency review
+
+Before verifying, review your own diff against the framework — this is where drift
+and duplicated effort get caught:
+
+- **Delete page CSS that re-expresses utilities.** A new rule that is just
+  `display:flex`/`gap`/`padding`/`margin`/`font-size`/`text-align`/`color` belongs
+  in markup as utility classes (`flex gap-4 p-4 text-sm`), not in `horae.css`. A
+  prefixed class family (`bill-*`) should hold *only* structural CSS the utility
+  layer genuinely can't express (a specific grid template, a pseudo-element).
+- **De-duplicate.** Grep the new classes against existing utilities, tokens, and
+  semantic components (`.btn`, `.card`, `.badge`, `.nav-item`). If a new class
+  duplicates one, use the existing one. Two classes doing the same job → consolidate.
+- **Remove dead weight.** Delete classes/markup left unused by iteration.
+- **Confirm the invariants held.** No inline `style=`, no hardcoded hex, every
+  literal mapped to a token.
+
+Quick sweep: `rg -n 'style="' <changed files>` (should be empty) and
+`rg -n '#[0-9a-fA-F]{3,6}' <changed .rs/.css>` (only expected in token definitions
+in `horae.css`).
 
 ## Verification (before claiming done)
 

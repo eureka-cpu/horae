@@ -64,6 +64,11 @@ with no AI attribution, review-before-merge).
    `src/components/sidebar.rs` / `nav.rs`.
 1. **Implement in a worktree.** Isolated `.worktrees/` workspace; extend the
    component kit when a piece is reused rather than inlining one-offs.
+1. **Cleanup & framework-consistency review.** Review the diff against the utility
+   framework: delete page CSS that merely re-expresses utilities, de-duplicate new
+   classes against existing utilities/tokens/semantic components, remove dead
+   classes, and confirm no inline styles or hardcoded hex survived. This phase is
+   what keeps the utility layer from being quietly reinvented per page.
 1. **Verify before claiming done.** `SQLX_OFFLINE=true cargo clippy -p horae --features server -- -D warnings`, `cargo check -p horae --features web --target wasm32-unknown-unknown`, `nix fmt`. Optionally exercise the surface in
    the component gallery (`src/pages/gallery.rs`).
 1. **Open one scoped PR.** Human-style title/body, no AI attribution or
