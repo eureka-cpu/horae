@@ -39,7 +39,9 @@ pub fn ProjectList() -> Element {
     // Management view: `include_inactive = true` also lists deactivated projects
     // so managers can reactivate them; new-entry pickers pass `false`.
     let mut projects = use_resource(|| async move { server_fns::list_projects(None, true).await });
-    let clients_res = use_resource(|| async move { server_fns::list_clients(false).await });
+    // All clients (including inactive) so a project under a deactivated client
+    // still resolves to its real name; the create form filters to active ones.
+    let clients_res = use_resource(|| async move { server_fns::list_clients(true).await });
     let me = use_resource(|| async move { server_fns::get_me().await });
 
     let mut show_form = use_signal(|| false);
@@ -55,7 +57,8 @@ pub fn ProjectList() -> Element {
     // Filters over the loaded list (client-side; the design's status/client
     // dropdowns and search all narrow the same set).
     let mut query = use_signal(String::new);
-    let mut status_all = use_signal(|| false);
+    // Default to all projects so deactivated ones stay visible for reactivation.
+    let mut status_all = use_signal(|| true);
     let mut client_filter = use_signal(String::new);
 
     let is_manager = match &*me.read() {
@@ -89,11 +92,12 @@ pub fn ProjectList() -> Element {
             div { class: "page-header",
                 h1 { class: "page-title", "Projects" }
                 div { class: "proj-search ml-auto",
-                    span { class: "proj-search-icon", "⌕" }
+                    span { class: "proj-search-icon", aria_hidden: "true", "⌕" }
                     input {
                         class: "proj-search-input",
                         r#type: "text",
                         placeholder: "Search by project or client",
+                        aria_label: "Search by project or client",
                         value: "{query}",
                         oninput: move |e| query.set(e.value()),
                     }
@@ -117,6 +121,7 @@ pub fn ProjectList() -> Element {
             div { class: "flex items-center gap-4 mb-6",
                 select {
                     class: "form-input",
+                    aria_label: "Filter by status",
                     value: "{status_val}",
                     oninput: move |e| status_all.set(e.value() == "all"),
                     option { value: "active", "Active projects ({active_count})" }
@@ -125,6 +130,7 @@ pub fn ProjectList() -> Element {
                 div { class: "flex-1" }
                 select {
                     class: "form-input",
+                    aria_label: "Filter by client",
                     value: "{client_filter}",
                     oninput: move |e| client_filter.set(e.value()),
                     option { value: "", "All clients" }
@@ -156,7 +162,7 @@ pub fn ProjectList() -> Element {
                                     oninput: move |e| client_id.set(e.value()),
                                     option { value: "", "Select a client..." }
                                     if let Some(Ok(clients)) = &*clients_res.read() {
-                                        for c in clients.iter() {
+                                        for c in clients.iter().filter(|c| c.active) {
                                             option { value: "{c.id}", "{c.name}" }
                                         }
                                     }
@@ -295,7 +301,7 @@ pub fn ProjectList() -> Element {
                                     span {}
                                 }
                                 for (group_name, group) in groups {
-                                    div { class: "proj-group", "{group_name}" }
+                                    div { key: "grp-{group_name}", class: "proj-group", "{group_name}" }
                                     for p in group {
                                         div { class: "proj-row", key: "{p.id}",
                                             div { class: "proj-name-cell",
