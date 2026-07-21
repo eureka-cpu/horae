@@ -187,10 +187,16 @@ pub fn ProjectList() -> Element {
                                 id: "proj-type",
                                 value: "{project_type}",
                                 oninput: move |e| project_type.set(e.value()),
-                                option { value: "time_and_materials", "Time & Materials" }
-                                option { value: "fixed_fee", "Fixed Fee" }
-                                option { value: "non_billable", "Non-Billable" }
-                                option { value: "retainer", "Retainer" }
+                                // Value is the enum's snake_case `Display`; label via `type_label`,
+                                // so the pill and this picker share one source of truth.
+                                for t in [
+                                    ProjectType::TimeAndMaterials,
+                                    ProjectType::FixedFee,
+                                    ProjectType::NonBillable,
+                                    ProjectType::Retainer,
+                                ] {
+                                    option { value: "{t}", "{type_label(t)}" }
+                                }
                             }
                         }
                         div { class: "form-group",
