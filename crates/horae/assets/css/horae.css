@@ -15,6 +15,7 @@
   --color-accent: #D99A3C;
   --color-accent-bg: rgba(217, 154, 60, 0.14);
   --color-pine: #1F5C4D;
+  --color-pine-fg: #bfe0d4;   /* light text/icon on deep pine (calendar events) */
 
   /* Warm dark surfaces */
   --color-bg: #100F0C;
@@ -858,7 +859,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   border: none; font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
 }
 .ts-submit-main:disabled { opacity: 0.5; cursor: not-allowed; }
-.ts-submit-caret { padding: 0 var(--space-4); background: #164034; color: #bfe0d4; border: none; border-left: 1px solid #0f3d33; cursor: pointer; font-size: 12px; }
+.ts-submit-caret { padding: 0 var(--space-4); background: #164034; color: var(--color-pine-fg); border: none; border-left: 1px solid #0f3d33; cursor: pointer; font-size: 12px; }
 
 /* Calendar (duration mode): an hour rail + 7 day columns + a week-total column.
    Each entry is a block whose height is proportional to its duration, stacked
@@ -882,7 +883,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-hour { position: relative; height: 48px; }
 .ts-cal-hour-label { position: absolute; top: 50%; transform: translateY(-50%); right: var(--space-2); font-family: var(--font-family-mono); font-size: 11px; color: #5a5446; }
 /* Striped hour bands (47px band + 1px line = 48px). Design-exact darks, not tokens. */
-.ts-cal-col { position: relative; cursor: pointer; border-left: 1px solid var(--color-border-light); background: repeating-linear-gradient(#100f0c 0 47px, #1c1a15 47px 48px); }
+.ts-cal-col { position: relative; cursor: pointer; border-left: 1px solid var(--color-border-light); background: repeating-linear-gradient(var(--color-bg) 0 47px, #1c1a15 47px 48px); }
 .ts-cal-col.today { background: repeating-linear-gradient(#151109 0 47px, #1c150c 47px 48px); }
 .ts-cal-col.weekend { background: repeating-linear-gradient(#0d0c0a 0 47px, #151410 47px 48px); }
 .ts-cal-tail { border-left: 1px solid var(--color-border-light); }
@@ -896,15 +897,13 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-col.today .ts-cal-ev-project { color: var(--color-on-accent); font-weight: 700; }
 .ts-cal-ev-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-ev-dur { flex-shrink: 0; font-family: var(--font-family-mono); }
-.ts-cal-ev-task { font-size: 11px; color: #bfe0d4; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-cal-ev-task { font-size: 11px; color: var(--color-pine-fg); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-col.today .ts-cal-ev-task { color: #4a3208; }
 .ts-cal-ev-client { font-size: 10.5px; color: #8fc4b3; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-col.today .ts-cal-ev-client { color: #6b4a10; }
 
 /* Add–entry modal: opened by the "+" toolbar button or by clicking a calendar
    day. Dark card centred near the top, matching the design's entry dialog. */
-.ts-modal-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding-top: 120px; background: var(--color-scrim); }
-.ts-modal { width: 640px; max-width: 92vw; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8); }
 .ts-modal-title { padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--color-border); text-align: center; font-family: var(--font-family-display); font-size: 18px; font-weight: 600; color: var(--color-text); }
 .ts-modal-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
 .ts-modal-body .form-label { margin-bottom: 0; }
@@ -978,6 +977,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   background: var(--color-bg-secondary); border: 1px solid var(--color-border);
   border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md);
 }
+.modal-lg { width: 640px; max-width: 92vw; }
 .modal-title {
   padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border);
   text-align: center; font-family: var(--font-family-display);
