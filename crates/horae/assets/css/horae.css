@@ -932,6 +932,17 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   min-width: 160px; padding: var(--space-1);
 }
 
+/* Searchable filter-by-client dropdown — box/items from .menu/.menu-item. */
+.proj-clientfilter { position: relative; }
+.proj-clientmenu {
+  position: absolute; right: 0; top: calc(100% + var(--space-1)); z-index: 21;
+  width: 280px; max-height: 360px; overflow-y: auto; padding: var(--space-2);
+}
+.proj-clientmenu-group {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary);
+}
+
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — regenerated automatically by crates/horae/build.rs on build.
    It is loaded alongside this file (see src/app.rs). */

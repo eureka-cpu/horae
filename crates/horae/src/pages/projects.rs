@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::models::Project;
+use crate::models::{Client, Project};
 use crate::route::Route;
 use crate::server_fns;
 use horae_core::types::{BudgetKind, ProjectType};
@@ -62,6 +62,9 @@ pub fn ProjectList() -> Element {
     let mut client_filter = use_signal(String::new);
     // Which row's actions menu is open (at most one at a time).
     let mut open_menu = use_signal(|| None::<Uuid>);
+    // Client-filter dropdown: open state + its own search box.
+    let mut client_menu_open = use_signal(|| false);
+    let mut client_search = use_signal(String::new);
 
     let is_manager = match &*me.read() {
         Some(Ok(user)) => user.is_manager_or_above(),
@@ -77,6 +80,19 @@ pub fn ProjectList() -> Element {
         _ => (0, 0),
     };
     let status_val = if status_all() { "all" } else { "active" };
+    // Label on the client-filter button: the selected client's name, or the default.
+    let client_label = {
+        let cf = client_filter();
+        if cf.is_empty() {
+            "Filter by client".to_string()
+        } else {
+            client_names
+                .iter()
+                .find(|(id, _)| id.to_string() == cf)
+                .map(|(_, n)| n.clone())
+                .unwrap_or_else(|| "Filter by client".to_string())
+        }
+    };
 
     let mut reset_form = move || {
         editing_id.set(None);
@@ -130,15 +146,100 @@ pub fn ProjectList() -> Element {
                     option { value: "all", "All projects ({total_count})" }
                 }
                 div { class: "flex-1" }
-                select {
-                    class: "form-input",
-                    aria_label: "Filter by client",
-                    value: "{client_filter}",
-                    oninput: move |e| client_filter.set(e.value()),
-                    option { value: "", "All clients" }
-                    if let Some(Ok(clients)) = &*clients_res.read() {
-                        for c in clients.iter() {
-                            option { value: "{c.id}", "{c.name}" }
+                div { class: "proj-clientfilter",
+                    button {
+                        class: "btn btn-secondary btn-sm",
+                        "aria-haspopup": "menu",
+                        "aria-expanded": if client_menu_open() { "true" } else { "false" },
+                        onclick: move |_| {
+                            let n = !client_menu_open();
+                            client_menu_open.set(n);
+                        },
+                        "{client_label}"
+                        span { class: "ml-2 text-faint", "▾" }
+                    }
+                    if client_menu_open() {
+                        div {
+                            class: "menu-overlay",
+                            onclick: move |_| client_menu_open.set(false),
+                        }
+                        div { class: "menu proj-clientmenu", role: "menu",
+                            div { class: "mb-2",
+                                input {
+                                    class: "form-input w-full",
+                                    r#type: "text",
+                                    placeholder: "Search…",
+                                    aria_label: "Search clients",
+                                    value: "{client_search}",
+                                    oninput: move |e| client_search.set(e.value()),
+                                }
+                            }
+                            button {
+                                class: "menu-item",
+                                onclick: move |_| {
+                                    client_filter.set(String::new());
+                                    client_search.set(String::new());
+                                    client_menu_open.set(false);
+                                },
+                                "All clients"
+                            }
+                            if let Some(Ok(clients)) = &*clients_res.read() {
+                                {
+                                    let q = client_search().to_lowercase();
+                                    let matches = |c: &&Client| {
+                                        q.is_empty() || c.name.to_lowercase().contains(&q)
+                                    };
+                                    let mut active: Vec<Client> =
+                                        clients.iter().filter(|c| c.active).filter(matches).cloned().collect();
+                                    let mut inactive: Vec<Client> =
+                                        clients.iter().filter(|c| !c.active).filter(matches).cloned().collect();
+                                    let by_name = |a: &Client, b: &Client| {
+                                        a.name.to_lowercase().cmp(&b.name.to_lowercase())
+                                    };
+                                    active.sort_by(by_name);
+                                    inactive.sort_by(by_name);
+                                    rsx! {
+                                        if !active.is_empty() {
+                                            div { class: "proj-clientmenu-group", "Active clients" }
+                                            for c in active {
+                                                {
+                                                    let id = c.id.to_string();
+                                                    rsx! {
+                                                        button {
+                                                            class: "menu-item",
+                                                            onclick: move |_| {
+                                                                client_filter.set(id.clone());
+                                                                client_search.set(String::new());
+                                                                client_menu_open.set(false);
+                                                            },
+                                                            "{c.name}"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if !inactive.is_empty() {
+                                            div { class: "proj-clientmenu-group", "Inactive clients" }
+                                            for c in inactive {
+                                                {
+                                                    let id = c.id.to_string();
+                                                    rsx! {
+                                                        button {
+                                                            class: "menu-item",
+                                                            onclick: move |_| {
+                                                                client_filter.set(id.clone());
+                                                                client_search.set(String::new());
+                                                                client_menu_open.set(false);
+                                                            },
+                                                            "{c.name}"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
