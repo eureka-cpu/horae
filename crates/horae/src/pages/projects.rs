@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::components::combobox::{ComboOption, Combobox};
 use crate::components::menu::{Menu, MenuDivider, MenuItem};
 use crate::models::{Client, Project};
 use crate::route::Route;
@@ -117,9 +118,6 @@ pub fn ProjectList() -> Element {
     // Status scope: "active" | "budgeted" (has a budget) | "archived" (inactive).
     let mut scope = use_signal(|| "active".to_string());
     let mut client_filter = use_signal(String::new);
-    // Client-filter dropdown: open state + its own search box.
-    let mut client_menu_open = use_signal(|| false);
-    let mut client_search = use_signal(String::new);
     // Export modal: open state + chosen scope and format.
     let mut export_open = use_signal(|| false);
     let mut export_scope = use_signal(|| "active".to_string());
@@ -157,18 +155,23 @@ pub fn ProjectList() -> Element {
         "archived" => format!("Archived projects ({archived_count})"),
         _ => format!("Active projects ({active_count})"),
     };
-    // Label on the client-filter button: the selected client's name, or the default.
-    let client_label = {
-        let cf = client_filter();
-        if cf.is_empty() {
-            "Filter by client".to_string()
-        } else {
-            client_names
-                .iter()
-                .find(|(id, _)| id.to_string() == cf)
-                .map(|(_, n)| n.clone())
-                .unwrap_or_else(|| "Filter by client".to_string())
+    // Client options for the filter combobox, grouped Active / Archived.
+    let client_options: Vec<ComboOption> = match &*clients_res.read() {
+        Some(Ok(cs)) => {
+            let mut active: Vec<&Client> = cs.iter().filter(|c| c.active).collect();
+            let mut archived: Vec<&Client> = cs.iter().filter(|c| !c.active).collect();
+            let by_name = |a: &&Client, b: &&Client| a.name.to_lowercase().cmp(&b.name.to_lowercase());
+            active.sort_by(by_name);
+            archived.sort_by(by_name);
+            active
+                .into_iter()
+                .map(|c| ComboOption::grouped(c.id.to_string(), c.name.clone(), "Active clients"))
+                .chain(archived.into_iter().map(|c| {
+                    ComboOption::grouped(c.id.to_string(), c.name.clone(), "Archived clients")
+                }))
+                .collect()
         }
+        _ => Vec::new(),
     };
 
     let mut reset_form = move || {
@@ -237,104 +240,12 @@ pub fn ProjectList() -> Element {
                     }
                 }
                 div { class: "flex-1" }
-                div { class: "proj-clientfilter",
-                    button {
-                        class: "btn btn-secondary btn-sm",
-                        "aria-haspopup": "menu",
-                        "aria-expanded": if client_menu_open() { "true" } else { "false" },
-                        onclick: move |_| {
-                            let n = !client_menu_open();
-                            client_menu_open.set(n);
-                        },
-                        "{client_label}"
-                        span { class: "ml-2 text-faint", "▾" }
-                    }
-                    if client_menu_open() {
-                        div {
-                            class: "menu-overlay",
-                            onclick: move |_| client_menu_open.set(false),
-                        }
-                        div { class: "menu proj-clientmenu", role: "menu",
-                            div { class: "mb-2",
-                                input {
-                                    class: "form-input w-full",
-                                    r#type: "text",
-                                    placeholder: "Search…",
-                                    aria_label: "Search clients",
-                                    value: "{client_search}",
-                                    oninput: move |e| client_search.set(e.value()),
-                                }
-                            }
-                            button {
-                                class: if client_filter().is_empty() { "menu-item selected" } else { "menu-item" },
-                                onclick: move |_| {
-                                    client_filter.set(String::new());
-                                    client_search.set(String::new());
-                                    client_menu_open.set(false);
-                                },
-                                "All clients"
-                            }
-                            if let Some(Ok(clients)) = &*clients_res.read() {
-                                {
-                                    let q = client_search().to_lowercase();
-                                    let matches = |c: &&Client| {
-                                        q.is_empty() || c.name.to_lowercase().contains(&q)
-                                    };
-                                    let mut active: Vec<Client> =
-                                        clients.iter().filter(|c| c.active).filter(matches).cloned().collect();
-                                    let mut inactive: Vec<Client> =
-                                        clients.iter().filter(|c| !c.active).filter(matches).cloned().collect();
-                                    let by_name = |a: &Client, b: &Client| {
-                                        a.name.to_lowercase().cmp(&b.name.to_lowercase())
-                                    };
-                                    active.sort_by(by_name);
-                                    inactive.sort_by(by_name);
-                                    rsx! {
-                                        if !active.is_empty() {
-                                            div { class: "proj-clientmenu-group", "Active clients" }
-                                            for c in active {
-                                                {
-                                                    let id = c.id.to_string();
-                                                    let selected = client_filter() == id;
-                                                        rsx! {
-                                                            button {
-                                                                class: if selected { "menu-item selected" } else { "menu-item" },
-                                                            onclick: move |_| {
-                                                                client_filter.set(id.clone());
-                                                                client_search.set(String::new());
-                                                                client_menu_open.set(false);
-                                                            },
-                                                            "{c.name}"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if !inactive.is_empty() {
-                                            div { class: "proj-clientmenu-group", "Archived clients" }
-                                            for c in inactive {
-                                                {
-                                                    let id = c.id.to_string();
-                                                    let selected = client_filter() == id;
-                                                        rsx! {
-                                                            button {
-                                                                class: if selected { "menu-item selected" } else { "menu-item" },
-                                                            onclick: move |_| {
-                                                                client_filter.set(id.clone());
-                                                                client_search.set(String::new());
-                                                                client_menu_open.set(false);
-                                                            },
-                                                            "{c.name}"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                Combobox {
+                    options: client_options,
+                    value: client_filter(),
+                    placeholder: "Filter by client",
+                    all_label: "All clients",
+                    onselect: move |v| client_filter.set(v),
                 }
             }
 

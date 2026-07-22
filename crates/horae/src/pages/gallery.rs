@@ -6,6 +6,7 @@ use crate::components::button::{Button, IconButton, SplitButton};
 use crate::components::card::{Card, MetricCard};
 use crate::components::controls::{Checkbox, Radio, Segmented, Toggle};
 use crate::components::form::{FormGroup, Input, Select, Textarea};
+use crate::components::combobox::{ComboOption, Combobox};
 use crate::components::menu::{Menu, MenuDivider, MenuItem};
 use crate::components::nav::NavItem;
 use crate::components::table::DataTable;
@@ -19,6 +20,7 @@ pub fn Gallery() -> Element {
     let mut billable = use_signal(|| true);
     let mut agreed = use_signal(|| false);
     let mut plan = use_signal(|| "Manager".to_string());
+    let mut combo = use_signal(String::new);
 
     rsx! {
         div {
@@ -139,6 +141,17 @@ pub fn Gallery() -> Element {
                         MenuItem { onclick: move |_| {}, "Archive" }
                         MenuItem { danger: true, onclick: move |_| {}, "Delete" }
                         MenuItem { disabled: true, "Unavailable" }
+                    }
+                    Combobox {
+                        options: vec![
+                            ComboOption::grouped("1", "Numtide", "Active clients"),
+                            ComboOption::grouped("2", "Accur8 Software", "Active clients"),
+                            ComboOption::grouped("3", "Golem SBB", "Archived clients"),
+                        ],
+                        value: combo(),
+                        placeholder: "Filter by client",
+                        all_label: "All clients",
+                        onselect: move |v| combo.set(v),
                     }
                 }
             }
