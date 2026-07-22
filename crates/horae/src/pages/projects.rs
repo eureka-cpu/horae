@@ -18,19 +18,95 @@ fn type_label(t: ProjectType) -> &'static str {
     }
 }
 
-/// Budget in the project's own unit. Monetary *spend* isn't resolved yet
-/// (needs FR-024 rate resolution), so this shows the configured budget only.
-fn budget_display(p: &Project) -> String {
+/// Money in minor units → "USD 10,000.00" (currency code + thousands-grouped amount).
+fn fmt_cents(cents: i64, currency: &str) -> String {
+    let neg = cents < 0;
+    let abs = cents.unsigned_abs();
+    let whole = (abs / 100).to_string();
+    let len = whole.len();
+    let mut grouped = String::new();
+    for (i, ch) in whole.chars().enumerate() {
+        if i > 0 && (len - i).is_multiple_of(3) {
+            grouped.push(',');
+        }
+        grouped.push(ch);
+    }
+    format!(
+        "{} {}{}.{:02}",
+        currency.trim(),
+        if neg { "-" } else { "" },
+        grouped,
+        abs % 100
+    )
+}
+
+fn hours(minutes: i64) -> String {
+    format!(
+        "{}h",
+        horae_core::duration::format_decimal(minutes.max(0) as u32)
+    )
+}
+
+/// Budget / Spent / Budget-remaining for one row, expressed in the project's own
+/// budget unit (money for amount budgets, hours for hours budgets).
+struct RowSpend {
+    budget: String,
+    recurring: bool,
+    spent: String,
+    remaining: String,
+    /// Consumption for the progress bar, clamped 0..=100 (None = no budget set).
+    pct: Option<u8>,
+    /// "(NN%)" shown next to Budget remaining (None = no budget set).
+    pct_label: Option<String>,
+}
+
+fn row_spend(p: &Project, spent_minutes: i64, spent_cents: i64) -> RowSpend {
+    let cur = p.currency.trim();
+    let recurring = matches!(p.project_type, ProjectType::Retainer);
+    let pct_of = |spent: i64, budget: i64| -> (Option<u8>, Option<String>) {
+        if budget > 0 {
+            let raw = (spent as f64 / budget as f64 * 100.0).round() as i64;
+            (
+                Some(raw.clamp(0, 100) as u8),
+                Some(format!("({}%)", raw.max(0))),
+            )
+        } else {
+            (None, None)
+        }
+    };
     match p.budget_kind {
-        BudgetKind::Amount => p
-            .budget_amount_cents
-            .map(|c| format!("{} {:.2}", p.currency.trim(), c as f64 / 100.0))
-            .unwrap_or_else(|| "—".to_string()),
-        BudgetKind::Hours => p
-            .budget_minutes
-            .map(|m| format!("{}h", horae_core::duration::format_decimal(m.max(0) as u32)))
-            .unwrap_or_else(|| "—".to_string()),
-        BudgetKind::None => "—".to_string(),
+        BudgetKind::Amount => {
+            let budget = p.budget_amount_cents.unwrap_or(0);
+            let (pct, pct_label) = pct_of(spent_cents, budget);
+            RowSpend {
+                budget: fmt_cents(budget, cur),
+                recurring,
+                spent: fmt_cents(spent_cents, cur),
+                remaining: fmt_cents(budget - spent_cents, cur),
+                pct,
+                pct_label,
+            }
+        }
+        BudgetKind::Hours => {
+            let budget = p.budget_minutes.unwrap_or(0);
+            let (pct, pct_label) = pct_of(spent_minutes, budget);
+            RowSpend {
+                budget: hours(budget),
+                recurring,
+                spent: hours(spent_minutes),
+                remaining: hours(budget - spent_minutes),
+                pct,
+                pct_label,
+            }
+        }
+        BudgetKind::None => RowSpend {
+            budget: "—".to_string(),
+            recurring,
+            spent: fmt_cents(spent_cents, cur),
+            remaining: "—".to_string(),
+            pct: None,
+            pct_label: None,
+        },
     }
 }
 
@@ -43,6 +119,7 @@ pub fn ProjectList() -> Element {
     // still resolves to its real name; the create form filters to active ones.
     let clients_res = use_resource(|| async move { server_fns::list_clients(true).await });
     let me = use_resource(|| async move { server_fns::get_me().await });
+    let spend_res = use_resource(|| async move { server_fns::list_project_spend().await });
 
     let mut show_form = use_signal(|| false);
     // `Some(id)` while editing an existing project, `None` while creating.
@@ -73,6 +150,14 @@ pub fn ProjectList() -> Element {
 
     let client_names: HashMap<Uuid, String> = match &*clients_res.read() {
         Some(Ok(cs)) => cs.iter().map(|c| (c.id, c.name.clone())).collect(),
+        _ => HashMap::new(),
+    };
+    // project_id -> (spent_minutes, spent_cents); missing = no tracked time yet.
+    let spend_map: HashMap<Uuid, (i64, i64)> = match &*spend_res.read() {
+        Some(Ok(v)) => v
+            .iter()
+            .map(|s| (s.project_id, (s.spent_minutes, s.spent_cents)))
+            .collect(),
         _ => HashMap::new(),
     };
     let (active_count, total_count) = match &*projects.read() {
@@ -406,23 +491,47 @@ pub fn ProjectList() -> Element {
                                 div { class: "proj-head",
                                     span { "Project" }
                                     span { class: "text-right", "Budget" }
-                                    span { "Status" }
+                                    span { class: "text-right", "⚑ Scheduled" }
+                                    span { class: "text-right", "Delta" }
+                                    span { class: "text-right", "Spent" }
+                                    span { class: "text-right", "Budget remaining" }
                                     span {}
                                 }
                                 for (group_name, group) in groups {
                                     div { key: "grp-{group_name}", class: "proj-group", "{group_name}" }
                                     for p in group {
-                                        div { class: "proj-row", key: "{p.id}",
+                                        {
+                                            let (sm, sc) = spend_map.get(&p.id).copied().unwrap_or((0, 0));
+                                            let rs = row_spend(&p, sm, sc);
+                                            rsx! {
+                                            div { class: "proj-row", key: "{p.id}",
                                             div { class: "flex items-center gap-3 min-w-0",
                                                 span { class: "font-semibold", "{p.name}" }
                                                 span { class: "badge badge-neutral", "{type_label(p.project_type)}" }
-                                            }
-                                            span { class: "font-mono text-right", "{budget_display(&p)}" }
-                                            span {
-                                                if p.active {
-                                                    span { class: "badge badge-success", "Active" }
-                                                } else {
+                                                if !p.active {
                                                     span { class: "badge badge-neutral", "Inactive" }
+                                                }
+                                            }
+                                            div { class: "flex items-center justify-end gap-2 font-mono",
+                                                span { "{rs.budget}" }
+                                                if rs.recurring {
+                                                    span { class: "text-faint", "⟳" }
+                                                }
+                                            }
+                                            span { class: "font-mono text-right text-faint", "–" }
+                                            span { class: "font-mono text-right text-faint", "–" }
+                                            div { class: "flex items-center justify-end gap-3 font-mono",
+                                                span { "{rs.spent}" }
+                                                if let Some(pct) = rs.pct {
+                                                    div { class: "proj-bar",
+                                                        div { class: "proj-bar-fill", style: "width: {pct}%" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "flex items-baseline justify-end gap-2 font-mono",
+                                                span { "{rs.remaining}" }
+                                                if let Some(lbl) = rs.pct_label.clone() {
+                                                    span { class: "text-faint", "{lbl}" }
                                                 }
                                             }
                                             div { class: "flex justify-end",
@@ -497,6 +606,8 @@ pub fn ProjectList() -> Element {
                                                         "View"
                                                     }
                                                 }
+                                            }
+                                            }
                                             }
                                         }
                                     }
