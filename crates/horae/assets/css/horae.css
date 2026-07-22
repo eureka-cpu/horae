@@ -21,6 +21,7 @@
   --color-bg-secondary: #1A1813;
   --color-bg-tertiary: #232019;
   --color-bg-overlay: #2E2A22;
+  --color-scrim: rgba(8, 7, 5, 0.68);   /* dimmed backdrop behind modals */
 
   /* Text — warm neutrals */
   --color-text: #EFEAE0;
@@ -902,7 +903,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 
 /* Add–entry modal: opened by the "+" toolbar button or by clicking a calendar
    day. Dark card centred near the top, matching the design's entry dialog. */
-.ts-modal-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding-top: 120px; background: rgba(8, 7, 5, 0.68); }
+.ts-modal-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding-top: 120px; background: var(--color-scrim); }
 .ts-modal { width: 640px; max-width: 92vw; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8); }
 .ts-modal-title { padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--color-border); text-align: center; font-family: var(--font-family-display); font-size: 18px; font-weight: 600; color: var(--color-text); }
 .ts-modal-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
@@ -968,14 +969,14 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 
 /* Modal + segmented choice buttons (used by the projects Export dialog). */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(8, 7, 5, 0.68);
+  position: fixed; inset: 0; background: var(--color-scrim);
   display: flex; align-items: flex-start; justify-content: center;
   padding-top: 140px; z-index: 60;
 }
 .modal {
   width: 460px; max-width: calc(100vw - 40px);
   background: var(--color-bg-secondary); border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg); overflow: hidden;
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md);
 }
 .modal-title {
   padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border);
