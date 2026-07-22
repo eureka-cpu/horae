@@ -252,6 +252,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 .menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
 .menu-item.danger { color: var(--color-danger); }
+.menu-item.selected { background: var(--color-pine); color: var(--color-on-pine); }
+.menu-item.disabled { color: var(--color-text-muted); cursor: not-allowed; }
+.menu-item.disabled:hover { background: none; }
+.menu-divider { height: 1px; background: var(--color-border); margin: var(--space-1) 0; }
 
 /* Account popover — positioning only; appearance comes from .menu */
 .sidebar-menu {
@@ -937,6 +941,13 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .proj-menu {
   position: absolute; right: 0; top: calc(100% + var(--space-1)); z-index: 21;
   min-width: 160px; padding: var(--space-1);
+}
+
+/* Status scope dropdown (Active / Budgeted / Archived). */
+.proj-scope { position: relative; }
+.proj-scopemenu {
+  position: absolute; left: 0; top: calc(100% + var(--space-1)); z-index: 21;
+  min-width: 220px; padding: var(--space-1);
 }
 
 /* Searchable filter-by-client dropdown — box/items from .menu/.menu-item. */

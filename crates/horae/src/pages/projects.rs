@@ -113,8 +113,9 @@ pub fn ProjectList() -> Element {
     // Filters over the loaded list (client-side; the design's status/client
     // dropdowns and search all narrow the same set).
     let mut query = use_signal(String::new);
-    // Default to all projects so deactivated ones stay visible for reactivation.
-    let mut status_all = use_signal(|| true);
+    // Status scope: "active" | "budgeted" (has a budget) | "archived" (inactive).
+    let mut scope = use_signal(|| "active".to_string());
+    let mut scope_menu_open = use_signal(|| false);
     let mut client_filter = use_signal(String::new);
     // Which row's actions menu is open (at most one at a time).
     let mut open_menu = use_signal(|| None::<Uuid>);
@@ -139,11 +140,21 @@ pub fn ProjectList() -> Element {
             .collect(),
         _ => HashMap::new(),
     };
-    let (active_count, total_count) = match &*projects.read() {
-        Some(Ok(list)) => (list.iter().filter(|p| p.active).count(), list.len()),
-        _ => (0, 0),
+    let (active_count, budgeted_count, archived_count) = match &*projects.read() {
+        Some(Ok(list)) => (
+            list.iter().filter(|p| p.active).count(),
+            list.iter()
+                .filter(|p| p.active && p.budget_kind != BudgetKind::None)
+                .count(),
+            list.iter().filter(|p| !p.active).count(),
+        ),
+        _ => (0, 0, 0),
     };
-    let status_val = if status_all() { "all" } else { "active" };
+    let scope_label = match scope().as_str() {
+        "budgeted" => format!("Budgeted projects ({budgeted_count})"),
+        "archived" => format!("Archived projects ({archived_count})"),
+        _ => format!("Active projects ({active_count})"),
+    };
     // Label on the client-filter button: the selected client's name, or the default.
     let client_label = {
         let cf = client_filter();
@@ -201,13 +212,51 @@ pub fn ProjectList() -> Element {
             }
 
             div { class: "flex items-center gap-4 mb-6",
-                select {
-                    class: "form-input",
-                    aria_label: "Filter by status",
-                    value: "{status_val}",
-                    oninput: move |e| status_all.set(e.value() == "all"),
-                    option { value: "active", "Active projects ({active_count})" }
-                    option { value: "all", "All projects ({total_count})" }
+                div { class: "proj-scope",
+                    button {
+                        class: "btn btn-secondary btn-sm",
+                        aria_label: "Filter by status",
+                        "aria-haspopup": "menu",
+                        "aria-expanded": if scope_menu_open() { "true" } else { "false" },
+                        onclick: move |_| {
+                            let n = !scope_menu_open();
+                            scope_menu_open.set(n);
+                        },
+                        "{scope_label}"
+                        span { class: "ml-2 text-faint", "▾" }
+                    }
+                    if scope_menu_open() {
+                        div {
+                            class: "menu-overlay",
+                            onclick: move |_| scope_menu_open.set(false),
+                        }
+                        div { class: "menu proj-scopemenu", role: "menu",
+                            button {
+                                class: if scope() == "active" { "menu-item selected" } else { "menu-item" },
+                                onclick: move |_| {
+                                    scope.set("active".to_string());
+                                    scope_menu_open.set(false);
+                                },
+                                "Active projects ({active_count})"
+                            }
+                            button {
+                                class: if scope() == "budgeted" { "menu-item selected" } else { "menu-item" },
+                                onclick: move |_| {
+                                    scope.set("budgeted".to_string());
+                                    scope_menu_open.set(false);
+                                },
+                                "Budgeted projects ({budgeted_count})"
+                            }
+                            button {
+                                class: if scope() == "archived" { "menu-item selected" } else { "menu-item" },
+                                onclick: move |_| {
+                                    scope.set("archived".to_string());
+                                    scope_menu_open.set(false);
+                                },
+                                "Archived projects ({archived_count})"
+                            }
+                        }
+                    }
                 }
                 div { class: "flex-1" }
                 div { class: "proj-clientfilter",
@@ -239,7 +288,7 @@ pub fn ProjectList() -> Element {
                                 }
                             }
                             button {
-                                class: "menu-item",
+                                class: if client_filter().is_empty() { "menu-item selected" } else { "menu-item" },
                                 onclick: move |_| {
                                     client_filter.set(String::new());
                                     client_search.set(String::new());
@@ -268,9 +317,10 @@ pub fn ProjectList() -> Element {
                                             for c in active {
                                                 {
                                                     let id = c.id.to_string();
-                                                    rsx! {
-                                                        button {
-                                                            class: "menu-item",
+                                                    let selected = client_filter() == id;
+                                                        rsx! {
+                                                            button {
+                                                                class: if selected { "menu-item selected" } else { "menu-item" },
                                                             onclick: move |_| {
                                                                 client_filter.set(id.clone());
                                                                 client_search.set(String::new());
@@ -287,9 +337,10 @@ pub fn ProjectList() -> Element {
                                             for c in inactive {
                                                 {
                                                     let id = c.id.to_string();
-                                                    rsx! {
-                                                        button {
-                                                            class: "menu-item",
+                                                    let selected = client_filter() == id;
+                                                        rsx! {
+                                                            button {
+                                                                class: if selected { "menu-item selected" } else { "menu-item" },
                                                             onclick: move |_| {
                                                                 client_filter.set(id.clone());
                                                                 client_search.set(String::new());
@@ -424,11 +475,16 @@ pub fn ProjectList() -> Element {
                 Some(Ok(list)) => {
                     let q = query().to_lowercase();
                     let cf = client_filter();
-                    let show_all = status_all();
+                    let sc = scope();
                     let mut items: Vec<Project> = list
                         .iter()
                         .filter(|p| {
-                            (show_all || p.active) && (cf.is_empty() || p.client_id.to_string() == cf)
+                            let scope_ok = match sc.as_str() {
+                                "budgeted" => p.active && p.budget_kind != BudgetKind::None,
+                                "archived" => !p.active,
+                                _ => p.active,
+                            };
+                            scope_ok && (cf.is_empty() || p.client_id.to_string() == cf)
                         })
                         .filter(|p| {
                             if q.is_empty() {
@@ -543,12 +599,6 @@ pub fn ProjectList() -> Element {
                                                                 onclick: move |_| open_menu.set(None),
                                                             }
                                                             div { class: "menu proj-menu", role: "menu",
-                                                                Link {
-                                                                    to: Route::ProjectDetail { id: p.id },
-                                                                    class: "menu-item",
-                                                                    onclick: move |_| open_menu.set(None),
-                                                                    "View"
-                                                                }
                                                                 button {
                                                                     class: "menu-item",
                                                                     onclick: {
@@ -566,6 +616,7 @@ pub fn ProjectList() -> Element {
                                                                     },
                                                                     "Edit"
                                                                 }
+                                                                div { class: "menu-divider" }
                                                                 button {
                                                                     class: "menu-item",
                                                                     onclick: {
@@ -581,7 +632,7 @@ pub fn ProjectList() -> Element {
                                                                             });
                                                                         }
                                                                     },
-                                                                    if p.active { "Deactivate" } else { "Activate" }
+                                                                    if p.active { "Archive" } else { "Unarchive" }
                                                                 }
                                                             }
                                                         }
