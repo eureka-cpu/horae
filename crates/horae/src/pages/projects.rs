@@ -122,6 +122,10 @@ pub fn ProjectList() -> Element {
     // Client-filter dropdown: open state + its own search box.
     let mut client_menu_open = use_signal(|| false);
     let mut client_search = use_signal(String::new);
+    // Export modal: open state + chosen scope and format.
+    let mut export_open = use_signal(|| false);
+    let mut export_scope = use_signal(|| "active".to_string());
+    let mut export_fmt = use_signal(|| "csv".to_string());
 
     let is_manager = match &*me.read() {
         Some(Ok(user)) => user.is_manager_or_above(),
@@ -184,7 +188,12 @@ pub fn ProjectList() -> Element {
         div {
             div { class: "page-header",
                 h1 { class: "page-title", "Projects" }
-                div { class: "proj-search ml-auto",
+                button {
+                    class: "btn btn-secondary btn-sm ml-auto",
+                    onclick: move |_| export_open.set(true),
+                    "Export"
+                }
+                div { class: "proj-search",
                     span { class: "proj-search-icon", aria_hidden: "true", "⌕" }
                     input {
                         class: "proj-search-input",
@@ -656,6 +665,62 @@ pub fn ProjectList() -> Element {
                 }
                 Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
                 None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
+            }
+
+            if export_open() {
+                {
+                    let url = format!(
+                        "/api/projects/export/{}?scope={}",
+                        export_fmt(),
+                        export_scope()
+                    );
+                    rsx! {
+                        div {
+                            class: "modal-overlay",
+                            onclick: move |_| export_open.set(false),
+                            div {
+                                class: "modal",
+                                onclick: move |e| e.stop_propagation(),
+                                div { class: "modal-title", "Export projects" }
+                                div { class: "modal-body",
+                                    div { class: "modal-label", "Which projects?" }
+                                    div { class: "seg-row",
+                                        for (val , lbl) in [("active", "Active"), ("budgeted", "Budgeted"), ("archived", "Archived")] {
+                                            button {
+                                                class: if export_scope() == val { "seg-btn selected" } else { "seg-btn" },
+                                                onclick: move |_| export_scope.set(val.to_string()),
+                                                "{lbl}"
+                                            }
+                                        }
+                                    }
+                                    div { class: "modal-label", "Format" }
+                                    div { class: "seg-row",
+                                        for (val , lbl) in [("csv", "CSV"), ("xlsx", "Excel")] {
+                                            button {
+                                                class: if export_fmt() == val { "seg-btn selected" } else { "seg-btn" },
+                                                onclick: move |_| export_fmt.set(val.to_string()),
+                                                "{lbl}"
+                                            }
+                                        }
+                                    }
+                                    div { class: "modal-actions",
+                                        a {
+                                            class: "btn btn-primary",
+                                            href: "{url}",
+                                            onclick: move |_| export_open.set(false),
+                                            "Export projects"
+                                        }
+                                        button {
+                                            class: "btn btn-secondary",
+                                            onclick: move |_| export_open.set(false),
+                                            "Cancel"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

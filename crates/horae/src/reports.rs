@@ -163,6 +163,170 @@ pub async fn export_xlsx(
     ))
 }
 
+// ── Projects export ───────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct ProjectsExportParams {
+    /// "active" (default) | "budgeted" | "archived".
+    pub scope: Option<String>,
+}
+
+struct ProjectExportRow {
+    client_name: String,
+    code: Option<String>,
+    name: String,
+    project_type: horae_core::types::ProjectType,
+    currency: String,
+    budget_kind: horae_core::types::BudgetKind,
+    budget_amount_cents: Option<i64>,
+    budget_minutes: Option<i64>,
+    active: bool,
+}
+
+fn budget_cell(r: &ProjectExportRow) -> String {
+    use horae_core::types::BudgetKind;
+    match r.budget_kind {
+        BudgetKind::Amount => r
+            .budget_amount_cents
+            .map(|c| horae_core::money::format_cents(c, &r.currency))
+            .unwrap_or_default(),
+        BudgetKind::Hours => r
+            .budget_minutes
+            .map(|m| format!("{}h", horae_core::duration::format_decimal(m.max(0) as u32)))
+            .unwrap_or_default(),
+        BudgetKind::None => String::new(),
+    }
+}
+
+fn type_cell(t: horae_core::types::ProjectType) -> &'static str {
+    use horae_core::types::ProjectType;
+    match t {
+        ProjectType::TimeAndMaterials => "Time & Materials",
+        ProjectType::FixedFee => "Fixed Fee",
+        ProjectType::NonBillable => "Non-Billable",
+        ProjectType::Retainer => "Retainer",
+    }
+}
+
+async fn fetch_projects_export(scope: &str) -> Result<Vec<ProjectExportRow>, sqlx::Error> {
+    let state = crate::state::global_state().await;
+    let rows = sqlx::query_as!(
+        ProjectExportRow,
+        r#"SELECT c.name as client_name, p.code, p.name,
+                  p.project_type as "project_type: horae_core::types::ProjectType",
+                  p.currency,
+                  p.budget_kind as "budget_kind: horae_core::types::BudgetKind",
+                  p.budget_amount_cents, p.budget_minutes, p.active
+           FROM projects p
+           JOIN clients c ON c.id = p.client_id
+           ORDER BY c.name, p.name"#,
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .filter(|r| match scope {
+            "budgeted" => r.active && r.budget_kind != horae_core::types::BudgetKind::None,
+            "archived" => !r.active,
+            _ => r.active,
+        })
+        .collect())
+}
+
+const PROJECT_EXPORT_HEADERS: [&str; 7] = [
+    "Client", "Code", "Project", "Type", "Currency", "Budget", "Status",
+];
+
+pub async fn export_projects_csv(
+    Query(params): Query<ProjectsExportParams>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let scope = params.scope.as_deref().unwrap_or("active");
+    let rows = fetch_projects_export(scope)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut wtr = csv::Writer::from_writer(vec![]);
+    wtr.write_record(PROJECT_EXPORT_HEADERS)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    for r in &rows {
+        wtr.write_record(&[
+            r.client_name.clone(),
+            r.code.clone().unwrap_or_default(),
+            r.name.clone(),
+            type_cell(r.project_type).to_string(),
+            r.currency.trim().to_string(),
+            budget_cell(r),
+            if r.active { "Active" } else { "Archived" }.to_string(),
+        ])
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    let data = wtr
+        .into_inner()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok((
+        [
+            (axum::http::header::CONTENT_TYPE, "text/csv"),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                "attachment; filename=\"projects.csv\"",
+            ),
+        ],
+        data,
+    ))
+}
+
+pub async fn export_projects_xlsx(
+    Query(params): Query<ProjectsExportParams>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let scope = params.scope.as_deref().unwrap_or("active");
+    let rows = fetch_projects_export(scope)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut workbook = rust_xlsxwriter::Workbook::new();
+    let worksheet = workbook.add_worksheet();
+    for (col, h) in PROJECT_EXPORT_HEADERS.iter().enumerate() {
+        worksheet
+            .write_string(0, col as u16, *h)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    for (row, r) in rows.iter().enumerate() {
+        let cells = [
+            r.client_name.clone(),
+            r.code.clone().unwrap_or_default(),
+            r.name.clone(),
+            type_cell(r.project_type).to_string(),
+            r.currency.trim().to_string(),
+            budget_cell(r),
+            if r.active { "Active" } else { "Archived" }.to_string(),
+        ];
+        for (col, v) in cells.iter().enumerate() {
+            worksheet
+                .write_string((row + 1) as u32, col as u16, v)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        }
+    }
+    let data = workbook
+        .save_to_buffer()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok((
+        [
+            (
+                axum::http::header::CONTENT_TYPE,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                "attachment; filename=\"projects.xlsx\"",
+            ),
+        ],
+        data,
+    ))
+}
+
 // ── Invoice export ────────────────────────────────────────────────────────────
 
 async fn fetch_invoice_lines(

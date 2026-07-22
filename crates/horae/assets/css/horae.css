@@ -961,6 +961,36 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary);
 }
 
+/* Modal + segmented choice buttons (used by the projects Export dialog). */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(8, 7, 5, 0.68);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 140px; z-index: 60;
+}
+.modal {
+  width: 460px; max-width: calc(100vw - 40px);
+  background: var(--color-bg-secondary); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.modal-title {
+  padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border);
+  text-align: center; font-family: var(--font-family-display);
+  font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text);
+}
+.modal-body { padding: var(--space-5); }
+.modal-label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-3); }
+.modal-body .modal-label + .seg-row + .modal-label { margin-top: var(--space-5); }
+.modal-actions { display: flex; gap: var(--space-3); margin-top: var(--space-6); }
+.modal-actions .btn { flex: 1; justify-content: center; }
+.seg-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-2); }
+.seg-btn {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg); border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-btn); color: var(--color-text);
+  font: inherit; font-size: var(--font-size-sm); cursor: pointer; text-align: center;
+}
+.seg-btn.selected { background: var(--color-primary-bg); border-color: var(--color-primary); font-weight: 600; }
+
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — regenerated automatically by crates/horae/build.rs on build.
    It is loaded alongside this file (see src/app.rs). */
