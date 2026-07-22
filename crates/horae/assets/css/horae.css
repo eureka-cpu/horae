@@ -903,15 +903,17 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .proj-head,
 .proj-row {
   display: grid;
-  grid-template-columns: 1fr 150px 110px 80px 230px 200px 130px;
-  align-items: center; gap: var(--space-4);
+  grid-template-columns: 1fr 130px 130px 96px 210px 220px 120px;
+  align-items: center; gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
 }
 .proj-bar {
-  width: 72px; height: 7px; border-radius: var(--radius-full);
+  width: 96px; height: 7px; border-radius: var(--radius-full);
   background: var(--color-border-light); overflow: hidden;
 }
 .proj-bar-fill { height: 100%; background: var(--color-primary); }
+.proj-namelink { color: var(--color-text); text-decoration: none; }
+.proj-namelink:hover { color: var(--color-primary); text-decoration: none; }
 .proj-head {
   border-bottom: 1px solid var(--color-border);
   font-size: var(--font-size-xs); letter-spacing: 0.1em; text-transform: uppercase;

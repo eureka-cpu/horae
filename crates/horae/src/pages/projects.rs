@@ -283,7 +283,7 @@ pub fn ProjectList() -> Element {
                                             }
                                         }
                                         if !inactive.is_empty() {
-                                            div { class: "proj-clientmenu-group", "Inactive clients" }
+                                            div { class: "proj-clientmenu-group", "Archived clients" }
                                             for c in inactive {
                                                 {
                                                     let id = c.id.to_string();
@@ -468,7 +468,7 @@ pub fn ProjectList() -> Element {
                         rsx! {
                             div { class: "proj-card",
                                 div { class: "proj-head",
-                                    span { "Project" }
+                                    span { "Client" }
                                     span { class: "text-right", "Budget" }
                                     span { class: "text-right", "⚑ Scheduled" }
                                     span { class: "text-right", "Delta" }
@@ -482,10 +482,18 @@ pub fn ProjectList() -> Element {
                                         {
                                             let (sm, sc) = spend_map.get(&p.id).copied().unwrap_or((0, 0));
                                             let rs = row_spend(&p, sm, sc);
+                                            let pname = match &p.code {
+                                                Some(c) => format!("[{c}] {}", p.name),
+                                                None => p.name.clone(),
+                                            };
                                             rsx! {
                                             div { class: "proj-row", key: "{p.id}",
                                             div { class: "flex items-center gap-3 min-w-0",
-                                                span { class: "font-semibold", "{p.name}" }
+                                                Link {
+                                                    to: Route::ProjectDetail { id: p.id },
+                                                    class: "font-semibold proj-namelink",
+                                                    "{pname}"
+                                                }
                                                 span { class: "badge badge-neutral", "{type_label(p.project_type)}" }
                                                 if !p.active {
                                                     span { class: "badge badge-neutral", "Inactive" }
