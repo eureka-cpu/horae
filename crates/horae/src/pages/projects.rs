@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::components::menu::{Menu, MenuDivider, MenuItem};
 use crate::models::{Client, Project};
 use crate::route::Route;
 use crate::server_fns;
@@ -115,10 +116,7 @@ pub fn ProjectList() -> Element {
     let mut query = use_signal(String::new);
     // Status scope: "active" | "budgeted" (has a budget) | "archived" (inactive).
     let mut scope = use_signal(|| "active".to_string());
-    let mut scope_menu_open = use_signal(|| false);
     let mut client_filter = use_signal(String::new);
-    // Which row's actions menu is open (at most one at a time).
-    let mut open_menu = use_signal(|| None::<Uuid>);
     // Client-filter dropdown: open state + its own search box.
     let mut client_menu_open = use_signal(|| false);
     let mut client_search = use_signal(String::new);
@@ -221,50 +219,21 @@ pub fn ProjectList() -> Element {
             }
 
             div { class: "flex items-center gap-4 mb-6",
-                div { class: "proj-scope",
-                    button {
-                        class: "btn btn-secondary btn-sm",
-                        aria_label: "Filter by status",
-                        "aria-haspopup": "menu",
-                        "aria-expanded": if scope_menu_open() { "true" } else { "false" },
-                        onclick: move |_| {
-                            let n = !scope_menu_open();
-                            scope_menu_open.set(n);
-                        },
-                        "{scope_label}"
-                        span { class: "ml-2 text-faint", "▾" }
+                Menu { label: "{scope_label}",
+                    MenuItem {
+                        selected: scope() == "active",
+                        onclick: move |_| scope.set("active".to_string()),
+                        "Active projects ({active_count})"
                     }
-                    if scope_menu_open() {
-                        div {
-                            class: "menu-overlay",
-                            onclick: move |_| scope_menu_open.set(false),
-                        }
-                        div { class: "menu proj-scopemenu", role: "menu",
-                            button {
-                                class: if scope() == "active" { "menu-item selected" } else { "menu-item" },
-                                onclick: move |_| {
-                                    scope.set("active".to_string());
-                                    scope_menu_open.set(false);
-                                },
-                                "Active projects ({active_count})"
-                            }
-                            button {
-                                class: if scope() == "budgeted" { "menu-item selected" } else { "menu-item" },
-                                onclick: move |_| {
-                                    scope.set("budgeted".to_string());
-                                    scope_menu_open.set(false);
-                                },
-                                "Budgeted projects ({budgeted_count})"
-                            }
-                            button {
-                                class: if scope() == "archived" { "menu-item selected" } else { "menu-item" },
-                                onclick: move |_| {
-                                    scope.set("archived".to_string());
-                                    scope_menu_open.set(false);
-                                },
-                                "Archived projects ({archived_count})"
-                            }
-                        }
+                    MenuItem {
+                        selected: scope() == "budgeted",
+                        onclick: move |_| scope.set("budgeted".to_string()),
+                        "Budgeted projects ({budgeted_count})"
+                    }
+                    MenuItem {
+                        selected: scope() == "archived",
+                        onclick: move |_| scope.set("archived".to_string()),
+                        "Archived projects ({archived_count})"
                     }
                 }
                 div { class: "flex-1" }
@@ -588,62 +557,37 @@ pub fn ProjectList() -> Element {
                                             }
                                             div { class: "flex justify-end",
                                                 if is_manager {
-                                                    div { class: "proj-actions",
-                                                        button {
-                                                            class: "btn btn-secondary btn-sm",
-                                                            "aria-haspopup": "menu",
-                                                            "aria-expanded": if open_menu() == Some(p.id) { "true" } else { "false" },
+                                                    Menu { label: "Actions", align_right: true,
+                                                        MenuItem {
                                                             onclick: {
-                                                                let id = p.id;
+                                                                let p = p.clone();
                                                                 move |_| {
-                                                                    let next = if open_menu() == Some(id) { None } else { Some(id) };
-                                                                    open_menu.set(next);
+                                                                    editing_id.set(Some(p.id));
+                                                                    name.set(p.name.clone());
+                                                                    project_type.set(p.project_type.to_string());
+                                                                    currency.set(p.currency.clone());
+                                                                    budget_kind.set(p.budget_kind.to_string());
+                                                                    error.set(None);
+                                                                    show_form.set(true);
                                                                 }
                                                             },
-                                                            "Actions ▾"
+                                                            "Edit"
                                                         }
-                                                        if open_menu() == Some(p.id) {
-                                                            div {
-                                                                class: "menu-overlay",
-                                                                onclick: move |_| open_menu.set(None),
-                                                            }
-                                                            div { class: "menu proj-menu", role: "menu",
-                                                                button {
-                                                                    class: "menu-item",
-                                                                    onclick: {
-                                                                        let p = p.clone();
-                                                                        move |_| {
-                                                                            editing_id.set(Some(p.id));
-                                                                            name.set(p.name.clone());
-                                                                            project_type.set(p.project_type.to_string());
-                                                                            currency.set(p.currency.clone());
-                                                                            budget_kind.set(p.budget_kind.to_string());
-                                                                            error.set(None);
-                                                                            show_form.set(true);
-                                                                            open_menu.set(None);
+                                                        MenuDivider {}
+                                                        MenuItem {
+                                                            onclick: {
+                                                                let id = p.id;
+                                                                let next_active = !p.active;
+                                                                move |_| {
+                                                                    spawn(async move {
+                                                                        match server_fns::set_project_active(id.to_string(), next_active).await {
+                                                                            Ok(_) => projects.restart(),
+                                                                            Err(e) => error.set(Some(e.to_string())),
                                                                         }
-                                                                    },
-                                                                    "Edit"
+                                                                    });
                                                                 }
-                                                                div { class: "menu-divider" }
-                                                                button {
-                                                                    class: "menu-item",
-                                                                    onclick: {
-                                                                        let id = p.id;
-                                                                        let next_active = !p.active;
-                                                                        move |_| {
-                                                                            open_menu.set(None);
-                                                                            spawn(async move {
-                                                                                match server_fns::set_project_active(id.to_string(), next_active).await {
-                                                                                    Ok(_) => projects.restart(),
-                                                                                    Err(e) => error.set(Some(e.to_string())),
-                                                                                }
-                                                                            });
-                                                                        }
-                                                                    },
-                                                                    if p.active { "Archive" } else { "Unarchive" }
-                                                                }
-                                                            }
+                                                            },
+                                                            if p.active { "Archive" } else { "Unarchive" }
                                                         }
                                                     }
                                                 } else {

@@ -943,20 +943,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   color: var(--color-text-secondary); font-size: var(--font-size-sm);
 }
 
-/* Per-row actions dropdown — positioning only; box/items from .menu/.menu-item. */
-.proj-actions { position: relative; }
-.proj-menu {
-  position: absolute; right: 0; top: calc(100% + var(--space-1)); z-index: 21;
-  min-width: 160px; padding: var(--space-1);
-}
-
-/* Status scope dropdown (Active / Budgeted / Archived). */
-.proj-scope { position: relative; }
-.proj-scopemenu {
-  position: absolute; left: 0; top: calc(100% + var(--space-1)); z-index: 21;
-  min-width: 220px; padding: var(--space-1);
-}
-
 /* Searchable filter-by-client dropdown — box/items from .menu/.menu-item. */
 .proj-clientfilter { position: relative; }
 .proj-clientmenu {
