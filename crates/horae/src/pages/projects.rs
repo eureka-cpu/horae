@@ -312,8 +312,8 @@ pub fn ProjectList() -> Element {
                                     div { key: "grp-{group_name}", class: "proj-group", "{group_name}" }
                                     for p in group {
                                         div { class: "proj-row", key: "{p.id}",
-                                            div { class: "proj-name-cell",
-                                                span { class: "proj-name", "{p.name}" }
+                                            div { class: "flex items-center gap-3 min-w-0",
+                                                span { class: "font-semibold", "{p.name}" }
                                                 span { class: "badge badge-neutral", "{type_label(p.project_type)}" }
                                             }
                                             span { class: "font-mono text-right", "{budget_display(&p)}" }
@@ -342,18 +342,18 @@ pub fn ProjectList() -> Element {
                                                         }
                                                         if open_menu() == Some(p.id) {
                                                             div {
-                                                                class: "proj-menu-overlay",
+                                                                class: "menu-overlay",
                                                                 onclick: move |_| open_menu.set(None),
                                                             }
-                                                            div { class: "proj-menu", role: "menu",
+                                                            div { class: "menu proj-menu", role: "menu",
                                                                 Link {
                                                                     to: Route::ProjectDetail { id: p.id },
-                                                                    class: "proj-menu-item",
+                                                                    class: "menu-item",
                                                                     onclick: move |_| open_menu.set(None),
                                                                     "View"
                                                                 }
                                                                 button {
-                                                                    class: "proj-menu-item",
+                                                                    class: "menu-item",
                                                                     onclick: {
                                                                         let p = p.clone();
                                                                         move |_| {
@@ -370,7 +370,7 @@ pub fn ProjectList() -> Element {
                                                                     "Edit"
                                                                 }
                                                                 button {
-                                                                    class: "proj-menu-item",
+                                                                    class: "menu-item",
                                                                     onclick: {
                                                                         let id = p.id;
                                                                         let next_active = !p.active;

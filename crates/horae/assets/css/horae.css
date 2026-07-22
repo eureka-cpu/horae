@@ -237,11 +237,25 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-user-sub { font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: capitalize; }
 .sidebar-user-caret { color: var(--color-text-muted); font-size: var(--font-size-sm); flex-shrink: 0; }
 
-/* Account popover */
-.sidebar-menu {
-  position: absolute; bottom: calc(100% + var(--space-2)); left: 0; right: 0;
+/* Dropdown menus — shared by the sidebar account popover and row action menus.
+   Positioning stays in each caller's own class; this is box + item appearance. */
+.menu {
   background: var(--color-bg-overlay); border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); z-index: 30;
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md);
+}
+.menu-overlay { position: fixed; inset: 0; z-index: 20; }
+.menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: var(--space-2); border: none; background: none; border-radius: var(--radius-btn);
+  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
+  cursor: pointer; text-decoration: none;
+}
+.menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
+.menu-item.danger { color: var(--color-danger); }
+
+/* Account popover — positioning only; appearance comes from .menu */
+.sidebar-menu {
+  position: absolute; bottom: calc(100% + var(--space-2)); left: 0; right: 0; z-index: 30;
 }
 .sidebar-menu-head {
   display: flex; align-items: center; gap: var(--space-3);
@@ -250,14 +264,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-menu-list, .sidebar-menu-foot { padding: var(--space-2); }
 .sidebar-menu-foot { border-top: 1px solid var(--color-border); }
-.sidebar-menu-item {
-  display: block; width: 100%; text-align: left;
-  padding: var(--space-2); border: none; background: none; border-radius: var(--radius-btn);
-  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
-  cursor: pointer; text-decoration: none;
-}
-.sidebar-menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
-.sidebar-menu-item.danger { color: var(--color-danger); }
 
 /* Collapsed rail (icon strip) */
 .app-shell.collapsed .app-sidebar { width: 68px; padding-left: var(--space-2); padding-right: var(--space-2); }
@@ -914,28 +920,17 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 }
 .proj-row { border-bottom: 1px solid var(--color-border-light); }
 .proj-row:last-child { border-bottom: none; }
-.proj-name-cell { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
-.proj-name { font-weight: 600; color: var(--color-text); }
 .proj-empty {
   padding: var(--space-6) var(--space-5);
   color: var(--color-text-secondary); font-size: var(--font-size-sm);
 }
 
-/* Per-row actions dropdown (same menu treatment as the sidebar account menu). */
+/* Per-row actions dropdown — positioning only; box/items from .menu/.menu-item. */
 .proj-actions { position: relative; }
-.proj-menu-overlay { position: fixed; inset: 0; z-index: 20; }
 .proj-menu {
   position: absolute; right: 0; top: calc(100% + var(--space-1)); z-index: 21;
-  min-width: 160px; display: flex; flex-direction: column; overflow: hidden;
-  background: var(--color-bg-overlay); border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+  min-width: 160px; padding: var(--space-1);
 }
-.proj-menu-item {
-  width: 100%; text-align: left; padding: var(--space-2) var(--space-3);
-  background: transparent; border: none; cursor: pointer;
-  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
-}
-.proj-menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
 
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — regenerated automatically by crates/horae/build.rs on build.

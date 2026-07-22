@@ -95,7 +95,7 @@ fn SidebarUser() -> Element {
     rsx! {
         div { class: "sidebar-userbox",
             if open() {
-                div { class: "sidebar-menu",
+                div { class: "sidebar-menu menu",
                     div { class: "sidebar-menu-head",
                         Avatar { initials: "{marks}" }
                         div { class: "sidebar-user",
@@ -106,12 +106,12 @@ fn SidebarUser() -> Element {
                         }
                     }
                     div { class: "sidebar-menu-list",
-                        Link { to: Route::Settings {}, class: "sidebar-menu-item", onclick: move |_| open.set(false), "My profile" }
-                        Link { to: Route::Settings {}, class: "sidebar-menu-item", onclick: move |_| open.set(false), "Notifications" }
+                        Link { to: Route::Settings {}, class: "menu-item", onclick: move |_| open.set(false), "My profile" }
+                        Link { to: Route::Settings {}, class: "menu-item", onclick: move |_| open.set(false), "Notifications" }
                     }
                     div { class: "sidebar-menu-foot",
                         form { method: "post", action: "/auth/logout",
-                            button { class: "sidebar-menu-item danger", r#type: "submit", "Sign out" }
+                            button { class: "menu-item danger", r#type: "submit", "Sign out" }
                         }
                     }
                 }
