@@ -6,6 +6,7 @@ use crate::components::button::{Button, IconButton, SplitButton};
 use crate::components::card::{Card, MetricCard};
 use crate::components::controls::{Checkbox, Radio, Segmented, Toggle};
 use crate::components::form::{FormGroup, Input, Select, Textarea};
+use crate::components::menu::{Menu, MenuDivider, MenuItem};
 use crate::components::nav::NavItem;
 use crate::components::table::DataTable;
 use crate::components::toast::Toast;
@@ -124,6 +125,21 @@ pub fn Gallery() -> Element {
                     }
                     Radio { selected: true, label: "Solid" }
                     Radio { selected: false, label: "Split" }
+                }
+            }
+
+            // ── Dropdown menu ────────────────────────────────────────────
+            section { class: "gallery-section",
+                h2 { class: "gallery-heading", "Dropdown menu" }
+                div { class: "gallery-row",
+                    Menu { label: "Actions",
+                        MenuItem { onclick: move |_| {}, "Edit" }
+                        MenuItem { selected: true, onclick: move |_| {}, "Pin" }
+                        MenuDivider {}
+                        MenuItem { onclick: move |_| {}, "Archive" }
+                        MenuItem { danger: true, onclick: move |_| {}, "Delete" }
+                        MenuItem { disabled: true, "Unavailable" }
+                    }
                 }
             }
 

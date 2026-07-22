@@ -256,6 +256,13 @@ h1, h2, h3, h4, h5, h6 {
 .menu-item.disabled { color: var(--color-text-muted); cursor: not-allowed; }
 .menu-item.disabled:hover { background: none; }
 .menu-divider { height: 1px; background: var(--color-border); margin: var(--space-1) 0; }
+/* Menu component: trigger anchor + popover positioning. */
+.menu-anchor { position: relative; display: inline-block; }
+.menu-pop {
+  position: absolute; top: calc(100% + var(--space-1)); left: 0; z-index: 21;
+  min-width: 180px; padding: var(--space-1);
+}
+.menu-pop-right { left: auto; right: 0; }
 
 /* Account popover — positioning only; appearance comes from .menu */
 .sidebar-menu {

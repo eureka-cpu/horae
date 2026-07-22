@@ -7,6 +7,7 @@ pub mod form;
 pub mod icons;
 pub mod layout;
 pub mod logo;
+pub mod menu;
 pub mod nav;
 pub mod sidebar;
 pub mod table;
