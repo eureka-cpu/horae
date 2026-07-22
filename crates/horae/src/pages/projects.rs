@@ -60,6 +60,8 @@ pub fn ProjectList() -> Element {
     // Default to all projects so deactivated ones stay visible for reactivation.
     let mut status_all = use_signal(|| true);
     let mut client_filter = use_signal(String::new);
+    // Which row's actions menu is open (at most one at a time).
+    let mut open_menu = use_signal(|| None::<Uuid>);
 
     let is_manager = match &*me.read() {
         Some(Ok(user)) => user.is_manager_or_above(),
@@ -322,44 +324,76 @@ pub fn ProjectList() -> Element {
                                                     span { class: "badge badge-neutral", "Inactive" }
                                                 }
                                             }
-                                            div { class: "flex items-center justify-end gap-3",
-                                                Link {
-                                                    to: Route::ProjectDetail { id: p.id },
-                                                    class: "btn btn-secondary btn-sm",
-                                                    "View"
-                                                }
+                                            div { class: "flex justify-end",
                                                 if is_manager {
-                                                    button {
-                                                        class: "btn btn-secondary btn-sm",
-                                                        onclick: {
-                                                            let p = p.clone();
-                                                            move |_| {
-                                                                editing_id.set(Some(p.id));
-                                                                name.set(p.name.clone());
-                                                                project_type.set(p.project_type.to_string());
-                                                                currency.set(p.currency.clone());
-                                                                budget_kind.set(p.budget_kind.to_string());
-                                                                error.set(None);
-                                                                show_form.set(true);
+                                                    div { class: "proj-actions",
+                                                        button {
+                                                            class: "btn btn-secondary btn-sm",
+                                                            "aria-haspopup": "menu",
+                                                            "aria-expanded": if open_menu() == Some(p.id) { "true" } else { "false" },
+                                                            onclick: {
+                                                                let id = p.id;
+                                                                move |_| {
+                                                                    let next = if open_menu() == Some(id) { None } else { Some(id) };
+                                                                    open_menu.set(next);
+                                                                }
+                                                            },
+                                                            "Actions ▾"
+                                                        }
+                                                        if open_menu() == Some(p.id) {
+                                                            div {
+                                                                class: "proj-menu-overlay",
+                                                                onclick: move |_| open_menu.set(None),
                                                             }
-                                                        },
-                                                        "Edit"
+                                                            div { class: "proj-menu", role: "menu",
+                                                                Link {
+                                                                    to: Route::ProjectDetail { id: p.id },
+                                                                    class: "proj-menu-item",
+                                                                    onclick: move |_| open_menu.set(None),
+                                                                    "View"
+                                                                }
+                                                                button {
+                                                                    class: "proj-menu-item",
+                                                                    onclick: {
+                                                                        let p = p.clone();
+                                                                        move |_| {
+                                                                            editing_id.set(Some(p.id));
+                                                                            name.set(p.name.clone());
+                                                                            project_type.set(p.project_type.to_string());
+                                                                            currency.set(p.currency.clone());
+                                                                            budget_kind.set(p.budget_kind.to_string());
+                                                                            error.set(None);
+                                                                            show_form.set(true);
+                                                                            open_menu.set(None);
+                                                                        }
+                                                                    },
+                                                                    "Edit"
+                                                                }
+                                                                button {
+                                                                    class: "proj-menu-item",
+                                                                    onclick: {
+                                                                        let id = p.id;
+                                                                        let next_active = !p.active;
+                                                                        move |_| {
+                                                                            open_menu.set(None);
+                                                                            spawn(async move {
+                                                                                match server_fns::set_project_active(id.to_string(), next_active).await {
+                                                                                    Ok(_) => projects.restart(),
+                                                                                    Err(e) => error.set(Some(e.to_string())),
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                    },
+                                                                    if p.active { "Deactivate" } else { "Activate" }
+                                                                }
+                                                            }
+                                                        }
                                                     }
-                                                    button {
+                                                } else {
+                                                    Link {
+                                                        to: Route::ProjectDetail { id: p.id },
                                                         class: "btn btn-secondary btn-sm",
-                                                        onclick: {
-                                                            let id = p.id;
-                                                            let next_active = !p.active;
-                                                            move |_| {
-                                                                spawn(async move {
-                                                                    match server_fns::set_project_active(id.to_string(), next_active).await {
-                                                                        Ok(_) => projects.restart(),
-                                                                        Err(e) => error.set(Some(e.to_string())),
-                                                                    }
-                                                                });
-                                                            }
-                                                        },
-                                                        if p.active { "Deactivate" } else { "Activate" }
+                                                        "View"
                                                     }
                                                 }
                                             }
