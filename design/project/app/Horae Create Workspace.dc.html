@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+  button { transition: filter .14s ease, background .14s ease; }
+  button:hover { filter: brightness(1.1); }
+  input.hf { width:100%; padding:12px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; font-family:'Instrument Sans',sans-serif; font-size:15px; color:#EFEAE0; outline:none; }
+  input.hf::placeholder { color:#5a5446; }
+  input.hf:focus { border-color:#4FB79A; box-shadow:0 0 0 3px rgba(79,183,154,.16); }
+</style>
+</helmet>
+
+<div style="min-height:100vh; display:flex; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- LEFT: form -->
+  <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 32px; min-width:0;">
+    <div style="width:100%; max-width:440px;">
+
+      <!-- wordmark -->
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:34px;">
+        <div style="position:relative; width:40px; height:40px; border-radius:10px; background:#1F5C4D; overflow:hidden; flex:0 0 40px;">
+          <div style="position:absolute; left:50%; top:6px; width:1.5px; height:7px; background:#E7C079; transform:translateX(-50%);"></div>
+          <div style="position:absolute; left:50%; bottom:11px; width:20px; height:20px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+          <div style="position:absolute; left:0; right:0; bottom:0; height:12px; background:#164034;"></div>
+          <div style="position:absolute; left:0; right:0; bottom:12px; height:1px; background:#0F3D33;"></div>
+        </div>
+        <div style="display:flex; align-items:baseline;"><span style="font-family:'Newsreader',serif; font-size:28px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span><span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:6px;"></span></div>
+      </div>
+
+      <!-- step indicator -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:22px;">
+        <span style="width:26px; height:6px; border-radius:999px; background:#4FB79A;"></span>
+        <span style="width:26px; height:6px; border-radius:999px; background:#322E26;"></span>
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8f8676; margin-left:6px;">Step 1 of 2</span>
+      </div>
+
+      <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; letter-spacing:-.01em; margin:0 0 8px; color:#F6F2E9;">Create a workspace</h1>
+      <p style="font-size:15px; color:#A29C8D; margin:0 0 30px;">This is where your team tracks time, reviews, and invoices.</p>
+
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <!-- workspace name + logo -->
+        <div>
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Workspace name</div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:46px; height:46px; flex:0 0 46px; border-radius:10px; background:#232019; border:1px dashed #3d382e; display:flex; align-items:center; justify-content:center; color:#5a5446; font-size:18px; cursor:pointer;">＋</div>
+            <input class="hf" placeholder="Fieldstone Studio" />
+          </div>
+          <div style="font-size:12.5px; color:#8f8676; margin-top:7px;">Add a square logo — optional, PNG or SVG.</div>
+        </div>
+
+        <!-- workspace url -->
+        <div>
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Workspace URL</div>
+          <div style="display:flex; align-items:stretch; border:1px solid #3d382e; border-radius:9px; overflow:hidden; background:#100F0C;">
+            <span style="display:flex; align-items:center; padding:0 12px; background:#161510; border-right:1px solid #262219; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#8f8676;">horae.app/</span>
+            <input class="hf" style="border:none; box-shadow:none; font-family:'IBM Plex Mono',monospace;" value="fieldstone" />
+          </div>
+        </div>
+
+        <!-- team size -->
+        <div>
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:9px;">Team size</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button style="padding:9px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:8px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;">Just me</button>
+            <button style="padding:9px 16px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13.5px; cursor:pointer;">2–9</button>
+            <button style="padding:9px 16px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13.5px; cursor:pointer;">10–49</button>
+            <button style="padding:9px 16px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13.5px; cursor:pointer;">50+</button>
+          </div>
+        </div>
+
+        <!-- currency -->
+        <div>
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Default currency</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; font-size:15px; color:#EFEAE0; cursor:pointer;"><span>EUR — Euro (€)</span><span style="color:#8f8676; font-size:12px;">▾</span></div>
+        </div>
+
+        <a href="Horae Invite Team.dc.html" style="display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; padding:13px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6); margin-top:4px;">Continue <span style="opacity:.7;">→</span></a>
+      </div>
+
+      <div style="text-align:center; font-size:14px; color:#A29C8D; margin-top:24px;">Already have a workspace? <a href="Horae Login.dc.html">Sign in</a></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: brand panel -->
+  <div style="flex:0 0 46%; background:#0d1a16; border-left:1px solid #322E26; display:flex; flex-direction:column; justify-content:center; padding:64px; position:relative; overflow:hidden;">
+    <div style="position:absolute; top:-80px; right:-80px; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, rgba(217,154,60,.18), transparent 70%);"></div>
+    <div style="position:relative;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:#4FB79A; margin-bottom:20px;">Set up in a minute</div>
+      <div style="font-family:'Newsreader',serif; font-size:38px; line-height:1.25; color:#F6F2E9; max-width:420px;">A calm home for your team's hours.</div>
+      <div style="display:flex; flex-direction:column; gap:16px; margin-top:32px; max-width:400px;">
+        <div style="display:flex; gap:13px; align-items:flex-start;"><span style="width:22px; height:22px; flex:0 0 22px; border-radius:50%; background:#15291f; color:#5fcaa8; display:flex; align-items:center; justify-content:center; font-size:12px;">✓</span><span style="font-size:14.5px; color:#c7d6cf; line-height:1.5;">Track time by day, week, or calendar.</span></div>
+        <div style="display:flex; gap:13px; align-items:flex-start;"><span style="width:22px; height:22px; flex:0 0 22px; border-radius:50%; background:#15291f; color:#5fcaa8; display:flex; align-items:center; justify-content:center; font-size:12px;">✓</span><span style="font-size:14.5px; color:#c7d6cf; line-height:1.5;">Approve timesheets and report in one place.</span></div>
+        <div style="display:flex; gap:13px; align-items:flex-start;"><span style="width:22px; height:22px; flex:0 0 22px; border-radius:50%; background:#15291f; color:#5fcaa8; display:flex; align-items:center; justify-content:center; font-size:12px;">✓</span><span style="font-size:14.5px; color:#c7d6cf; line-height:1.5;">Turn tracked hours into invoices.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

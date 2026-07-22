@@ -45,6 +45,8 @@
     <a href="#pills" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Status pills</a>
     <a href="#inputs" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Inputs & fields</a>
     <a href="#controls" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Toggles & segments</a>
+    <a href="#selects" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Selects & menus</a>
+    <a href="#text" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Text</a>
     <a href="#nav" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Nav item</a>
     <a href="#chips" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Avatar & chips</a>
     <a href="#cards" style="padding:7px 10px; border-radius:8px; font-size:13.5px; color:#A29C8D; text-decoration:none;">Cards</a>
@@ -109,10 +111,76 @@
     <div id="controls" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
     <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Toggles & segments</h2>
     <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; gap:34px; flex-wrap:wrap; align-items:center;">
-      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Segmented</div><div style="display:inline-flex; background:#100F0C; border:1px solid #322E26; border-radius:9px; padding:3px;"><button style="padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;">Day</button><button style="padding:7px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;">Week</button><button style="padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;">Calendar</button></div></div>
-      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Switch · on / off</div><div style="display:flex; gap:12px;"><span style="width:44px; height:24px; border-radius:999px; background:#1F5C4D; position:relative; display:inline-block;"><span style="position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#EFEAE0;"></span></span><span style="width:44px; height:24px; border-radius:999px; background:#322E26; position:relative; display:inline-block;"><span style="position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#8f8676;"></span></span></div></div>
-      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Checkbox</div><div style="display:flex; gap:12px; align-items:center;"><span style="width:20px; height:20px; border-radius:5px; background:#4FB79A; display:inline-flex; align-items:center; justify-content:center; color:#0d211b; font-size:13px; font-weight:700;">✓</span><span style="width:20px; height:20px; border-radius:5px; border:1.5px solid #5a5446; display:inline-block;"></span></div></div>
-      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Radio</div><div style="display:flex; gap:12px; align-items:center;"><span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #4FB79A; display:inline-flex; align-items:center; justify-content:center;"><span style="width:9px; height:9px; border-radius:50%; background:#4FB79A;"></span></span><span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #5a5446; display:inline-block;"></span></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Segmented</div><div style="display:inline-flex; background:#100F0C; border:1px solid #322E26; border-radius:9px; padding:3px;"><button onClick="{{ pickDay }}" style="{{ segDay }}">Day</button><button onClick="{{ pickWeek }}" style="{{ segWeek }}">Week</button><button onClick="{{ pickCal }}" style="{{ segCal }}">Calendar</button></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Switch · on / off</div><div style="display:flex; gap:12px;"><span onClick="{{ toggleSw1 }}" style="{{ sw1 }}"><span style="{{ sw1k }}"></span></span><span onClick="{{ toggleSw2 }}" style="{{ sw2 }}"><span style="{{ sw2k }}"></span></span></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Checkbox</div><div style="display:flex; gap:12px; align-items:center;"><span onClick="{{ toggleCb1 }}" style="{{ cb1 }}">✓</span><span onClick="{{ toggleCb2 }}" style="{{ cb2 }}">✓</span></div></div>
+      <div><div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Radio</div><div style="display:flex; gap:12px; align-items:center;"><span onClick="{{ pickRadioA }}" style="{{ radioA }}"><sc-if value="{{ radioADot }}" hint-placeholder-val="{{ true }}"><span style="width:9px; height:9px; border-radius:50%; background:#4FB79A;"></span></sc-if></span><span onClick="{{ pickRadioB }}" style="{{ radioB }}"><sc-if value="{{ radioBDot }}" hint-placeholder-val="{{ false }}"><span style="width:9px; height:9px; border-radius:50%; background:#4FB79A;"></span></sc-if></span></div></div>
+    </div>
+
+    <!-- SELECTS -->
+    <div id="selects" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Selects & menus</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Custom dropdowns (never native <code style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#A29C8D;">&lt;select&gt;</code>). Trigger on surface with a caret; the popover is raised stock (#201D17) with a hairline, 8px pad, pine-tinted selected row, muted disabled rows, and a divider before destructive/secondary groups.</p>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start;">
+
+      <!-- trigger + open menu -->
+      <div>
+        <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Trigger · click to open</div>
+        <div style="position:relative;">
+          <button onClick="{{ toggleMenu }}" style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">{{ pick }} <span style="color:#8f8676; font-size:11px;">▾</span></button>
+          <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute; left:0; top:48px; width:210px; background:#201D17; border:1px solid #3d382e; border-radius:11px; box-shadow:0 20px 50px -16px rgba(0,0,0,.75); padding:6px; z-index:10;">
+            <div onClick="{{ chooseAll }}" style="{{ rowAll }}">All clients</div>
+            <div onClick="{{ chooseMer }}" style="{{ rowMer }}">Meridian Health</div>
+            <div onClick="{{ chooseRun }}" style="{{ rowRun }}">Rún Collective</div>
+            <div style="height:1px; background:#322E26; margin:5px 0;"></div>
+            <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Archived (13)</div>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <!-- combobox with search -->
+      <div>
+        <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:12px;">Combobox · searchable</div>
+        <div style="width:260px; background:#201D17; border:1px solid #3d382e; border-radius:12px; box-shadow:0 24px 60px -18px rgba(0,0,0,.75); overflow:hidden;">
+          <div style="padding:12px;"><div style="display:flex; align-items:center; gap:9px; padding:9px 12px; background:#100F0C; border:1px solid #3d382e; border-radius:9px;"><span style="color:#6a6353; font-size:14px;">⌕</span><span style="font-size:14px; color:#5a5446;">Search…</span></div></div>
+          <div style="padding:0 8px 10px;">
+            <div style="padding:9px 12px 5px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#6a6353;">Active clients</div>
+            <div onClick="{{ comboMer }}" style="{{ cbMer }}">Meridian Health — CHF</div>
+            <div onClick="{{ comboTid }}" style="{{ cbTid }}">Tidewell / HarborDesk</div>
+            <div onClick="{{ comboSol }}" style="{{ cbSol }}">Solvind AB — EUR</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXT -->
+    <div id="text" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
+    <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Text</h2>
+    <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Editable single- and multi-line fields, plus the text scale the app uses. Type into the inputs — they update live.</p>
+    <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; flex-direction:column; gap:24px;">
+      <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
+        <div style="width:260px;">
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Text input</div>
+          <input class="hf" value="{{ text }}" onInput="{{ setText }}" placeholder="Type a project name…" />
+          <div style="font-size:12.5px; color:#8f8676; margin-top:7px;">You typed: <span style="color:#EFEAE0;">{{ textEcho }}</span></div>
+        </div>
+        <div style="flex:1; min-width:240px;">
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Textarea</div>
+          <textarea class="hf" rows="3" style="resize:vertical; line-height:1.5;" placeholder="Notes (optional)"></textarea>
+        </div>
+      </div>
+      <div style="border-top:1px solid #262219; padding-top:22px; display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#7C7565; margin-bottom:4px;">Text scale</div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Display / 44</span><span style="font-family:'Newsreader',serif; font-size:44px; color:#F6F2E9; line-height:1.15;">Total due</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Heading / 27</span><span style="font-family:'Newsreader',serif; font-size:27px; color:#F6F2E9;">Line items</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Body / 15</span><span style="font-size:15px; color:#EFEAE0;">Regular body copy in Instrument Sans.</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Muted / 14</span><span style="font-size:14px; color:#A29C8D;">Secondary / helper text.</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Label / 11 caps</span><span style="font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#8f8676;">Billed to</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Numeral / 15</span><span style="font-family:'IBM Plex Mono',monospace; font-size:15px; color:#F6F2E9;">14,919.30</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#6a6353; width:120px;">Link</span><a href="#text" style="font-size:15px;">A text link</a></div>
+      </div>
     </div>
 
     <!-- NAV -->
@@ -121,8 +189,9 @@
     <p style="font-size:14px; color:#8f8676; margin:0 0 22px;">Rail row: dot/icon + label. Active gets a raised surface, hairline, and pine dot; rest are muted.</p>
     <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:22px; display:flex; gap:24px; flex-wrap:wrap;">
       <div style="width:220px; background:#100F0C; border:1px solid #262219; border-radius:11px; padding:12px;">
-        <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26;"><span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span><span style="font-size:14.5px; font-weight:600; color:#F6F2E9;">Timesheet</span></div>
-        <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; color:#A29C8D;"><span style="width:8px; height:8px; border-radius:50%; border:1.5px solid #5a5446;"></span><span style="font-size:14.5px;">Approvals</span></div>
+        <div onClick="{{ pickNavTime }}" style="{{ navTime }}"><span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span><span style="font-size:14.5px; color:#F6F2E9;">Timesheet</span></div>
+        <div onClick="{{ pickNavAppr }}" style="{{ navAppr }}"><span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span><span style="font-size:14.5px; color:#EFEAE0;">Approvals</span></div>
+        <div onClick="{{ pickNavRep }}" style="{{ navRep }}"><span style="width:8px; height:8px; border-radius:50%; background:#4FB79A;"></span><span style="font-size:14.5px; color:#EFEAE0;">Reports</span></div>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <div style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#232019; border:1px solid #322E26; color:#4FB79A; font-size:16px;">◷</div>
@@ -182,8 +251,11 @@
     <div id="toast" style="height:1px; background:#262219; margin:48px 0 32px;"></div>
     <h2 style="font-family:'Newsreader',serif; font-size:27px; font-weight:600; margin:0 0 6px; color:#F6F2E9;">Toast & empty state</h2>
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px;">
-      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; align-items:center; justify-content:center;">
-        <div style="background:#000; border:1px solid #322E26; border-radius:11px; padding:12px 16px; max-width:260px;"><div style="font-size:13.5px; color:#EFEAE0; line-height:1.45;"><strong style="color:#D99A3C;">Nice job!</strong> You've tracked time on 9 Jul 2026.</div></div>
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:30px; display:flex; align-items:center; justify-content:center; gap:14px;">
+        <sc-if value="{{ toast }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#000; border:1px solid #322E26; border-radius:11px; padding:12px 16px; max-width:260px; display:flex; align-items:center; gap:12px;"><div style="font-size:13.5px; color:#EFEAE0; line-height:1.45;"><strong style="color:#D99A3C;">Nice job!</strong> You've tracked time on 9 Jul 2026.</div><span onClick="{{ dismissToast }}" style="color:#8f8676; cursor:pointer; font-size:15px;">×</span></div>
+        </sc-if>
+        <button onClick="{{ showToast }}" style="padding:9px 15px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;">Show toast</button>
       </div>
       <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; padding:22px;">
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:30px 20px; background:#161510; border:1px solid #262219; border-radius:12px; text-align:center;">
@@ -197,5 +269,81 @@
   </div>
 </div>
 </x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { menuOpen: true, pick: 'All clients', combo: 'Meridian Health — CHF',
+    seg: 'week', sw1: true, sw2: false, cb1: true, cb2: false, radio: 'a',
+    enc: 'STARTTLS', encOpen: false, nav: 'Timesheet', toast: true,
+    row1: 'awaiting', row2: 'approved', text: '' };
+  renderVals() {
+    const s = this.state;
+    const segBtn = (on) => on
+      ? 'padding:7px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;'
+      : 'padding:7px 16px; background:transparent; color:#A29C8D; border:none; border-radius:6px; font-family:inherit; font-size:13.5px; cursor:pointer;';
+    const sw = (on) => on
+      ? 'width:44px; height:24px; border-radius:999px; background:#1F5C4D; position:relative; display:inline-block; cursor:pointer;'
+      : 'width:44px; height:24px; border-radius:999px; background:#322E26; position:relative; display:inline-block; cursor:pointer;';
+    const swKnob = (on) => on
+      ? 'position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#EFEAE0;'
+      : 'position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#8f8676;';
+    const cbBox = (on) => on
+      ? 'width:20px; height:20px; border-radius:5px; background:#4FB79A; display:inline-flex; align-items:center; justify-content:center; color:#0d211b; font-size:13px; font-weight:700; cursor:pointer;'
+      : 'width:20px; height:20px; border-radius:5px; border:1.5px solid #5a5446; display:inline-flex; align-items:center; justify-content:center; color:transparent; font-size:13px; cursor:pointer;';
+    const radio = (on) => on
+      ? 'width:20px; height:20px; border-radius:50%; border:1.5px solid #4FB79A; display:inline-flex; align-items:center; justify-content:center; cursor:pointer;'
+      : 'width:20px; height:20px; border-radius:50%; border:1.5px solid #5a5446; display:inline-flex; align-items:center; justify-content:center; cursor:pointer;';
+    const navRow = (on) => on
+      ? 'display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; background:#232019; border:1px solid #322E26; cursor:pointer;'
+      : 'display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:9px; cursor:pointer;';
+    const encRow = (sel) => sel
+      ? 'padding:9px 11px; border-radius:7px; background:#1F5C4D; font-size:13.5px; font-weight:600; color:#F6F2E9; cursor:pointer;'
+      : 'padding:9px 11px; border-radius:7px; font-size:13.5px; color:#EFEAE0; cursor:pointer;';
+    const menuRow = (sel) => sel
+      ? 'padding:9px 11px; border-radius:7px; background:#1F5C4D; font-size:13.5px; font-weight:600; color:#F6F2E9; cursor:pointer; margin-bottom:3px;'
+      : 'padding:9px 11px; border-radius:7px; font-size:13.5px; color:#EFEAE0; cursor:pointer; margin-bottom:3px;';
+    const cbRow = (sel) => sel
+      ? 'padding:9px 12px; border-radius:8px; background:#232019; font-size:14px; color:#F6F2E9; cursor:pointer;'
+      : 'padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;';
+    return {
+      menuOpen: s.menuOpen,
+      pick: s.pick,
+      toggleMenu: () => this.setState(st => ({ menuOpen: !st.menuOpen })),
+      chooseAll: () => this.setState({ pick: 'All clients', menuOpen: false }),
+      chooseMer: () => this.setState({ pick: 'Meridian Health', menuOpen: false }),
+      chooseRun: () => this.setState({ pick: 'Rún Collective', menuOpen: false }),
+      rowAll: menuRow(s.pick === 'All clients'),
+      rowMer: menuRow(s.pick === 'Meridian Health'),
+      rowRun: menuRow(s.pick === 'Rún Collective'),
+      comboMer: () => this.setState({ combo: 'Meridian Health — CHF' }),
+      comboTid: () => this.setState({ combo: 'Tidewell / HarborDesk' }),
+      comboSol: () => this.setState({ combo: 'Solvind AB — EUR' }),
+      cbMer: cbRow(s.combo === 'Meridian Health — CHF'),
+      cbTid: cbRow(s.combo === 'Tidewell / HarborDesk'),
+      cbSol: cbRow(s.combo === 'Solvind AB — EUR'),
+      segDay: segBtn(s.seg === 'day'), segWeek: segBtn(s.seg === 'week'), segCal: segBtn(s.seg === 'calendar'),
+      pickDay: () => this.setState({ seg: 'day' }), pickWeek: () => this.setState({ seg: 'week' }), pickCal: () => this.setState({ seg: 'calendar' }),
+      sw1: sw(s.sw1), sw1k: swKnob(s.sw1), sw2: sw(s.sw2), sw2k: swKnob(s.sw2),
+      toggleSw1: () => this.setState(st => ({ sw1: !st.sw1 })), toggleSw2: () => this.setState(st => ({ sw2: !st.sw2 })),
+      cb1: cbBox(s.cb1), cb2: cbBox(s.cb2),
+      toggleCb1: () => this.setState(st => ({ cb1: !st.cb1 })), toggleCb2: () => this.setState(st => ({ cb2: !st.cb2 })),
+      radioA: radio(s.radio === 'a'), radioADot: s.radio === 'a', radioB: radio(s.radio === 'b'), radioBDot: s.radio === 'b',
+      pickRadioA: () => this.setState({ radio: 'a' }), pickRadioB: () => this.setState({ radio: 'b' }),
+      encLabel: s.enc, encOpen: s.encOpen, toggleEnc: () => this.setState(st => ({ encOpen: !st.encOpen })),
+      encStart: encRow(s.enc === 'STARTTLS'), encSsl: encRow(s.enc === 'SSL · TLS'), encNone: encRow(s.enc === 'None'),
+      pickEncStart: () => this.setState({ enc: 'STARTTLS', encOpen: false }),
+      pickEncSsl: () => this.setState({ enc: 'SSL · TLS', encOpen: false }),
+      pickEncNone: () => this.setState({ enc: 'None', encOpen: false }),
+      navTime: navRow(s.nav === 'Timesheet'), navAppr: navRow(s.nav === 'Approvals'), navRep: navRow(s.nav === 'Reports'),
+      navTimeDot: s.nav === 'Timesheet', navApprDot: s.nav === 'Approvals', navRepDot: s.nav === 'Reports',
+      pickNavTime: () => this.setState({ nav: 'Timesheet' }), pickNavAppr: () => this.setState({ nav: 'Approvals' }), pickNavRep: () => this.setState({ nav: 'Reports' }),
+      toast: s.toast, dismissToast: () => this.setState({ toast: false }), showToast: () => this.setState({ toast: true }),
+      row1Awaiting: s.row1 === 'awaiting', toggleRow1: () => this.setState(st => ({ row1: st.row1 === 'awaiting' ? 'approved' : 'awaiting' })),
+      row2Awaiting: s.row2 === 'awaiting', toggleRow2: () => this.setState(st => ({ row2: st.row2 === 'awaiting' ? 'approved' : 'awaiting' })),
+      text: s.text, setText: (e) => this.setState({ text: e.target.value }),
+      textEcho: s.text || '—',
+    };
+  }
+}
+</script>
 </body>
 </html>
