@@ -4,9 +4,9 @@ use crate::components::avatar::{Avatar, Chip};
 use crate::components::badge::Badge;
 use crate::components::button::{Button, IconButton, SplitButton};
 use crate::components::card::{Card, MetricCard};
+use crate::components::combobox::{ComboOption, Combobox};
 use crate::components::controls::{Checkbox, Radio, Segmented, Toggle};
 use crate::components::form::{FormGroup, Input, Select, Textarea};
-use crate::components::combobox::{ComboOption, Combobox};
 use crate::components::menu::{Menu, MenuDivider, MenuItem};
 use crate::components::nav::NavItem;
 use crate::components::table::DataTable;
@@ -173,10 +173,11 @@ pub fn Gallery() -> Element {
                     Avatar { initials: "LE", size: "sm" }
                     Avatar { initials: "LE" }
                     Avatar { initials: "LE", size: "lg" }
+                    Avatar { initials: "", empty: true }
                     Chip { label: "Lars Ericsson" }
                     Chip { label: "Casey Rivera" }
                     Chip { label: "Time & Materials", plain: true }
-                    Chip { label: "Manager", plain: true }
+                    Chip { label: "Manager", variant: "success" }
                 }
             }
 
@@ -236,6 +237,7 @@ pub fn Gallery() -> Element {
                 div { class: "gallery-row",
                     Toast { message: "Invoice sent to Acme.", variant: "success", icon: "✓" }
                     Toast { message: "Timer still running.", variant: "warning", icon: "⏱" }
+                    Toast { message: "Draft saved.", dismissible: true }
                 }
                 div { class: "empty-state", style: "max-width: 420px",
                     div { class: "empty-state-icon", "🗂" }
