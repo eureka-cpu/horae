@@ -10,17 +10,6 @@ use crate::server_fns;
 use horae_core::money::format_cents;
 use horae_core::types::{BudgetKind, ProjectType};
 
-/// Human label for the project-type pill (the `Display` impl is the snake_case
-/// wire form, which isn't what we want to show).
-fn type_label(t: ProjectType) -> &'static str {
-    match t {
-        ProjectType::TimeAndMaterials => "Time & Materials",
-        ProjectType::FixedFee => "Fixed Fee",
-        ProjectType::NonBillable => "Non-Billable",
-        ProjectType::Retainer => "Retainer",
-    }
-}
-
 fn hours(minutes: i64) -> String {
     format!(
         "{}h",
@@ -160,7 +149,8 @@ pub fn ProjectList() -> Element {
         Some(Ok(cs)) => {
             let mut active: Vec<&Client> = cs.iter().filter(|c| c.active).collect();
             let mut archived: Vec<&Client> = cs.iter().filter(|c| !c.active).collect();
-            let by_name = |a: &&Client, b: &&Client| a.name.to_lowercase().cmp(&b.name.to_lowercase());
+            let by_name =
+                |a: &&Client, b: &&Client| a.name.to_lowercase().cmp(&b.name.to_lowercase());
             active.sort_by(by_name);
             archived.sort_by(by_name);
             active
@@ -294,7 +284,7 @@ pub fn ProjectList() -> Element {
                                 id: "proj-type",
                                 value: "{project_type}",
                                 oninput: move |e| project_type.set(e.value()),
-                                // Value is the enum's snake_case `Display`; label via `type_label`,
+                                // Value is the enum's snake_case `Display`; label via ProjectType::label,
                                 // so the pill and this picker share one source of truth.
                                 for t in [
                                     ProjectType::TimeAndMaterials,
@@ -302,7 +292,7 @@ pub fn ProjectList() -> Element {
                                     ProjectType::NonBillable,
                                     ProjectType::Retainer,
                                 ] {
-                                    option { value: "{t}", "{type_label(t)}" }
+                                    option { value: "{t}", "{t.label()}" }
                                 }
                             }
                         }
@@ -439,7 +429,7 @@ pub fn ProjectList() -> Element {
                                                     class: "font-semibold proj-namelink",
                                                     "{pname}"
                                                 }
-                                                span { class: "badge badge-neutral", "{type_label(p.project_type)}" }
+                                                span { class: "badge badge-neutral", "{p.project_type.label()}" }
                                                 if !p.active {
                                                     span { class: "badge badge-neutral", "Inactive" }
                                                 }

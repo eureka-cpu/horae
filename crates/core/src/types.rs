@@ -25,6 +25,19 @@ pub enum ProjectType {
     Retainer,
 }
 
+impl ProjectType {
+    /// Human-readable label for display (the `Display` impl is the snake_case
+    /// wire form).
+    pub fn label(&self) -> &'static str {
+        match self {
+            ProjectType::TimeAndMaterials => "Time & Materials",
+            ProjectType::FixedFee => "Fixed Fee",
+            ProjectType::NonBillable => "Non-Billable",
+            ProjectType::Retainer => "Retainer",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntryState {

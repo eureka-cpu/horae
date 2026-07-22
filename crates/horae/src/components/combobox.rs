@@ -85,7 +85,7 @@ pub fn Combobox(
             }
             if open() {
                 div { class: "menu-overlay", onclick: move |_| open.set(false) }
-                div { class: "menu combobox-pop", role: "listbox",
+                div { class: "menu menu-pop menu-pop-right combobox-pop", role: "listbox",
                     div { class: "mb-2",
                         input {
                             class: "form-input w-full",

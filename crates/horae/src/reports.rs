@@ -184,28 +184,12 @@ struct ProjectExportRow {
 }
 
 fn budget_cell(r: &ProjectExportRow) -> String {
-    use horae_core::types::BudgetKind;
-    match r.budget_kind {
-        BudgetKind::Amount => r
-            .budget_amount_cents
-            .map(|c| horae_core::money::format_cents(c, &r.currency))
-            .unwrap_or_default(),
-        BudgetKind::Hours => r
-            .budget_minutes
-            .map(|m| format!("{}h", horae_core::duration::format_decimal(m.max(0) as u32)))
-            .unwrap_or_default(),
-        BudgetKind::None => String::new(),
-    }
-}
-
-fn type_cell(t: horae_core::types::ProjectType) -> &'static str {
-    use horae_core::types::ProjectType;
-    match t {
-        ProjectType::TimeAndMaterials => "Time & Materials",
-        ProjectType::FixedFee => "Fixed Fee",
-        ProjectType::NonBillable => "Non-Billable",
-        ProjectType::Retainer => "Retainer",
-    }
+    horae_core::money::format_budget(
+        r.budget_kind,
+        r.budget_amount_cents,
+        r.budget_minutes,
+        &r.currency,
+    )
 }
 
 async fn fetch_projects_export(scope: &str) -> Result<Vec<ProjectExportRow>, sqlx::Error> {
@@ -254,7 +238,7 @@ pub async fn export_projects_csv(
             r.client_name.clone(),
             r.code.clone().unwrap_or_default(),
             r.name.clone(),
-            type_cell(r.project_type).to_string(),
+            r.project_type.label().to_string(),
             r.currency.trim().to_string(),
             budget_cell(r),
             if r.active { "Active" } else { "Archived" }.to_string(),
@@ -297,7 +281,7 @@ pub async fn export_projects_xlsx(
             r.client_name.clone(),
             r.code.clone().unwrap_or_default(),
             r.name.clone(),
-            type_cell(r.project_type).to_string(),
+            r.project_type.label().to_string(),
             r.currency.trim().to_string(),
             budget_cell(r),
             if r.active { "Active" } else { "Archived" }.to_string(),

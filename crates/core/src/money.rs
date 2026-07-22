@@ -60,6 +60,26 @@ pub fn format_cents(cents: i64, currency: &str) -> String {
     )
 }
 
+/// Display a project budget in its own unit: money for an amount budget, hours
+/// for an hours budget, empty for no budget.
+pub fn format_budget(
+    kind: crate::types::BudgetKind,
+    amount_cents: Option<i64>,
+    minutes: Option<i64>,
+    currency: &str,
+) -> String {
+    use crate::types::BudgetKind;
+    match kind {
+        BudgetKind::Amount => amount_cents
+            .map(|c| format_cents(c, currency))
+            .unwrap_or_default(),
+        BudgetKind::Hours => minutes
+            .map(|m| format!("{}h", crate::duration::format_decimal(m.max(0) as u32)))
+            .unwrap_or_default(),
+        BudgetKind::None => String::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

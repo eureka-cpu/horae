@@ -267,11 +267,8 @@ h1, h2, h3, h4, h5, h6 {
   padding: var(--space-2) var(--space-2) var(--space-1);
   font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary);
 }
-/* Combobox popover: wider + scrollable to hold a search box and long lists. */
-.combobox-pop {
-  position: absolute; right: 0; top: calc(100% + var(--space-1)); z-index: 21;
-  width: 280px; max-height: 360px; overflow-y: auto; padding: var(--space-2);
-}
+/* Combobox popover: like .menu-pop but wider + scrollable for the search list. */
+.combobox-pop { width: 280px; max-height: 360px; overflow-y: auto; padding: var(--space-2); }
 
 /* Account popover — positioning only; appearance comes from .menu */
 .sidebar-menu {
