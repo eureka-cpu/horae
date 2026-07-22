@@ -903,12 +903,12 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .proj-head,
 .proj-row {
   display: grid;
-  grid-template-columns: 1fr 140px 120px 90px 200px 190px 130px;
+  grid-template-columns: 1fr 150px 110px 80px 230px 200px 130px;
   align-items: center; gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
 }
 .proj-bar {
-  width: 96px; height: 7px; border-radius: var(--radius-full);
+  width: 72px; height: 7px; border-radius: var(--radius-full);
   background: var(--color-border-light); overflow: hidden;
 }
 .proj-bar-fill { height: 100%; background: var(--color-primary); }

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::{Client, Project};
 use crate::route::Route;
 use crate::server_fns;
+use horae_core::money::format_cents;
 use horae_core::types::{BudgetKind, ProjectType};
 
 /// Human label for the project-type pill (the `Display` impl is the snake_case
@@ -16,28 +17,6 @@ fn type_label(t: ProjectType) -> &'static str {
         ProjectType::NonBillable => "Non-Billable",
         ProjectType::Retainer => "Retainer",
     }
-}
-
-/// Money in minor units → "USD 10,000.00" (currency code + thousands-grouped amount).
-fn fmt_cents(cents: i64, currency: &str) -> String {
-    let neg = cents < 0;
-    let abs = cents.unsigned_abs();
-    let whole = (abs / 100).to_string();
-    let len = whole.len();
-    let mut grouped = String::new();
-    for (i, ch) in whole.chars().enumerate() {
-        if i > 0 && (len - i).is_multiple_of(3) {
-            grouped.push(',');
-        }
-        grouped.push(ch);
-    }
-    format!(
-        "{} {}{}.{:02}",
-        currency.trim(),
-        if neg { "-" } else { "" },
-        grouped,
-        abs % 100
-    )
 }
 
 fn hours(minutes: i64) -> String {
@@ -79,10 +58,10 @@ fn row_spend(p: &Project, spent_minutes: i64, spent_cents: i64) -> RowSpend {
             let budget = p.budget_amount_cents.unwrap_or(0);
             let (pct, pct_label) = pct_of(spent_cents, budget);
             RowSpend {
-                budget: fmt_cents(budget, cur),
+                budget: format_cents(budget, cur),
                 recurring,
-                spent: fmt_cents(spent_cents, cur),
-                remaining: fmt_cents(budget - spent_cents, cur),
+                spent: format_cents(spent_cents, cur),
+                remaining: format_cents(budget - spent_cents, cur),
                 pct,
                 pct_label,
             }
@@ -102,7 +81,7 @@ fn row_spend(p: &Project, spent_minutes: i64, spent_cents: i64) -> RowSpend {
         BudgetKind::None => RowSpend {
             budget: "—".to_string(),
             recurring,
-            spent: fmt_cents(spent_cents, cur),
+            spent: format_cents(spent_cents, cur),
             remaining: "—".to_string(),
             pct: None,
             pct_label: None,
@@ -513,7 +492,7 @@ pub fn ProjectList() -> Element {
                                                 }
                                             }
                                             div { class: "flex items-center justify-end gap-2 font-mono",
-                                                span { "{rs.budget}" }
+                                                span { class: "whitespace-nowrap", "{rs.budget}" }
                                                 if rs.recurring {
                                                     span { class: "text-faint", "⟳" }
                                                 }
@@ -521,7 +500,7 @@ pub fn ProjectList() -> Element {
                                             span { class: "font-mono text-right text-faint", "–" }
                                             span { class: "font-mono text-right text-faint", "–" }
                                             div { class: "flex items-center justify-end gap-3 font-mono",
-                                                span { "{rs.spent}" }
+                                                span { class: "whitespace-nowrap", "{rs.spent}" }
                                                 if let Some(pct) = rs.pct {
                                                     div { class: "proj-bar",
                                                         div { class: "proj-bar-fill", style: "width: {pct}%" }
@@ -529,7 +508,7 @@ pub fn ProjectList() -> Element {
                                                 }
                                             }
                                             div { class: "flex items-baseline justify-end gap-2 font-mono",
-                                                span { "{rs.remaining}" }
+                                                span { class: "whitespace-nowrap", "{rs.remaining}" }
                                                 if let Some(lbl) = rs.pct_label.clone() {
                                                     span { class: "text-faint", "{lbl}" }
                                                 }
