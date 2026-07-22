@@ -63,27 +63,27 @@ pub fn Gallery() -> Element {
             section { class: "gallery-section",
                 h2 { class: "gallery-heading", "Inputs & fields" }
                 div { class: "gallery-row",
-                    div { style: "min-width: 220px",
+                    div { class: "gallery-field",
                         FormGroup { label: "Default", hint: "A short helper line.",
                             Input { placeholder: "casey@example.com" }
                         }
                     }
-                    div { style: "min-width: 220px",
+                    div { class: "gallery-field",
                         FormGroup { label: "Numeric",
                             Input { kind: "number", value: "128" }
                         }
                     }
-                    div { style: "min-width: 220px",
+                    div { class: "gallery-field",
                         FormGroup { label: "Read only",
                             Input { value: "INV-2026-0007", readonly: true }
                         }
                     }
-                    div { style: "min-width: 220px",
+                    div { class: "gallery-field",
                         FormGroup { label: "Disabled",
                             Input { placeholder: "Unavailable", disabled: true }
                         }
                     }
-                    div { style: "min-width: 220px",
+                    div { class: "gallery-field",
                         FormGroup { label: "Dropdown",
                             Select {
                                 selected: plan(),
@@ -97,7 +97,7 @@ pub fn Gallery() -> Element {
                         }
                     }
                 }
-                div { style: "max-width: 460px",
+                div { class: "max-w-md",
                     FormGroup { label: "Notes",
                         Textarea { placeholder: "Kickoff call with Acme…" }
                     }
@@ -159,7 +159,7 @@ pub fn Gallery() -> Element {
             // ── Nav item ─────────────────────────────────────────────────
             section { class: "gallery-section",
                 h2 { class: "gallery-heading", "Nav item" }
-                div { style: "max-width: 240px; display: flex; flex-direction: column; gap: 4px",
+                div { class: "flex flex-col gap-1 gallery-navcol",
                     NavItem { icon: "◷", label: "Timesheet", active: true }
                     NavItem { icon: "▤", label: "Approvals" }
                     NavItem { icon: "◑", label: "Reports" }
@@ -239,7 +239,7 @@ pub fn Gallery() -> Element {
                     Toast { message: "Timer still running.", variant: "warning", icon: "⏱" }
                     Toast { message: "Draft saved.", dismissible: true }
                 }
-                div { class: "empty-state", style: "max-width: 420px",
+                div { class: "empty-state max-w-md",
                     div { class: "empty-state-icon", "🗂" }
                     div { class: "empty-state-title", "No time entries yet" }
                     p { class: "text-muted text-sm", "Start a timer or add an entry to see it here." }

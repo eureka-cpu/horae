@@ -759,6 +759,8 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border);
 }
 .gallery-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+.gallery-field { min-width: 220px; }
+.gallery-navcol { max-width: 240px; }
 
 /* ── Timesheet ─────────────────────────────────────────────────────────────
    The week grid: a project column + 7 day columns + total + a delete column.
