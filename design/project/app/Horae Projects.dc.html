@@ -99,7 +99,7 @@
     <div style="display:flex; align-items:center; gap:16px; padding:26px 40px 0;">
       <h1 style="font-family:'Newsreader',serif; font-size:30px; font-weight:600; color:#F6F2E9; margin:0; letter-spacing:-.01em;">Projects</h1>
       <div style="flex:1;"></div>
-      <button style="padding:10px 18px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Export</button>
+      <button onClick="{{ openExport }}" style="padding:10px 18px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Export</button>
       <div style="display:flex; align-items:center; gap:9px; width:300px; padding:10px 14px; background:#1A1813; border:1px solid #322E26; border-radius:9px;">
         <span style="color:#6a6353; font-size:14px;">⌕</span>
         <span style="font-size:14px; color:#5a5446;">Search by project or client</span>
@@ -107,14 +107,45 @@
     </div>
 
     <div style="display:flex; align-items:center; gap:16px; padding:22px 40px 0;">
-      <button style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Active projects (2) <span style="color:#8f8676; font-size:11px;">▾</span></button>
+            <div style="position:relative;">
+        <button onClick="{{ toggleScope }}" style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">{{ scopeLabel }} <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <sc-if value="{{ scopeOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; left:0; top:48px; width:260px; background:#201D17; border:1px solid #3d382e; border-radius:12px; box-shadow:0 24px 60px -18px rgba(0,0,0,.75); z-index:40; padding:8px;">
+          <div onClick="{{ pickScopeActive }}" style="padding:11px 13px; border-radius:8px; background:#1F5C4D; font-size:14.5px; font-weight:600; color:#F6F2E9; cursor:pointer; margin-bottom:3px;">Active projects (2)</div>
+          <div onClick="{{ pickScopeBudgeted }}" style="padding:11px 13px; border-radius:8px; font-size:14.5px; color:#EFEAE0; cursor:pointer; margin-bottom:3px;">Budgeted projects (2)</div>
+          <div onClick="{{ pickScopeArchived }}" style="padding:11px 13px; border-radius:8px; font-size:14.5px; color:#EFEAE0; cursor:pointer;">Archived projects (13)</div>
+        </div>
+        </sc-if>
+      </div>
       <label style="display:flex; align-items:center; gap:10px; font-size:14px; color:#EFEAE0; cursor:pointer;"><span style="width:18px; height:18px; border-radius:5px; background:#4FB79A; display:inline-flex; align-items:center; justify-content:center; color:#0d211b; font-size:12px; font-weight:700;">✓</span> Show Forecast data</label>
       <div style="flex:1;"></div>
-      <button style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Filter by client <span style="color:#8f8676; font-size:11px;">▾</span></button>
+      <div style="position:relative;">
+        <button onClick="{{ toggleClient }}" style="display:flex; align-items:center; gap:9px; padding:10px 15px; background:#1A1813; border:1px solid #322E26; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14px; cursor:pointer;">Filter by client <span style="color:#8f8676; font-size:11px;">▾</span></button>
+        <sc-if value="{{ clientOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; right:0; top:48px; width:300px; background:#201D17; border:1px solid #3d382e; border-radius:13px; box-shadow:0 24px 60px -18px rgba(0,0,0,.75); z-index:40; overflow:hidden;">
+          <div style="padding:12px;">
+            <div style="display:flex; align-items:center; gap:9px; padding:9px 12px; background:#100F0C; border:1px solid #3d382e; border-radius:9px;"><span style="color:#6a6353; font-size:14px;">⌕</span><span style="font-size:14px; color:#5a5446;">Search…</span></div>
+          </div>
+          <div style="max-height:340px; overflow:auto; padding:0 8px 10px;">
+            <div style="padding:10px 12px; border-radius:8px; background:#1F5C4D; font-size:14px; font-weight:600; color:#F6F2E9; margin-bottom:4px;">All clients</div>
+            <div style="padding:9px 12px 5px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#6a6353;">Active clients</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Meridian Health — CHF</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Rún Collective</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Tidewell / HarborDesk</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer; line-height:1.4;">Casa Vireo / Larkfield / Guild</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Solvind AB — USD</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Solvind AB — EUR</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#EFEAE0; cursor:pointer;">Northmoor — EUR</div>
+            <div style="padding:12px 12px 5px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#6a6353;">Archived clients</div>
+            <div style="padding:9px 12px; border-radius:8px; font-size:14px; color:#A29C8D; cursor:pointer;">Pelham &amp; Roe</div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
     </div>
 
     <div style="padding:22px 40px 40px; flex:1;">
-      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; overflow:hidden;">
+      <div style="background:#1A1813; border:1px solid #322E26; border-radius:16px; position:relative;">
         <!-- header -->
         <div style="display:grid; grid-template-columns:1fr 130px 130px 96px 200px 220px 120px; align-items:center; padding:14px 22px; border-bottom:1px solid #322E26; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#6a6353;">
           <span>Client</span><span style="text-align:right;">Budget</span><span style="text-align:right;">⚑ Scheduled</span><span style="text-align:right;">Delta</span><span style="text-align:right;">Spent</span><span style="text-align:right;">Budget remaining</span><span></span>
@@ -129,7 +160,17 @@
           <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#A29C8D;">118.24</span>
           <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">3,842.60</span><span style="width:96px; height:7px; border-radius:999px; background:#262219; overflow:hidden;"><span style="display:block; width:53%; height:100%; background:#4FB79A;"></span></span></div>
           <div style="display:flex; align-items:baseline; justify-content:flex-end; gap:8px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">3,357.40</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8f8676;">(47%)</span></div>
-          <div style="text-align:right;"><button style="padding:7px 13px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;">Actions ▾</button></div>
+          <div style="text-align:right; position:relative;"><button onClick="{{ toggleActionsA }}" style="padding:7px 13px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;">Actions ▾</button>
+            <sc-if value="{{ actionsA }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute; right:0; top:40px; width:170px; background:#201D17; border:1px solid #3d382e; border-radius:11px; box-shadow:0 20px 50px -16px rgba(0,0,0,.75); z-index:40; padding:6px; text-align:left;">
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Edit</div>
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#EFEAE0; cursor:pointer;">Pin</div>
+              <div style="height:1px; background:#322E26; margin:5px 0;"></div>
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Archive</div>
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Delete</div>
+            </div>
+            </sc-if>
+          </div>
         </div>
 
         <!-- Company group B -->
@@ -141,21 +182,90 @@
           <span style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#5a5446;">–</span>
           <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">€0.00</span><span style="width:96px; height:7px; border-radius:999px; background:#262219; overflow:hidden;"><span style="display:block; width:2%; height:100%; background:#4FB79A;"></span></span></div>
           <div style="display:flex; align-items:baseline; justify-content:flex-end; gap:8px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:#EFEAE0;">€12,000.00</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8f8676;">(100%)</span></div>
-          <div style="text-align:right;"><button style="padding:7px 13px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;">Actions ▾</button></div>
+          <div style="text-align:right; position:relative;"><button onClick="{{ toggleActionsB }}" style="padding:7px 13px; background:#232019; border:1px solid #3d382e; border-radius:8px; color:#EFEAE0; font-family:inherit; font-size:12.5px; cursor:pointer;">Actions ▾</button>
+            <sc-if value="{{ actionsB }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute; right:0; bottom:40px; width:170px; background:#201D17; border:1px solid #3d382e; border-radius:11px; box-shadow:0 20px 50px -16px rgba(0,0,0,.75); z-index:40; padding:6px; text-align:left;">
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Edit</div>
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#EFEAE0; cursor:pointer;">Pin</div>
+              <div style="height:1px; background:#322E26; margin:5px 0;"></div>
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Archive</div>
+              <div style="padding:9px 11px; border-radius:7px; font-size:13.5px; color:#5a5446; cursor:not-allowed;">Delete</div>
+            </div>
+            </sc-if>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- EXPORT MODAL -->
+  <sc-if value="{{ exportOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeExport }}" style="position:fixed; inset:0; background:rgba(8,7,5,.68); display:flex; align-items:flex-start; justify-content:center; padding-top:140px; z-index:60;">
+    <div style="width:560px; max-width:92vw; background:#1A1813; border:1px solid #322E26; border-radius:16px; overflow:hidden; box-shadow:0 40px 90px -30px rgba(0,0,0,.8);">
+      <div style="padding:16px 24px; border-bottom:1px solid #322E26; text-align:center; font-family:'Newsreader',serif; font-size:18px; font-weight:600; color:#F6F2E9;">Export projects</div>
+      <div style="padding:26px 24px 24px;">
+        <div style="font-size:14.5px; font-weight:600; color:#EFEAE0; margin-bottom:12px;">Which projects would you like to export?</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:24px;">
+          <button onClick="{{ setScopeActive }}" style="{{ stActive }}">Active (2)</button>
+          <button onClick="{{ setScopeBudgeted }}" style="{{ stBudgeted }}">Budgeted (2)</button>
+          <button onClick="{{ setScopeArchived }}" style="{{ stArchived }}">Archived (13)</button>
+        </div>
+        <div style="font-size:14.5px; font-weight:600; color:#EFEAE0; margin-bottom:12px;">Choose a format:</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:26px;">
+          <button onClick="{{ setFmtCsv }}" style="{{ stCsv }}">CSV</button>
+          <button onClick="{{ setFmtExcel }}" style="{{ stExcel }}">Excel</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button onClick="{{ closeExport }}" style="padding:12px 22px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Export projects</button>
+          <button onClick="{{ closeExport }}" style="padding:12px 22px; background:#232019; color:#EFEAE0; border:1px solid #3d382e; border-radius:9px; font-family:inherit; font-size:14.5px; cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state = { collapsed: false };
+  state = { collapsed: false, clientOpen: false, exportOpen: false, exportScope: 'active', exportFmt: 'csv', actionsRow: null };
   renderVals() {
+    const s = this.state;
+    const seg = (active) => active
+      ? 'padding:13px 16px; background:#15291f; border:1px solid #4FB79A; border-radius:9px; color:#F6F2E9; font-family:inherit; font-size:14.5px; font-weight:600; cursor:pointer;'
+      : 'padding:13px 16px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14.5px; cursor:pointer;';
     return {
       expanded: !this.state.collapsed,
       collapsed: this.state.collapsed,
       toggleRail: () => this.setState(s => ({ collapsed: !s.collapsed })),
+      clientOpen: this.state.clientOpen,
+      toggleClient: () => this.setState(s => ({ clientOpen: !s.clientOpen })),
+      closeClient: () => this.setState({ clientOpen: false }),
+      exportOpen: this.state.exportOpen,
+      openExport: () => this.setState({ exportOpen: true }),
+      closeExport: () => this.setState({ exportOpen: false }),
+      scope: this.state.exportScope,
+      fmt: this.state.exportFmt,
+      setScopeActive: () => this.setState({ exportScope: 'active' }),
+      setScopeBudgeted: () => this.setState({ exportScope: 'budgeted' }),
+      setScopeArchived: () => this.setState({ exportScope: 'archived' }),
+      setFmtCsv: () => this.setState({ exportFmt: 'csv' }),
+      setFmtExcel: () => this.setState({ exportFmt: 'excel' }),
+      stActive: seg(s.exportScope === 'active'),
+      stBudgeted: seg(s.exportScope === 'budgeted'),
+      stArchived: seg(s.exportScope === 'archived'),
+      stCsv: seg(s.exportFmt === 'csv'),
+      stExcel: seg(s.exportFmt === 'excel'),
+      scopeOpen: s.scopeOpen,
+      scopeLabel: s.scopeLabel || 'Active projects (2)',
+      toggleScope: () => this.setState(st => ({ scopeOpen: !st.scopeOpen })),
+      pickScopeActive: () => this.setState({ scopeLabel: 'Active projects (2)', scopeOpen: false }),
+      pickScopeBudgeted: () => this.setState({ scopeLabel: 'Budgeted projects (2)', scopeOpen: false }),
+      pickScopeArchived: () => this.setState({ scopeLabel: 'Archived projects (13)', scopeOpen: false }),
+      actionsA: s.actionsRow === 'a',
+      actionsB: s.actionsRow === 'b',
+      toggleActionsA: () => this.setState(st => ({ actionsRow: st.actionsRow === 'a' ? null : 'a' })),
+      toggleActionsB: () => this.setState(st => ({ actionsRow: st.actionsRow === 'b' ? null : 'b' })),
     };
   }
 }

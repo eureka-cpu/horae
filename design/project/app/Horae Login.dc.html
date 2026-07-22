@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#100F0C; }
+  * { box-sizing:border-box; }
+  a { color:#4FB79A; text-decoration:none; }
+  a:hover { color:#6ecab0; }
+  button { transition: filter .14s ease, background .14s ease; }
+  button:hover { filter: brightness(1.1); }
+  input.hf { width:100%; padding:12px 14px; background:#100F0C; border:1px solid #3d382e; border-radius:9px; font-family:'Instrument Sans',sans-serif; font-size:15px; color:#EFEAE0; outline:none; }
+  input.hf::placeholder { color:#5a5446; }
+  input.hf:focus { border-color:#4FB79A; box-shadow:0 0 0 3px rgba(79,183,154,.16); }
+</style>
+</helmet>
+
+<div style="min-height:100vh; display:flex; font-family:'Instrument Sans',sans-serif; color:#EFEAE0; background:#100F0C;">
+
+  <!-- LEFT: form -->
+  <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 32px; min-width:0;">
+    <div style="width:100%; max-width:400px;">
+
+      <!-- wordmark -->
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:40px;">
+        <div style="position:relative; width:40px; height:40px; border-radius:10px; background:#1F5C4D; overflow:hidden; flex:0 0 40px;">
+          <div style="position:absolute; left:50%; top:6px; width:1.5px; height:7px; background:#E7C079; transform:translateX(-50%);"></div>
+          <div style="position:absolute; left:50%; bottom:11px; width:20px; height:20px; border-radius:50%; background:#D99A3C; transform:translateX(-50%);"></div>
+          <div style="position:absolute; left:0; right:0; bottom:0; height:12px; background:#164034;"></div>
+          <div style="position:absolute; left:0; right:0; bottom:12px; height:1px; background:#0F3D33;"></div>
+        </div>
+        <div style="display:flex; align-items:baseline;"><span style="font-family:'Newsreader',serif; font-size:28px; font-weight:600; letter-spacing:-.01em; color:#F6F2E9;">Horae</span><span style="width:5px; height:5px; border-radius:50%; background:#D99A3C; margin-left:4px; align-self:flex-end; margin-bottom:6px;"></span></div>
+      </div>
+
+      <h1 style="font-family:'Newsreader',serif; font-size:34px; font-weight:600; letter-spacing:-.01em; margin:0 0 8px; color:#F6F2E9;">Welcome back</h1>
+      <p style="font-size:15px; color:#A29C8D; margin:0 0 32px;">Sign in to your Horae workspace.</p>
+
+      <!-- SSO -->
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:24px;">
+        <button style="display:flex; align-items:center; justify-content:center; gap:11px; width:100%; padding:12px 16px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14.5px; font-weight:500; cursor:pointer;"><span style="font-family:'IBM Plex Mono',monospace; font-weight:600; color:#D99A3C;">G</span> Continue with Google</button>
+        <button style="display:flex; align-items:center; justify-content:center; gap:11px; width:100%; padding:12px 16px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14.5px; font-weight:500; cursor:pointer;"><span style="font-family:'IBM Plex Mono',monospace; font-weight:600; color:#EFEAE0;">⌥</span> Continue with GitHub</button>
+        <button style="display:flex; align-items:center; justify-content:center; gap:11px; width:100%; padding:12px 16px; background:#232019; border:1px solid #3d382e; border-radius:9px; color:#EFEAE0; font-family:inherit; font-size:14.5px; font-weight:500; cursor:pointer;"><span style="font-family:'IBM Plex Mono',monospace; font-weight:600; color:#4FB79A;">◇</span> Continue with SSO / SAML</button>
+      </div>
+
+      <!-- divider -->
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:24px;"><span style="flex:1; height:1px; background:#262219;"></span><span style="font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#6a6353;">or with email</span><span style="flex:1; height:1px; background:#262219;"></span></div>
+
+      <!-- email/password -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676; margin-bottom:7px;">Work email</div>
+          <input class="hf" type="email" placeholder="you@company.com" />
+        </div>
+        <div>
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px;"><span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8f8676;">Password</span><a href="#" style="font-size:12.5px;">Forgot?</a></div>
+          <input class="hf" type="password" placeholder="••••••••" />
+        </div>
+        <a href="Horae Timesheet.dc.html" style="display:block; text-align:center; padding:13px 16px; background:#1F5C4D; color:#F6F2E9; border:none; border-radius:9px; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px -10px rgba(31,92,77,.6);">Sign in</a>
+      </div>
+
+      <div style="text-align:center; font-size:14px; color:#A29C8D; margin-top:26px;">New to Horae? <a href="Horae Create Workspace.dc.html">Create a workspace</a></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: brand panel -->
+  <div style="flex:0 0 46%; background:#0d1a16; border-left:1px solid #322E26; display:flex; flex-direction:column; justify-content:center; padding:64px; position:relative; overflow:hidden;">
+    <div style="position:absolute; top:-80px; right:-80px; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, rgba(217,154,60,.18), transparent 70%);"></div>
+    <div style="position:relative;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:#4FB79A; margin-bottom:20px;">Open-source time tracking</div>
+      <div style="font-family:'Newsreader',serif; font-size:38px; line-height:1.25; color:#F6F2E9; max-width:420px;">Time, turned into paper.</div>
+      <div style="font-family:'Newsreader',serif; font-style:italic; font-size:19px; color:#8faa9f; margin-top:18px; max-width:400px; line-height:1.5;">Track hours, review, and invoice — one calm, editorial workspace for the whole team.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
