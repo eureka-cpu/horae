@@ -171,24 +171,9 @@ h1, h2, h3, h4, h5, h6 {
 /* Horae mark — a self-contained logo tile; its inner geometry and palette are
    intrinsic to the mark, so they stay literals rather than design tokens. */
 .horae-mark {
-  position: relative; width: 28px; height: 28px; flex-shrink: 0;
-  border-radius: var(--radius-btn); background: var(--color-pine); overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: var(--radius-btn);
 }
-.horae-mark .ray {
-  position: absolute; left: 50%; top: 3.5px; width: 2px; height: 6px;
-  border-radius: 2px; background: #E7C079; transform-origin: bottom center;
-}
-.horae-mark .ray-c { transform: translateX(-50%); }
-.horae-mark .ray-l { transform: translateX(-50%) rotate(-34deg); background: #E4B061; }
-.horae-mark .ray-r { transform: translateX(-50%) rotate(34deg); background: #E4B061; }
-.horae-mark .sun {
-  position: absolute; left: 50%; bottom: 7px; width: 13px; height: 13px;
-  border-radius: var(--radius-full); background: var(--color-accent); transform: translateX(-50%);
-  box-shadow: 0 0 8px -1px rgba(217, 154, 60, 0.5);
-}
-.horae-mark .horizon-line { position: absolute; left: 0; right: 0; bottom: 8px; height: 1px; background: #0F3D33; }
-.horae-mark .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: #164034; }
 .sidebar-collapse {
   margin-left: auto; align-self: center; width: 30px; height: 30px; line-height: 1;
   background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-btn);
