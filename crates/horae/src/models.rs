@@ -18,6 +18,15 @@ pub use task::Task;
 pub use time_entry::TimeEntry;
 pub use user::User;
 
+/// Per-project tracked totals: all logged minutes, and the billable amount in
+/// cents (rates resolved via FR-024). Powers the Projects overview's Spent column.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ProjectSpend {
+    pub project_id: uuid::Uuid,
+    pub spent_minutes: i64,
+    pub spent_cents: i64,
+}
+
 // ── Report DTOs ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

@@ -15,12 +15,14 @@
   --color-accent: #D99A3C;
   --color-accent-bg: rgba(217, 154, 60, 0.14);
   --color-pine: #1F5C4D;
+  --color-pine-fg: #bfe0d4;   /* light text/icon on deep pine (calendar events) */
 
   /* Warm dark surfaces */
   --color-bg: #100F0C;
   --color-bg-secondary: #1A1813;
   --color-bg-tertiary: #232019;
   --color-bg-overlay: #2E2A22;
+  --color-scrim: rgba(8, 7, 5, 0.68);   /* dimmed backdrop behind modals */
 
   /* Text — warm neutrals */
   --color-text: #EFEAE0;
@@ -222,11 +224,42 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-user-sub { font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: capitalize; }
 .sidebar-user-caret { color: var(--color-text-muted); font-size: var(--font-size-sm); flex-shrink: 0; }
 
-/* Account popover */
-.sidebar-menu {
-  position: absolute; bottom: calc(100% + var(--space-2)); left: 0; right: 0;
+/* Dropdown menus — shared by the sidebar account popover and row action menus.
+   Positioning stays in each caller's own class; this is box + item appearance. */
+.menu {
   background: var(--color-bg-overlay); border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); z-index: 30;
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md);
+}
+.menu-overlay { position: fixed; inset: 0; z-index: 20; }
+.menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: var(--space-2); border: none; background: none; border-radius: var(--radius-btn);
+  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
+  cursor: pointer; text-decoration: none;
+}
+.menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
+.menu-item.danger { color: var(--color-danger); }
+.menu-item.selected { background: var(--color-pine); color: var(--color-on-pine); }
+.menu-item.disabled { color: var(--color-text-muted); cursor: not-allowed; }
+.menu-item.disabled:hover { background: none; }
+.menu-divider { height: 1px; background: var(--color-border); margin: var(--space-1) 0; }
+/* Menu component: trigger anchor + popover positioning. */
+.menu-anchor { position: relative; display: inline-block; }
+.menu-pop {
+  position: absolute; top: calc(100% + var(--space-1)); left: 0; z-index: 21;
+  min-width: 180px; padding: var(--space-1);
+}
+.menu-pop-right { left: auto; right: 0; }
+.menu-group {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary);
+}
+/* Combobox popover: like .menu-pop but wider + scrollable for the search list. */
+.combobox-pop { width: 280px; max-height: 360px; overflow-y: auto; padding: var(--space-2); }
+
+/* Account popover — positioning only; appearance comes from .menu */
+.sidebar-menu {
+  position: absolute; bottom: calc(100% + var(--space-2)); left: 0; right: 0; z-index: 30;
 }
 .sidebar-menu-head {
   display: flex; align-items: center; gap: var(--space-3);
@@ -235,14 +268,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-menu-list, .sidebar-menu-foot { padding: var(--space-2); }
 .sidebar-menu-foot { border-top: 1px solid var(--color-border); }
-.sidebar-menu-item {
-  display: block; width: 100%; text-align: left;
-  padding: var(--space-2); border: none; background: none; border-radius: var(--radius-btn);
-  font: inherit; font-size: var(--font-size-sm); color: var(--color-text);
-  cursor: pointer; text-decoration: none;
-}
-.sidebar-menu-item:hover { background: var(--color-bg-tertiary); text-decoration: none; }
-.sidebar-menu-item.danger { color: var(--color-danger); }
 
 /* Collapsed rail (icon strip) */
 .app-shell.collapsed .app-sidebar { width: 68px; padding-left: var(--space-2); padding-right: var(--space-2); }
@@ -641,6 +666,10 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-sm { width: 24px; height: 24px; font-size: 0.625rem; }
 .avatar-lg { width: 44px; height: 44px; font-size: var(--font-size-sm); }
+.avatar-empty {
+  background: transparent; border: 1px dashed var(--color-border-input);
+  color: var(--color-text-muted);
+}
 .chip {
   display: inline-flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
@@ -650,6 +679,10 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 }
 .chip .avatar { width: 20px; height: 20px; font-size: 0.5625rem; }
 .chip-plain { padding-left: var(--space-2); color: var(--color-text-secondary); }
+.chip-success { background: var(--color-success-bg); border-color: var(--color-success-line); color: var(--color-success-fg); }
+.chip-warning { background: var(--color-warning-bg); border-color: var(--color-warning-line); color: var(--color-warning-fg); }
+.chip-danger  { background: var(--color-danger-bg);  border-color: var(--color-danger-line);  color: var(--color-danger-fg); }
+.chip-info    { background: var(--color-primary-bg); border-color: var(--color-primary-border); color: var(--color-primary-light); }
 
 /* Toasts */
 .toast-container {
@@ -668,6 +701,12 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .toast.danger { border-left-color: var(--color-danger); }
 .toast.warning { border-left-color: var(--color-warning); }
 .toast.info { border-left-color: var(--color-primary); }
+.toast-msg { flex: 1; }
+.toast-close {
+  background: none; border: none; cursor: pointer; padding: 0 var(--space-1);
+  color: var(--color-text-muted); font-size: 18px; line-height: 1;
+}
+.toast-close:hover { color: var(--color-text); }
 
 /* Nav item — sidebar rail row (design: icon + label; active = raised surface,
    hairline, pine-tinted marker, brighter bold label) */
@@ -707,6 +746,8 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border);
 }
 .gallery-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+.gallery-field { min-width: 220px; }
+.gallery-navcol { max-width: 240px; }
 
 /* ── Timesheet ─────────────────────────────────────────────────────────────
    The week grid: a project column + 7 day columns + total + a delete column.
@@ -803,7 +844,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   border: none; font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
 }
 .ts-submit-main:disabled { opacity: 0.5; cursor: not-allowed; }
-.ts-submit-caret { padding: 0 var(--space-4); background: #164034; color: #bfe0d4; border: none; border-left: 1px solid #0f3d33; cursor: pointer; font-size: 12px; }
+.ts-submit-caret { padding: 0 var(--space-4); background: #164034; color: var(--color-pine-fg); border: none; border-left: 1px solid #0f3d33; cursor: pointer; font-size: 12px; }
 
 /* Calendar (duration mode): an hour rail + 7 day columns + a week-total column.
    Each entry is a block whose height is proportional to its duration, stacked
@@ -827,7 +868,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-hour { position: relative; height: 48px; }
 .ts-cal-hour-label { position: absolute; top: 50%; transform: translateY(-50%); right: var(--space-2); font-family: var(--font-family-mono); font-size: 11px; color: #5a5446; }
 /* Striped hour bands (47px band + 1px line = 48px). Design-exact darks, not tokens. */
-.ts-cal-col { position: relative; cursor: pointer; border-left: 1px solid var(--color-border-light); background: repeating-linear-gradient(#100f0c 0 47px, #1c1a15 47px 48px); }
+.ts-cal-col { position: relative; cursor: pointer; border-left: 1px solid var(--color-border-light); background: repeating-linear-gradient(var(--color-bg) 0 47px, #1c1a15 47px 48px); }
 .ts-cal-col.today { background: repeating-linear-gradient(#151109 0 47px, #1c150c 47px 48px); }
 .ts-cal-col.weekend { background: repeating-linear-gradient(#0d0c0a 0 47px, #151410 47px 48px); }
 .ts-cal-tail { border-left: 1px solid var(--color-border-light); }
@@ -841,15 +882,13 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-col.today .ts-cal-ev-project { color: var(--color-on-accent); font-weight: 700; }
 .ts-cal-ev-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-ev-dur { flex-shrink: 0; font-family: var(--font-family-mono); }
-.ts-cal-ev-task { font-size: 11px; color: #bfe0d4; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-cal-ev-task { font-size: 11px; color: var(--color-pine-fg); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-col.today .ts-cal-ev-task { color: #4a3208; }
 .ts-cal-ev-client { font-size: 10.5px; color: #8fc4b3; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-col.today .ts-cal-ev-client { color: #6b4a10; }
 
 /* Add–entry modal: opened by the "+" toolbar button or by clicking a calendar
    day. Dark card centred near the top, matching the design's entry dialog. */
-.ts-modal-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding-top: 120px; background: rgba(8, 7, 5, 0.68); }
-.ts-modal { width: 640px; max-width: 92vw; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8); }
 .ts-modal-title { padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--color-border); text-align: center; font-family: var(--font-family-display); font-size: 18px; font-weight: 600; color: var(--color-text); }
 .ts-modal-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
 .ts-modal-body .form-label { margin-bottom: 0; }
@@ -858,6 +897,90 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-modal-duration { width: 130px; text-align: right; font-family: var(--font-family-mono); font-size: 20px; }
 .ts-modal-error { font-size: var(--font-size-sm); color: var(--color-danger); }
 .ts-modal-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
+
+/* Projects — client-grouped budget table. Structural only (grid template,
+   grouped banding); colours/spacing come from tokens, layout from utilities. */
+.proj-search {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 300px; padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary); border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+}
+.proj-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+.proj-search-input {
+  flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+  color: var(--color-text); font: inherit; font-size: var(--font-size-sm);
+}
+.proj-search-input::placeholder { color: var(--color-text-muted); }
+.proj-search:focus-within { border-color: var(--color-primary); box-shadow: var(--ring-soft); }
+
+.proj-card {
+  background: var(--color-bg-secondary); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.proj-head,
+.proj-row {
+  display: grid;
+  grid-template-columns: 1fr 130px 130px 96px 210px 220px 120px;
+  align-items: center; gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+}
+.proj-bar {
+  width: 96px; height: 7px; border-radius: var(--radius-full);
+  background: var(--color-border-light); overflow: hidden;
+}
+.proj-bar-fill { height: 100%; background: var(--color-primary); }
+.proj-namelink { color: var(--color-text); text-decoration: none; }
+.proj-namelink:hover { color: var(--color-primary); text-decoration: none; }
+.proj-head {
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-xs); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.proj-group {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-secondary);
+}
+.proj-row { border-bottom: 1px solid var(--color-border-light); }
+.proj-row:last-child { border-bottom: none; }
+.proj-empty {
+  padding: var(--space-6) var(--space-5);
+  color: var(--color-text-secondary); font-size: var(--font-size-sm);
+}
+
+
+/* Modal + segmented choice buttons (used by the projects Export dialog). */
+.modal-overlay {
+  position: fixed; inset: 0; background: var(--color-scrim);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 140px; z-index: 60;
+}
+.modal {
+  width: 460px; max-width: calc(100vw - 40px);
+  background: var(--color-bg-secondary); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md);
+}
+.modal-lg { width: 640px; max-width: 92vw; }
+.modal-title {
+  padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border);
+  text-align: center; font-family: var(--font-family-display);
+  font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text);
+}
+.modal-body { padding: var(--space-5); }
+.modal-label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-3); }
+.modal-body .modal-label + .seg-row + .modal-label { margin-top: var(--space-5); }
+.modal-actions { display: flex; gap: var(--space-3); margin-top: var(--space-6); }
+.modal-actions .btn { flex: 1; justify-content: center; }
+.seg-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-2); }
+.seg-btn {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg); border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-btn); color: var(--color-text);
+  font: inherit; font-size: var(--font-size-sm); cursor: pointer; text-align: center;
+}
+.seg-btn.selected { background: var(--color-primary-bg); border-color: var(--color-primary); font-weight: 600; }
 
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — regenerated automatically by crates/horae/build.rs on build.

@@ -359,10 +359,10 @@ pub fn Timesheet() -> Element {
             // Add–entry modal (opened by "+" or by clicking a calendar day).
             if let Some(date) = *add_open.read() {
                 div {
-                    class: "ts-modal-overlay",
+                    class: "modal-overlay",
                     onclick: move |_| add_open.set(None),
                     div {
-                        class: "ts-modal",
+                        class: "modal modal-lg",
                         onclick: move |e| e.stop_propagation(),
                         div { class: "ts-modal-title", "New time entry for {date.format(\"%A, %-d %b\")}" }
                         div { class: "ts-modal-body",
