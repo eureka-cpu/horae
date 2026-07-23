@@ -55,41 +55,6 @@ fn escape_html(s: &str) -> String {
     out
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn dev_variant_offers_the_admin_bypass_and_no_fake_controls() {
-        let html = render(LoginVariant::Dev);
-        assert!(html.contains(r#"action="/auth/dev-login""#));
-        assert!(html.contains("Sign in as Admin"));
-        assert!(html.contains("Dev mode"));
-        // The design's decorative controls must not appear — every control is real.
-        assert!(!html.contains(r#"type="password""#));
-        assert!(!html.contains("Continue with Google"));
-    }
-
-    #[test]
-    fn oidc_variant_uses_the_configured_label_and_hands_off_to_start() {
-        let html = render(LoginVariant::Oidc {
-            cta_label: "Continue with Okta".into(),
-        });
-        assert!(html.contains(r#"href="/auth/oidc/start""#));
-        assert!(html.contains("Continue with Okta"));
-        assert!(!html.contains(r#"action="/auth/dev-login""#));
-    }
-
-    #[test]
-    fn configured_label_is_html_escaped() {
-        let html = render(LoginVariant::Oidc {
-            cta_label: r#"<b>x</b>&"#.into(),
-        });
-        assert!(html.contains("&lt;b&gt;x&lt;/b&gt;&amp;"));
-        assert!(!html.contains("<b>x</b>"));
-    }
-}
-
 static PAGE: &str = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -244,3 +209,38 @@ static PAGE: &str = r#"<!DOCTYPE html>
   </div>
 </body>
 </html>"#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dev_variant_offers_the_admin_bypass_and_no_fake_controls() {
+        let html = render(LoginVariant::Dev);
+        assert!(html.contains(r#"action="/auth/dev-login""#));
+        assert!(html.contains("Sign in as Admin"));
+        assert!(html.contains("Dev mode"));
+        // The design's decorative controls must not appear — every control is real.
+        assert!(!html.contains(r#"type="password""#));
+        assert!(!html.contains("Continue with Google"));
+    }
+
+    #[test]
+    fn oidc_variant_uses_the_configured_label_and_hands_off_to_start() {
+        let html = render(LoginVariant::Oidc {
+            cta_label: "Continue with Okta".into(),
+        });
+        assert!(html.contains(r#"href="/auth/oidc/start""#));
+        assert!(html.contains("Continue with Okta"));
+        assert!(!html.contains(r#"action="/auth/dev-login""#));
+    }
+
+    #[test]
+    fn configured_label_is_html_escaped() {
+        let html = render(LoginVariant::Oidc {
+            cta_label: r#"<b>x</b>&"#.into(),
+        });
+        assert!(html.contains("&lt;b&gt;x&lt;/b&gt;&amp;"));
+        assert!(!html.contains("<b>x</b>"));
+    }
+}
