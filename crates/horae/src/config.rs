@@ -34,7 +34,15 @@ pub struct OidcConfig {
     /// here the strict verifier rejects the token. Empty means strict
     /// (client_id only). Set `HORAE_OIDC_ADDITIONAL_AUDIENCES` (comma-separated).
     pub additional_audiences: Vec<String>,
+    /// Label on the sign-in page's SSO button. Deployments front a named provider
+    /// (e.g. "Continue with Okta", "Sign in with Google"), so this is overridable
+    /// via `HORAE_OIDC_BUTTON_LABEL`; it defaults to [`DEFAULT_OIDC_BUTTON_LABEL`].
+    pub button_label: String,
 }
+
+/// Default text on the OIDC sign-in button when `HORAE_OIDC_BUTTON_LABEL` is
+/// unset — provider-agnostic, since Horae does not know the provider's name.
+pub const DEFAULT_OIDC_BUTTON_LABEL: &str = "Continue with SSO";
 
 impl AppConfig {
     pub fn from_env() -> anyhow::Result<Self> {
@@ -80,6 +88,8 @@ impl OidcConfig {
                         .collect()
                 })
                 .unwrap_or_default(),
+            button_label: non_empty("HORAE_OIDC_BUTTON_LABEL")
+                .unwrap_or_else(|| DEFAULT_OIDC_BUTTON_LABEL.into()),
         })
     }
 }

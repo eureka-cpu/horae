@@ -69,11 +69,12 @@ pkgs.testers.nixosTest {
       "--email kilgore@kilgore.trout --name 'Kilgore Trout' --role member"
     )
 
-    # Drive the full authorization-code flow with a cookie jar, following every
-    # redirect: /auth/login -> dex (mock auto-auth) -> /auth/callback -> /.
+    # /auth/login now serves the SSO landing page; /auth/oidc/start begins the
+    # flow. Drive it with a cookie jar, following every redirect:
+    # /auth/oidc/start -> dex (mock auto-auth) -> /auth/callback -> /.
     server.succeed(
       "curl -s -c /tmp/jar.txt -b /tmp/jar.txt -L "
-      "http://127.0.0.1:3000/auth/login -o /dev/null"
+      "http://127.0.0.1:3000/auth/oidc/start -o /dev/null"
     )
 
     # Session established: an authenticated request now succeeds.
@@ -87,13 +88,12 @@ pkgs.testers.nixosTest {
       "sudo -u horae psql horae -c "
       "\"UPDATE users SET active = false WHERE email = 'kilgore@kilgore.trout'\""
     )
-    # On denial the callback redirects back to /auth/login, which restarts OIDC;
-    # the mock connector then silently re-authenticates, so following redirects
-    # loops. That loop *is* the denial — cap it and tolerate curl's error, then
-    # confirm no authenticated session was ever established.
+    # On denial the callback redirects to the /auth/login landing page (a 200,
+    # not another flow), so following redirects terminates there. Cap redirects
+    # defensively, then confirm no authenticated session was ever established.
     server.execute(
       "curl -s -c /tmp/jar2.txt -b /tmp/jar2.txt -L --max-redirs 8 "
-      "http://127.0.0.1:3000/auth/login -o /dev/null"
+      "http://127.0.0.1:3000/auth/oidc/start -o /dev/null"
     )
     code = server.succeed(
       "curl -s -o /dev/null -w '%{http_code}' -b /tmp/jar2.txt "
