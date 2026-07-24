@@ -1,28 +1,61 @@
 use std::collections::HashMap;
 
 use dioxus::prelude::*;
+use horae_core::duration::format_hhmm;
+use horae_core::types::EntryState;
 use uuid::Uuid;
 
+use crate::components::avatar::{Avatar, first_initial};
+use crate::components::badge::Badge;
+use crate::components::controls::Segmented;
+use crate::components::table::DataTable;
 use crate::server_fns;
+
+/// Minutes (aggregated, so `i64`) as `H:MM`, reusing the core formatter.
+fn hhmm(minutes: i64) -> String {
+    format_hhmm(minutes.max(0) as u32)
+}
+
+/// The `list_approvals` status argument for a Segmented label.
+fn status_arg(label: &str) -> Option<String> {
+    match label {
+        "Approved" => Some("approved".to_string()),
+        "All" => None,
+        _ => Some("submitted".to_string()), // "Pending"
+    }
+}
+
+/// Run a mutating server action, then clear/report the error and bump `refresh`
+/// so the list re-loads. Shared by the per-row and bulk approve/reopen buttons.
+fn spawn_action(
+    fut: impl std::future::Future<Output = Result<(), ServerFnError>> + 'static,
+    mut refresh: Signal<u32>,
+    mut error: Signal<Option<String>>,
+) {
+    spawn(async move {
+        match fut.await {
+            Ok(()) => error.set(None),
+            Err(e) => error.set(Some(e.to_string())),
+        }
+        refresh.set(refresh() + 1);
+    });
+}
 
 #[component]
 pub fn Approvals() -> Element {
     let me = use_resource(|| async move { server_fns::get_me().await });
-    let mut status_filter = use_signal(|| Some("submitted".to_string()));
-    #[allow(unused_mut)] // mutated via closure copies below
-    let mut refresh_counter = use_signal(|| 0u32);
-    #[allow(unused_mut)]
-    let mut action_error = use_signal(|| None::<String>);
+    let mut status_label = use_signal(|| "Pending".to_string());
+    let refresh = use_signal(|| 0u32);
+    let action_error = use_signal(|| None::<String>);
 
-    let filter = status_filter.read().clone();
+    // Read the status signal inside the resource so a filter change re-loads.
     let approvals = use_resource(move || {
-        let f = filter.clone();
-        let _tick = *refresh_counter.read();
+        let f = status_arg(&status_label.read());
+        let _tick = *refresh.read();
         async move { server_fns::list_approvals(f).await }
     });
 
     let users = use_resource(|| async move { server_fns::list_users(false).await });
-
     let user_names: HashMap<Uuid, String> = users
         .read()
         .as_ref()
@@ -37,8 +70,6 @@ pub fn Approvals() -> Element {
         .map(|u| u.is_manager_or_above())
         .unwrap_or(false);
 
-    let current_filter = status_filter.read().clone();
-
     rsx! {
         div {
             div { class: "page-header",
@@ -50,22 +81,11 @@ pub fn Approvals() -> Element {
                     p { class: "text-muted", "Manager or admin access is required to review approvals." }
                 }
             } else {
-                // Filter tabs
-                div { class: "flex gap-1 mb-6",
-                    button {
-                        class: if current_filter.as_deref() == Some("submitted") { "btn btn-primary" } else { "btn btn-secondary" },
-                        onclick: move |_| status_filter.set(Some("submitted".to_string())),
-                        "Pending"
-                    }
-                    button {
-                        class: if current_filter.as_deref() == Some("approved") { "btn btn-primary" } else { "btn btn-secondary" },
-                        onclick: move |_| status_filter.set(Some("approved".to_string())),
-                        "Approved"
-                    }
-                    button {
-                        class: if current_filter.is_none() { "btn btn-primary" } else { "btn btn-secondary" },
-                        onclick: move |_| status_filter.set(None),
-                        "All"
+                div { class: "mb-6",
+                    Segmented {
+                        items: vec!["Pending".to_string(), "Approved".to_string(), "All".to_string()],
+                        active: status_label(),
+                        onselect: move |v| status_label.set(v),
                     }
                 }
 
@@ -74,97 +94,115 @@ pub fn Approvals() -> Element {
                 }
 
                 match &*approvals.read() {
-                    None => rsx! { div { class: "text-muted text-sm", "Loading..." } },
+                    None => rsx! { div { class: "text-muted text-sm", "Loading…" } },
                     Some(Err(e)) => rsx! { div { class: "alert alert-danger", "{e}" } },
                     Some(Ok(items)) if items.is_empty() => rsx! {
                         div { class: "card p-8 text-center",
                             p { class: "text-muted", "No approvals found." }
                         }
                     },
-                    Some(Ok(items)) => rsx! {
-                        div { class: "card",
-                            div { class: "table-container",
+                    Some(Ok(items)) => {
+                        let total: i64 = items.iter().map(|s| s.total_minutes).sum();
+                        let billable: i64 = items.iter().map(|s| s.billable_minutes).sum();
+                        let nonbill = (total - billable).max(0);
+                        let bill_pct = if total > 0 { billable * 100 / total } else { 0 };
+                        let nonbill_pct = if total > 0 { 100 - bill_pct } else { 0 };
+
+                        let pending_ids: Vec<String> = items
+                            .iter()
+                            .filter(|s| s.approval.state == EntryState::Submitted)
+                            .map(|s| s.approval.id.to_string())
+                            .collect();
+                        let pending_count = pending_ids.len();
+
+                        rsx! {
+                            // Total time (billable / non-billable). The design's second
+                            // "Total expenses" card is omitted — Horae has no expenses.
+                            div { class: "card flex items-center gap-8 mb-6",
+                                div {
+                                    div { class: "text-muted text-sm", "Total time" }
+                                    div { class: "appr-total", "{hhmm(total)}" }
+                                }
+                                div { class: "flex-1 flex flex-col gap-2",
+                                    div { class: "flex items-center gap-3",
+                                        span { class: "appr-dot appr-dot-billable" }
+                                        span { class: "flex-1 text-sm", "Billable" }
+                                        span { class: "text-mono", "{hhmm(billable)}" }
+                                        span { class: "appr-legend-pct", "({bill_pct}%)" }
+                                    }
+                                    div { class: "flex items-center gap-3",
+                                        span { class: "appr-dot appr-dot-nonbillable" }
+                                        span { class: "flex-1 text-sm", "Non-billable" }
+                                        span { class: "text-mono", "{hhmm(nonbill)}" }
+                                        span { class: "appr-legend-pct", "({nonbill_pct}%)" }
+                                    }
+                                }
+                            }
+
+                            DataTable {
                                 table {
                                     thead {
                                         tr {
-                                            th { "Team Member" }
-                                            th { "Period" }
+                                            th { "Teammate" }
+                                            th { class: "text-right", "Hours" }
+                                            th { class: "text-center", "Status" }
                                             th { "Submitted" }
-                                            th { "Status" }
-                                            th { "Actions" }
+                                            th { class: "text-right", "Action" }
                                         }
                                     }
                                     tbody {
-                                        for approval in items.iter() {
+                                        for s in items.iter() {
                                             {
+                                                let a = s.approval.clone();
                                                 let name = user_names
-                                                    .get(&approval.user_id)
+                                                    .get(&a.user_id)
                                                     .cloned()
-                                                    .unwrap_or_else(|| approval.user_id.to_string());
-                                                let period = format!(
-                                                    "{} - {}",
-                                                    approval.period_start.format("%b %d"),
-                                                    approval.period_end.format("%b %d, %Y")
-                                                );
-                                                let submitted = approval.submitted_at.format("%b %d, %Y %H:%M").to_string();
-                                                let state = approval.state;
-                                                let aid = approval.id.to_string();
-                                                let aid2 = aid.clone();
-                                                let is_pending = state == horae_core::types::EntryState::Submitted;
+                                                    .unwrap_or_else(|| a.user_id.to_string());
+                                                let submitted = a.submitted_at.format("%d %b, %H:%M").to_string();
+                                                let hours = hhmm(s.total_minutes);
+                                                let is_pending = a.state == EntryState::Submitted;
+                                                let aid = a.id.to_string();
                                                 rsx! {
                                                     tr {
-                                                        td { "{name}" }
-                                                        td { class: "text-mono", "{period}" }
-                                                        td { class: "text-mono", style: "font-size: 0.85rem;", "{submitted}" }
                                                         td {
-                                                            match state {
-                                                                horae_core::types::EntryState::Submitted => rsx! { span { class: "badge badge-warning", "Pending" } },
-                                                                horae_core::types::EntryState::Approved  => rsx! { span { class: "badge badge-success", "Approved" } },
-                                                                other => rsx! { span { class: "badge badge-neutral", "{other}" } },
+                                                            div { class: "flex items-center gap-3",
+                                                                Avatar { initials: first_initial(&name) }
+                                                                span { class: "font-medium", "{name}" }
                                                             }
                                                         }
-                                                        td {
+                                                        td { class: "text-mono text-right", "{hours}" }
+                                                        td { class: "text-center",
+                                                            match a.state {
+                                                                EntryState::Submitted => rsx! { Badge { variant: "warning", "Awaiting" } },
+                                                                EntryState::Approved => rsx! { Badge { variant: "success", "Approved" } },
+                                                                other => rsx! { Badge { variant: "neutral", "{other}" } },
+                                                            }
+                                                        }
+                                                        td { class: "text-mono text-sm text-muted", "{submitted}" }
+                                                        td { class: "text-right",
                                                             if is_pending {
-                                                                div { class: "flex gap-2",
+                                                                div { class: "flex gap-2 justify-end",
                                                                     button {
-                                                                        class: "btn btn-primary",
-                                                                        style: "padding: 0.25rem 0.75rem; font-size: 0.85rem;",
+                                                                        class: "btn btn-secondary btn-sm",
                                                                         onclick: {
                                                                             let aid = aid.clone();
-                                                                            move |_| {
-                                                                                let aid = aid.clone();
-                                                                                let mut rc = refresh_counter;
-                                                                                let mut ae = action_error;
-                                                                                spawn(async move {
-                                                                                    match server_fns::approve_submission(aid).await {
-                                                                                        Ok(_) => ae.set(None),
-                                                                                        Err(e) => ae.set(Some(e.to_string())),
-                                                                                    }
-                                                                                    rc.set(rc() + 1);
-                                                                                });
-                                                                            }
+                                                                            move |_| spawn_action(
+                                                                                { let aid = aid.clone(); async move { server_fns::reject_submission(aid).await } },
+                                                                                refresh, action_error,
+                                                                            )
                                                                         },
-                                                                        "Approve"
+                                                                        "Reopen"
                                                                     }
                                                                     button {
-                                                                        class: "btn btn-danger",
-                                                                        style: "padding: 0.25rem 0.75rem; font-size: 0.85rem;",
+                                                                        class: "btn btn-solid btn-sm",
                                                                         onclick: {
-                                                                            let aid2 = aid2.clone();
-                                                                            move |_| {
-                                                                                let aid2 = aid2.clone();
-                                                                                let mut rc = refresh_counter;
-                                                                                let mut ae = action_error;
-                                                                                spawn(async move {
-                                                                                    match server_fns::reject_submission(aid2).await {
-                                                                                        Ok(_) => ae.set(None),
-                                                                                        Err(e) => ae.set(Some(e.to_string())),
-                                                                                    }
-                                                                                    rc.set(rc() + 1);
-                                                                                });
-                                                                            }
+                                                                            let aid = aid.clone();
+                                                                            move |_| spawn_action(
+                                                                                { let aid = aid.clone(); async move { server_fns::approve_submission(aid).await.map(|_| ()) } },
+                                                                                refresh, action_error,
+                                                                            )
                                                                         },
-                                                                        "Reject"
+                                                                        "Approve"
                                                                     }
                                                                 }
                                                             } else {
@@ -178,8 +216,25 @@ pub fn Approvals() -> Element {
                                     }
                                 }
                             }
+
+                            if pending_count > 0 {
+                                div { class: "flex items-center mt-5 gap-4",
+                                    span { class: "text-muted text-sm",
+                                        "{pending_count} timesheet(s) awaiting your approval"
+                                    }
+                                    div { class: "flex-1" }
+                                    button {
+                                        class: "btn btn-solid",
+                                        onclick: move |_| spawn_action(
+                                            { let ids = pending_ids.clone(); async move { server_fns::approve_submissions(ids).await.map(|_| ()) } },
+                                            refresh, action_error,
+                                        ),
+                                        "Approve visible timesheets"
+                                    }
+                                }
+                            }
                         }
-                    },
+                    }
                 }
             }
         }

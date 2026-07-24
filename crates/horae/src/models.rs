@@ -8,7 +8,7 @@ pub mod task;
 pub mod time_entry;
 pub mod user;
 
-pub use approval::Approval;
+pub use approval::{Approval, ApprovalSummary};
 pub use assignment::Assignment;
 pub use client::Client;
 pub use invoice::{Invoice, InvoiceLine, InvoiceWithLines};
