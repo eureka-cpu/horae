@@ -379,6 +379,23 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Tables */
 .table-container { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+
+/* Reports — underline tabs over the results, and the grand-total footer row */
+.report-tabs {
+  display: flex; align-items: center; gap: var(--space-6);
+  border-bottom: 1px solid var(--color-border-light); margin-bottom: var(--space-6);
+}
+.report-tab {
+  padding: 0 0 var(--space-3); background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: var(--font-size-base);
+  color: var(--color-text-secondary); border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.report-tab:hover { color: var(--color-text); }
+.report-tab.active {
+  color: var(--color-text); font-weight: 600; border-bottom-color: var(--color-primary);
+}
+.report-total-row td { font-weight: 600; border-top: 2px solid var(--color-border); }
 table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
 thead th {
   padding: var(--space-3) var(--space-4);
