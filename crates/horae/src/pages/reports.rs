@@ -90,7 +90,7 @@ pub fn Reports() -> Element {
                 }
             }
 
-            div { class: "report-tabs",
+            div { class: "report-tabs flex items-center gap-6 mb-6",
                 button {
                     class: if tab == "time" { "report-tab active" } else { "report-tab" },
                     onclick: move |_| active_tab.set("time".into()),
