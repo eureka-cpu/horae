@@ -1,13 +1,16 @@
 //! Production OIDC authentication (authorization-code flow with PKCE).
 //!
-//! `GET /auth/login` redirects to the provider; `GET /auth/callback` completes
-//! the exchange, verifies the ID token, and maps the verified identity onto an
-//! **existing** Horae user. Accounts are created by admins (FR-002), so a first
-//! OIDC login *links* the subject to a user matched by verified email — it never
-//! auto-provisions. Deactivated users are denied at sign-in.
+//! `GET /auth/login` serves the sign-in landing page; its button hands off to
+//! `GET /auth/oidc/start`, which redirects to the provider. `GET /auth/callback`
+//! completes the exchange, verifies the ID token, and maps the verified identity
+//! onto an **existing** Horae user. Accounts are created by admins (FR-002), so a
+//! first OIDC login *links* the subject to a user matched by verified email — it
+//! never auto-provisions. Deactivated users are denied at sign-in.
 
 use axum::extract::Query;
-use axum::response::{IntoResponse, Redirect};
+use axum::response::{Html, IntoResponse, Redirect};
+
+use crate::auth::page::{LoginVariant, render};
 use openidconnect::core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata};
 use openidconnect::{
     AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, PkceCodeChallenge,
@@ -39,10 +42,22 @@ pub struct CallbackParams {
     error: Option<String>,
 }
 
-/// `GET /auth/login` for OIDC deployments: start the authorization-code flow.
-/// Stashes the CSRF/PKCE/nonce secrets in the session and redirects to the
-/// provider. Falls back to `/auth/login` on any setup error.
-pub async fn login(session: Session) -> axum::response::Response {
+/// `GET /auth/login` for OIDC deployments: serve the sign-in landing page. The
+/// page's button links to `/auth/oidc/start`, which begins the flow.
+pub async fn login_page() -> impl IntoResponse {
+    let label = crate::state::global_state()
+        .await
+        .oidc
+        .as_ref()
+        .map(|c| c.button_label.clone())
+        .unwrap_or_else(|| crate::config::DEFAULT_OIDC_BUTTON_LABEL.into());
+    Html(render(LoginVariant::Oidc { cta_label: label }))
+}
+
+/// `GET /auth/oidc/start`: begin the authorization-code flow. Stashes the
+/// CSRF/PKCE/nonce secrets in the session and redirects to the provider. Falls
+/// back to `/auth/login` on any setup error.
+pub async fn start(session: Session) -> axum::response::Response {
     let state = crate::state::global_state().await;
     let Some(cfg) = state.oidc.clone() else {
         // Neither dev-login nor OIDC configured. Return a plain error rather than

@@ -1,5 +1,6 @@
 pub mod dev;
 pub mod oidc;
+pub mod page;
 pub mod session;
 
 use axum::{
@@ -14,9 +15,10 @@ use tower_sessions_sqlx_store::PostgresStore;
 /// Build the Axum sub-router for all `/auth/*` endpoints.
 ///
 /// In dev mode (`DEV_LOGIN=1`) `/auth/login` serves the one-click admin page and
-/// the `/auth/dev-login` bypass is registered. Otherwise `/auth/login` starts the
-/// OIDC flow and `/auth/callback` completes it — the passwordless dev bypass is
-/// **not** registered, so it can never be reached in production.
+/// the `/auth/dev-login` bypass is registered. Otherwise `/auth/login` serves the
+/// SSO landing page, `/auth/oidc/start` begins the OIDC flow, and
+/// `/auth/callback` completes it — the passwordless dev bypass is **not**
+/// registered, so it can never be reached in production.
 pub fn router(dev_login: bool) -> Router {
     let mut router = Router::new().route("/auth/logout", post(dev::logout_post));
 
@@ -26,7 +28,8 @@ pub fn router(dev_login: bool) -> Router {
             .route("/auth/dev-login", post(dev::dev_login_post));
     } else {
         router = router
-            .route("/auth/login", get(oidc::login))
+            .route("/auth/login", get(oidc::login_page))
+            .route("/auth/oidc/start", get(oidc::start))
             .route("/auth/callback", get(oidc::callback));
     }
 
