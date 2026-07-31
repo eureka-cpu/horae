@@ -83,6 +83,19 @@ pub(crate) fn parse_uuid(s: &str, field: &str) -> Result<uuid::Uuid, ServerFnErr
         .map_err(|_| server_err(format!("Invalid {field}")))
 }
 
+/// Parse an optional UUID filter: `None`/empty → `None`, otherwise a validated
+/// UUID. Used by the report filters (client/project/teammate).
+#[cfg(feature = "server")]
+pub(crate) fn parse_opt_uuid(
+    s: Option<String>,
+    field: &str,
+) -> Result<Option<uuid::Uuid>, ServerFnError> {
+    match s.as_deref() {
+        None | Some("") => Ok(None),
+        Some(v) => Ok(Some(parse_uuid(v, field)?)),
+    }
+}
+
 #[cfg(feature = "server")]
 pub(crate) async fn require_admin() -> Result<crate::models::User, ServerFnError> {
     let user_id = session_user_id().await?;

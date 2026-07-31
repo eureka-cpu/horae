@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n             p.name AS project_name, t.name AS task_name, u.name AS user_name,\n             c.name AS client_name, c.currency AS currency,\n             te.minutes, te.rounded_minutes, te.billable,\n             pt.rate_cents AS task_rate_cents,\n             a.rate_cents AS assignment_rate_cents,\n             u.billable_rate_cents AS user_billable_rate_cents,\n             u.cost_rate_cents AS user_cost_rate_cents\n           FROM time_entries te\n           JOIN projects p ON te.project_id = p.id\n           JOIN clients c ON p.client_id = c.id\n           JOIN tasks t ON te.task_id = t.id\n           JOIN users u ON te.user_id = u.id\n           LEFT JOIN project_tasks pt ON pt.project_id = te.project_id AND pt.task_id = te.task_id\n           LEFT JOIN assignments a ON a.project_id = te.project_id AND a.user_id = te.user_id\n           WHERE te.spent_date BETWEEN $1 AND $2\n             AND ($3::uuid IS NULL OR p.client_id = $3)\n             AND ($4::uuid IS NULL OR te.project_id = $4)\n             AND ($5::uuid IS NULL OR te.user_id = $5)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "client_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "rounded_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "billable",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "task_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "assignment_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "user_billable_rate_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "user_cost_rate_cents",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "36b8fa0f1a17ddcbfd5c271c261230808d1d955b2f64194a40f79bc3b04b89af"
+}
