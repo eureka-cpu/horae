@@ -5,8 +5,8 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::components::controls::Segmented;
+use crate::components::timer_widget::TimerWidget;
 use crate::models::time_entry::TimeEntry;
-use crate::route::Route;
 use crate::server_fns;
 
 /// `H:MM` clock format from integer minutes (the design's cell/total format).
@@ -261,6 +261,10 @@ pub fn Timesheet() -> Element {
                     },
                 }
             }
+
+            // The running timer lives on the timesheet now that the standalone
+            // Time page is gone.
+            TimerWidget {}
 
             // Toolbar: add entry + week pager
             div { class: "ts-toolbar",
@@ -800,14 +804,9 @@ fn render_week_view(
                     }
                 }
 
-                // Footer: add-row + column totals
+                // Footer: column totals
                 div { class: "ts-row ts-foot",
-                    div {
-                        Link { to: Route::TimeList {}, class: "ts-addrow",
-                            span { class: "plus", "\u{ff0b}" }
-                            "Add row"
-                        }
-                    }
+                    div {}
                     for i in 0..7 {
                         {
                             let t = daily_totals[i];

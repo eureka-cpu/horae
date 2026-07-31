@@ -497,21 +497,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   border-radius: var(--radius-panel);
   box-shadow: 0 24px 60px -34px rgba(0, 0, 0, 0.7);
 }
-.auth-logo {
-  text-align: center;
-  margin-bottom: var(--space-2);
-  font-family: var(--font-family-display);
-  font-size: var(--font-size-2xl);
-  font-weight: 500;
-  color: var(--color-primary);
-  letter-spacing: -0.015em;
-}
-.auth-subtitle {
-  text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--space-6);
-}
 
 /* Divider */
 .divider {
@@ -529,28 +514,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .empty-state-icon { font-size: 2.5rem; margin-bottom: var(--space-4); opacity: 0.4; }
 .empty-state-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text-secondary); margin-bottom: var(--space-2); }
 
-/* Stats grid */
-.grid-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-}
-.stat-card {
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-}
-.stat-label { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-1); }
-.stat-value {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-2xl);
-  font-weight: 600;
-  color: var(--color-text);
-}
-.stat-value.accent { color: var(--color-primary); }
-
 /* Alert / flash messages */
 .alert {
   padding: var(--space-3) var(--space-4);
@@ -559,10 +522,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   font-size: var(--font-size-sm);
   border: 1px solid transparent;
 }
-.alert-success { background: var(--color-success-bg); color: var(--color-success-fg); border-color: var(--color-success-line); }
 .alert-danger  { background: var(--color-danger-bg);  color: var(--color-danger-fg);  border-color: var(--color-danger-line); }
-.alert-warning { background: var(--color-warning-bg); color: var(--color-warning-fg); border-color: var(--color-warning-line); }
-.alert-info    { background: var(--color-info-bg);    color: var(--color-primary-light); border-color: var(--color-primary-border); }
 
 /* Buttons — extra shapes */
 .btn:disabled, .btn.is-disabled {
@@ -820,7 +780,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   color: var(--color-text-muted); cursor: pointer;
 }
 .ts-project-title { font-size: 14.5px; color: var(--color-text); line-height: 1.35; }
-.ts-project-meta { color: var(--color-text-muted); font-weight: 400; }
 .ts-project-task { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
 
 .ts-cell { padding: 0 5px; }
@@ -838,13 +797,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-del { width: 30px; height: 30px; background: transparent; border: none; color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-base); }
 .ts-del:hover { color: var(--color-danger); }
 
-.ts-addrow {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  padding: 10px var(--space-4); background: transparent;
-  border: 1px dashed var(--color-border-input); border-radius: 9px;
-  color: var(--color-text-secondary); font: inherit; font-size: var(--font-size-sm); cursor: pointer;
-}
-.ts-addrow .plus { color: var(--color-primary); font-size: var(--font-size-base); }
 .ts-coltotal { text-align: center; font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .ts-coltotal.today { color: var(--color-accent); font-weight: 600; }
 .ts-coltotal.empty { color: var(--color-text-muted); }

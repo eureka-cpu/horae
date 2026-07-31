@@ -6,13 +6,11 @@ use crate::pages::{
     admin::AdminUsers,
     approvals::Approvals,
     clients::{ClientDetail, ClientList},
-    dashboard::Dashboard,
     gallery::Gallery,
     invoices::{InvoiceDetail, InvoiceList},
     projects::{ProjectDetail, ProjectList},
     reports::Reports,
     settings::Settings,
-    time::TimeList,
     timesheet::Timesheet,
 };
 
@@ -27,9 +25,9 @@ fn NotFound(route: Vec<String>) -> Element {
                 }
                 div { style: "text-align: center; margin-top: 1rem;",
                     Link {
-                        to: Route::Dashboard {},
+                        to: Route::Timesheet {},
                         class: "btn btn-primary",
-                        "Go to Dashboard"
+                        "Go to Timesheet"
                     }
                 }
             }
@@ -43,7 +41,7 @@ pub enum Route {
     // The Dioxus router only manages the authenticated SPA.
     #[layout(AppLayout)]
     #[route("/")]
-    Dashboard {},
+    Timesheet {},
     #[route("/clients")]
     ClientList {},
     #[route("/clients/:id")]
@@ -52,10 +50,6 @@ pub enum Route {
     ProjectList {},
     #[route("/projects/:id")]
     ProjectDetail { id: Uuid },
-    #[route("/time")]
-    TimeList {},
-    #[route("/timesheet")]
-    Timesheet {},
     #[route("/approvals")]
     Approvals {},
     #[route("/reports")]

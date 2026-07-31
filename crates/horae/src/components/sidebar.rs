@@ -26,15 +26,13 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
                 }
             }
 
-            Link { to: Route::TimeList {}, class: "sidebar-timer",
+            Link { to: Route::Timesheet {}, class: "sidebar-timer",
                 span { class: "sidebar-timer-icon" }
                 span { class: "sidebar-timer-label", "Start timer" }
             }
 
             div { class: "sidebar-section", "Track" }
             div { class: "sidebar-group",
-                SideLink { to: Route::Dashboard {}, icon: "dashboard", label: "Dashboard" }
-                SideLink { to: Route::TimeList {}, icon: "time", label: "Time" }
                 SideLink { to: Route::Timesheet {}, icon: "timesheet", label: "Timesheet" }
             }
 
