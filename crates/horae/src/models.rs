@@ -35,6 +35,13 @@ pub struct ReportRow {
     pub total_minutes: i64,
     pub rounded_minutes: i64,
     pub billable_minutes: i64,
+    /// Billable amount in cents (rates resolved via FR-024) and cost in cents
+    /// (`users.cost_rate_cents`). `currency` is the ISO code these amounts are in,
+    /// or `None` when the group mixes clients of different currencies — in which
+    /// case the money is not summable and the UI shows it as unavailable.
+    pub billable_cents: i64,
+    pub cost_cents: i64,
+    pub currency: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
