@@ -105,19 +105,21 @@ fn aggregate_time(rows: &[TimeRow], group_by: &str) -> Vec<ReportRow> {
             "person" => r.user_name.clone(),
             _ => r.project_name.clone(),
         };
-        let rounded = r.rounded_minutes.unwrap_or(r.minutes) as i64;
+        // Billable hours and amount use the rounded minutes that get invoiced;
+        // cost is what the worked time costs, so it stays on actual minutes.
+        let rounded_min = r.rounded_minutes.unwrap_or(r.minutes);
         let g = groups.entry(label).or_default();
         g.total += r.minutes as i64;
-        g.rounded += rounded;
+        g.rounded += rounded_min as i64;
         if r.billable {
-            g.billable_min += rounded;
+            g.billable_min += rounded_min as i64;
             let rate = horae_core::invoice::resolve_rate(
                 r.task_rate_cents,
                 r.assignment_rate_cents,
                 r.user_billable_rate_cents,
             )
             .unwrap_or(0);
-            g.billable_cents += horae_core::invoice::line_amount_cents(rate, r.minutes);
+            g.billable_cents += horae_core::invoice::line_amount_cents(rate, rounded_min);
         }
         g.cost_cents +=
             horae_core::invoice::line_amount_cents(r.user_cost_rate_cents.unwrap_or(0), r.minutes);
@@ -267,6 +269,20 @@ mod tests {
     fn non_billable_time_has_cost_but_no_billable_amount() {
         let out = aggregate_time(&[trow("EUR", 60, false, None, None, Some(6000))], "project");
         assert_eq!(out[0].billable_cents, 0);
+        assert_eq!(out[0].cost_cents, 6000);
+    }
+
+    #[test]
+    fn billable_amount_bills_rounded_minutes_while_cost_uses_actual() {
+        // 60 min worked, rounded to 30 for invoicing; billable rate 10000/h,
+        // cost 6000/h. Amount follows the rounded minutes, cost the actual ones.
+        let row = TimeRow {
+            rounded_minutes: Some(30),
+            ..trow("EUR", 60, true, Some(10000), None, Some(6000))
+        };
+        let out = aggregate_time(&[row], "project");
+        assert_eq!(out[0].billable_minutes, 30);
+        assert_eq!(out[0].billable_cents, 5000);
         assert_eq!(out[0].cost_cents, 6000);
     }
 

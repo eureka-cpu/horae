@@ -24,6 +24,32 @@ fn opt(v: String) -> Option<String> {
     if v.is_empty() { None } else { Some(v) }
 }
 
+/// A labelled dropdown for one report filter: a leading "all" option followed by
+/// `(value, name)` choices. Emits the picked value ("" for "all").
+#[component]
+fn FilterSelect(
+    label: String,
+    value: String,
+    all_label: String,
+    options: Vec<(String, String)>,
+    onselect: EventHandler<String>,
+) -> Element {
+    rsx! {
+        div { class: "form-group",
+            label { class: "form-label", "{label}" }
+            select {
+                class: "form-select",
+                value: "{value}",
+                oninput: move |e| onselect.call(e.value()),
+                option { value: "", "{all_label}" }
+                for (v, name) in options.iter() {
+                    option { value: "{v}", "{name}" }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn Reports() -> Element {
     let today = chrono::Utc::now().date_naive();
@@ -80,6 +106,37 @@ pub fn Reports() -> Element {
         to_date.read()
     );
 
+    let client_opts: Vec<(String, String)> = clients
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|l| {
+            l.iter()
+                .map(|c| (c.id.to_string(), c.name.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let project_opts: Vec<(String, String)> = projects
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|l| {
+            l.iter()
+                .map(|p| (p.id.to_string(), p.name.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let user_opts: Vec<(String, String)> = users
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|l| {
+            l.iter()
+                .map(|u| (u.id.to_string(), u.name.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+
     let tab = active_tab.read().clone();
 
     rsx! {
@@ -124,50 +181,29 @@ pub fn Reports() -> Element {
                             option { value: "person", "Person" }
                         }
                     }
-                    div { class: "form-group",
-                        label { class: "form-label", "Client" }
-                        select {
-                            class: "form-select",
-                            value: "{client_filter}",
-                            oninput: move |e| {
-                                client_filter.set(e.value());
-                                project_filter.set(String::new());
-                            },
-                            option { value: "", "All clients" }
-                            if let Some(Ok(list)) = &*clients.read() {
-                                for c in list.iter() {
-                                    option { value: "{c.id}", "{c.name}" }
-                                }
-                            }
-                        }
+                    FilterSelect {
+                        label: "Client",
+                        value: client_filter(),
+                        all_label: "All clients",
+                        options: client_opts,
+                        onselect: move |v| {
+                            client_filter.set(v);
+                            project_filter.set(String::new());
+                        },
                     }
-                    div { class: "form-group",
-                        label { class: "form-label", "Project" }
-                        select {
-                            class: "form-select",
-                            value: "{project_filter}",
-                            oninput: move |e| project_filter.set(e.value()),
-                            option { value: "", "All projects" }
-                            if let Some(Ok(list)) = &*projects.read() {
-                                for p in list.iter() {
-                                    option { value: "{p.id}", "{p.name}" }
-                                }
-                            }
-                        }
+                    FilterSelect {
+                        label: "Project",
+                        value: project_filter(),
+                        all_label: "All projects",
+                        options: project_opts,
+                        onselect: move |v| project_filter.set(v),
                     }
-                    div { class: "form-group",
-                        label { class: "form-label", "Teammate" }
-                        select {
-                            class: "form-select",
-                            value: "{user_filter}",
-                            oninput: move |e| user_filter.set(e.value()),
-                            option { value: "", "All teammates" }
-                            if let Some(Ok(list)) = &*users.read() {
-                                for u in list.iter() {
-                                    option { value: "{u.id}", "{u.name}" }
-                                }
-                            }
-                        }
+                    FilterSelect {
+                        label: "Teammate",
+                        value: user_filter(),
+                        all_label: "All teammates",
+                        options: user_opts,
+                        onselect: move |v| user_filter.set(v),
                     }
                 }
             }
