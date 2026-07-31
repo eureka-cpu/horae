@@ -7,8 +7,8 @@ pub(crate) use horae_core::types::{
 #[cfg(feature = "server")]
 pub(crate) use crate::models::InvoiceLine;
 pub(crate) use crate::models::{
-    Approval, Assignment, Client, DetailedReportRow, Invoice, InvoiceWithLines, OrgBranding,
-    Project, ProjectSpend, ReportRow, Task, TimeEntry, User,
+    Approval, ApprovalSummary, Assignment, Client, DetailedReportRow, Invoice, InvoiceWithLines,
+    OrgBranding, Project, ProjectSpend, ReportRow, Task, TimeEntry, User,
 };
 
 // HTTP status codes for `ServerFnError::ServerError { code, .. }` — named so

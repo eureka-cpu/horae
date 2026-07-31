@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, org_id, user_id,\n                period_start as \"period_start: chrono::NaiveDate\",\n                period_end as \"period_end: chrono::NaiveDate\",\n                state as \"state: EntryState\",\n                submitted_at as \"submitted_at: chrono::DateTime<chrono::Utc>\",\n                approved_by,\n                approved_at as \"approved_at: chrono::DateTime<chrono::Utc>\"\n         FROM approvals\n         WHERE ($1::entry_state IS NULL OR state = $1)\n         ORDER BY period_start DESC",
+  "query": "SELECT a.id, a.org_id, a.user_id,\n                a.period_start as \"period_start: chrono::NaiveDate\",\n                a.period_end as \"period_end: chrono::NaiveDate\",\n                a.state as \"state: EntryState\",\n                a.submitted_at as \"submitted_at: chrono::DateTime<chrono::Utc>\",\n                a.approved_by,\n                a.approved_at as \"approved_at: chrono::DateTime<chrono::Utc>\",\n                COALESCE(t.total_minutes, 0) as \"total_minutes!\",\n                COALESCE(t.billable_minutes, 0) as \"billable_minutes!\"\n         FROM approvals a\n         LEFT JOIN LATERAL (\n             SELECT (SUM(minutes))::bigint as total_minutes,\n                    (SUM(minutes) FILTER (WHERE billable))::bigint as billable_minutes\n             FROM time_entries te\n             WHERE te.user_id = a.user_id\n               AND te.spent_date BETWEEN a.period_start AND a.period_end\n         ) t ON true\n         WHERE ($1::entry_state IS NULL OR a.state = $1)\n         ORDER BY a.period_start DESC",
   "describe": {
     "columns": [
       {
@@ -59,6 +59,16 @@
         "ordinal": 8,
         "name": "approved_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "total_minutes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "billable_minutes!",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -87,8 +97,10 @@
       false,
       false,
       true,
-      true
+      true,
+      null,
+      null
     ]
   },
-  "hash": "083bd0359d9d4c8c5f74a2d3c912b77f83a214878dba0dcdb0c7c3a4611e2708"
+  "hash": "340e86c19f943fcc63c0972793faa0971357f2e5f3cbf25566076b67f03f7511"
 }

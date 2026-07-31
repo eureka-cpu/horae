@@ -749,6 +749,64 @@ async fn approval_workflow_approve_and_reject(pool: PgPool) {
     assert!(!approval_exists);
 }
 
+// Test 6b: the Approvals list aggregates a period's tracked minutes, splitting
+// billable from total and excluding entries outside [period_start, period_end].
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn approval_hours_aggregate_billable_within_period(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    let period_start = NaiveDate::from_ymd_opt(2026, 8, 3).unwrap();
+    let period_end = NaiveDate::from_ymd_opt(2026, 8, 9).unwrap();
+
+    // 60 billable + 30 non-billable inside the period; a 999-minute entry the
+    // day before must be excluded by the period bounds.
+    for (date, minutes, billable) in [
+        ("2026-08-04", 60, true),
+        ("2026-08-05", 30, false),
+        ("2026-08-02", 999, true),
+    ] {
+        let spent_date: NaiveDate = date.parse().unwrap();
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9)",
+            Uuid::now_v7(),
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            spent_date as chrono::NaiveDate,
+            minutes,
+            billable,
+            EntryState::Open as EntryState,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    // The same aggregation the Approvals list uses (total + billable in period).
+    let row = sqlx::query!(
+        r#"SELECT COALESCE((SUM(minutes))::bigint, 0) as "total!",
+                  COALESCE((SUM(minutes) FILTER (WHERE billable))::bigint, 0) as "billable!"
+           FROM time_entries
+           WHERE user_id = $1 AND spent_date BETWEEN $2 AND $3"#,
+        user_id,
+        period_start as chrono::NaiveDate,
+        period_end as chrono::NaiveDate,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    assert_eq!(row.total, 90, "out-of-period entry must be excluded");
+    assert_eq!(row.billable, 60);
+}
+
 // ---------------------------------------------------------------------------
 // US2: organizing clients, projects, tasks
 // ---------------------------------------------------------------------------

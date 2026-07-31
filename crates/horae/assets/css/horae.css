@@ -998,6 +998,19 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 }
 .seg-btn.selected { background: var(--color-primary-bg); border-color: var(--color-primary); font-weight: 600; }
 
+/* Approvals — the "Total time" summary card. Layout is composed from utilities
+   in the markup; only the pieces utilities can't express live here. */
+.appr-total {
+  font-family: var(--font-family-mono); font-size: var(--font-size-2xl);
+  font-weight: 600; color: var(--color-text); margin-top: var(--space-1);
+}
+.appr-legend-pct {
+  width: 44px; text-align: right; font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm); color: var(--color-text-secondary);
+}
+.appr-dot { width: 11px; height: 11px; border-radius: var(--radius-sm); flex: 0 0 11px; }
+.appr-dot-billable { background: var(--color-primary); }
+.appr-dot-nonbillable { background: var(--color-pine); }
 /* The Tailwind-style utility layer + responsive variants live in the GENERATED
    horae-utils.css — regenerated automatically by crates/horae/build.rs on build.
    It is loaded alongside this file (see src/app.rs). */

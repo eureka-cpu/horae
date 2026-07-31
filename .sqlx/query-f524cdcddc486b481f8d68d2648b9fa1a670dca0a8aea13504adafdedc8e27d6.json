@@ -1,13 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE time_entries\n         SET state = $4, updated_at = now()\n         WHERE user_id = $1\n           AND spent_date BETWEEN $2 AND $3\n           AND state = $5",
+  "query": "UPDATE time_entries te\n              SET state = $2, updated_at = now()\n             FROM approvals a\n            WHERE a.id = ANY($1)\n              AND te.user_id = a.user_id\n              AND te.spent_date BETWEEN a.period_start AND a.period_end\n              AND te.state = $3",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Date",
-        "Date",
+        "UuidArray",
         {
           "Custom": {
             "name": "entry_state",
@@ -38,5 +36,5 @@
     },
     "nullable": []
   },
-  "hash": "f5d725e8d539ee410cdd4854efd492938983657ca3ed8cc757770dbada0a69aa"
+  "hash": "f524cdcddc486b481f8d68d2648b9fa1a670dca0a8aea13504adafdedc8e27d6"
 }

@@ -56,7 +56,7 @@ pub fn Chip(
 }
 
 /// The first character of `name`, uppercased — a default avatar fallback.
-fn first_initial(name: &str) -> String {
+pub fn first_initial(name: &str) -> String {
     name.chars()
         .next()
         .map(|c| c.to_uppercase().to_string())

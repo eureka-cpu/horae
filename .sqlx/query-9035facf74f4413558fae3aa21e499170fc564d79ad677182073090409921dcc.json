@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE approvals\n         SET state = $3,\n             approved_by = $2,\n             approved_at = now()\n         WHERE id = $1 AND state = $4\n         RETURNING id, org_id, user_id,\n                   period_start as \"period_start: chrono::NaiveDate\",\n                   period_end as \"period_end: chrono::NaiveDate\",\n                   state as \"state: EntryState\",\n                   submitted_at as \"submitted_at: chrono::DateTime<chrono::Utc>\",\n                   approved_by,\n                   approved_at as \"approved_at: chrono::DateTime<chrono::Utc>\"",
+  "query": "UPDATE approvals\n             SET state = $2, approved_by = $3, approved_at = now()\n           WHERE id = ANY($1) AND state = $4\n        RETURNING id, org_id, user_id,\n                  period_start as \"period_start: chrono::NaiveDate\",\n                  period_end as \"period_end: chrono::NaiveDate\",\n                  state as \"state: EntryState\",\n                  submitted_at as \"submitted_at: chrono::DateTime<chrono::Utc>\",\n                  approved_by,\n                  approved_at as \"approved_at: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -63,8 +63,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
+        "UuidArray",
         {
           "Custom": {
             "name": "entry_state",
@@ -78,6 +77,7 @@
             }
           }
         },
+        "Uuid",
         {
           "Custom": {
             "name": "entry_state",
@@ -105,5 +105,5 @@
       true
     ]
   },
-  "hash": "1ef3dc97eb4273c6724d53362335c88dc0618de1c1020a21848f47ed123c2368"
+  "hash": "9035facf74f4413558fae3aa21e499170fc564d79ad677182073090409921dcc"
 }

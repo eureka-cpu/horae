@@ -16,3 +16,14 @@ pub struct Approval {
     pub approved_by: Option<Uuid>,
     pub approved_at: Option<DateTime<Utc>>,
 }
+
+/// An approval row plus the tracked time for its period, for the review table.
+/// Hours are not stored on the approval — they are aggregated from the user's
+/// `time_entries` within `[period_start, period_end]` (actual `minutes`, not the
+/// invoice-time `rounded_minutes`), split into billable and total.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ApprovalSummary {
+    pub approval: Approval,
+    pub total_minutes: i64,
+    pub billable_minutes: i64,
+}
