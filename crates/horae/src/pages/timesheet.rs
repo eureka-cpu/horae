@@ -184,8 +184,13 @@ pub fn Timesheet() -> Element {
     let mut add_duration = use_signal(|| "0:00".to_string());
     let mut add_error = use_signal(|| None::<String>);
     let mut add_saving = use_signal(|| false);
+    // When set, the modal edits this existing entry instead of creating one; its
+    // billable flag is carried through (the modal doesn't expose it).
+    let mut editing = use_signal(|| None::<Uuid>);
+    let mut edit_billable = use_signal(|| true);
 
-    // Open the modal for `date`, defaulting the selects to the first project/task.
+    // Open the modal to create a new entry for `date`, defaulting the selects to
+    // the first project/task.
     let open_add = use_callback(move |date: NaiveDate| {
         let first_project = from_list(&projects, |ps| {
             ps.first().map(|p| p.id.to_string()).unwrap_or_default()
@@ -193,12 +198,26 @@ pub fn Timesheet() -> Element {
         let first_task = from_list(&tasks, |ts| {
             ts.first().map(|t| t.id.to_string()).unwrap_or_default()
         });
+        editing.set(None);
         add_project.set(first_project);
         add_task.set(first_task);
         add_notes.set(String::new());
         add_duration.set("0:00".to_string());
         add_error.set(None);
         add_open.set(Some(date));
+    });
+
+    // Open the modal to edit an existing entry, pre-filled from it. Project and
+    // task are read-only in edit mode (the update only changes duration/notes).
+    let open_edit = use_callback(move |e: TimeEntry| {
+        editing.set(Some(e.id));
+        add_project.set(e.project_id.to_string());
+        add_task.set(e.task_id.to_string());
+        add_notes.set(e.notes.clone().unwrap_or_default());
+        add_duration.set(format_hm(e.minutes));
+        edit_billable.set(e.billable);
+        add_error.set(None);
+        add_open.set(Some(e.spent_date));
     });
 
     // Options for the modal selects: (id, label).
@@ -352,10 +371,10 @@ pub fn Timesheet() -> Element {
                         }
                     },
                     ViewMode::Day => rsx! {
-                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read())}
+                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit)}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add)}
+                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add, open_edit)}
                     },
                 },
             }
@@ -368,12 +387,16 @@ pub fn Timesheet() -> Element {
                     div {
                         class: "modal modal-lg",
                         onclick: move |e| e.stop_propagation(),
-                        div { class: "ts-modal-title", "New time entry for {date.format(\"%A, %-d %b\")}" }
+                        div { class: "ts-modal-title",
+                            if editing.read().is_some() { "Edit time entry" } else { "New time entry" }
+                            " for {date.format(\"%A, %-d %b\")}"
+                        }
                         div { class: "ts-modal-body",
                             label { class: "form-label", "Project / Task" }
                             select {
                                 class: "form-select",
                                 value: "{add_project}",
+                                disabled: editing.read().is_some(),
                                 onchange: move |e| add_project.set(e.value()),
                                 for (id , label) in project_options.read().iter() {
                                     option { value: "{id}", "{label}" }
@@ -382,6 +405,7 @@ pub fn Timesheet() -> Element {
                             select {
                                 class: "form-select",
                                 value: "{add_task}",
+                                disabled: editing.read().is_some(),
                                 onchange: move |e| add_task.set(e.value()),
                                 for (id , label) in task_options.read().iter() {
                                     option { value: "{id}", "{label}" }
@@ -441,21 +465,34 @@ pub fn Timesheet() -> Element {
                                             (!n.is_empty()).then_some(n)
                                         };
                                         let spent = date.to_string();
+                                        let editing_id = *editing.read();
+                                        let bill = edit_billable();
                                         let mut entries = entries;
                                         add_saving.set(true);
                                         add_error.set(None);
                                         spawn(async move {
-                                            match server_fns::create_time_entry(
-                                                    project_id,
-                                                    task_id,
-                                                    spent,
-                                                    minutes,
-                                                    notes,
-                                                    true,
-                                                )
-                                                .await
-                                            {
-                                                Ok(_) => {
+                                            let result = match editing_id {
+                                                Some(id) => server_fns::update_time_entry(
+                                                        id.to_string(),
+                                                        minutes,
+                                                        notes,
+                                                        bill,
+                                                    )
+                                                    .await
+                                                    .map(|_| ()),
+                                                None => server_fns::create_time_entry(
+                                                        project_id,
+                                                        task_id,
+                                                        spent,
+                                                        minutes,
+                                                        notes,
+                                                        true,
+                                                    )
+                                                    .await
+                                                    .map(|_| ()),
+                                            };
+                                            match result {
+                                                Ok(()) => {
                                                     add_open.set(None);
                                                     entries.restart();
                                                 }
@@ -465,6 +502,33 @@ pub fn Timesheet() -> Element {
                                         });
                                     },
                                     if add_saving() { "Saving…" } else { "Save entry" }
+                                }
+                                if editing.read().is_some() {
+                                    button {
+                                        class: "btn btn-danger",
+                                        disabled: add_saving(),
+                                        onclick: move |_| {
+                                            let Some(id) = *editing.read() else {
+                                                return;
+                                            };
+                                            let mut entries = entries;
+                                            add_saving.set(true);
+                                            add_error.set(None);
+                                            spawn(async move {
+                                                match server_fns::delete_time_entry(id.to_string()).await {
+                                                    Ok(()) => {
+                                                        add_open.set(None);
+                                                        entries.restart();
+                                                    }
+                                                    Err(e) => {
+                                                        add_error.set(Some(format!("Could not delete: {e}")))
+                                                    }
+                                                }
+                                                add_saving.set(false);
+                                            });
+                                        },
+                                        "Delete"
+                                    }
                                 }
                                 button {
                                     class: "btn btn-ghost",
@@ -488,7 +552,8 @@ struct CalLabels<'a> {
     clients: &'a HashMap<Uuid, (String, String)>,
 }
 
-/// A calendar event's pre-computed placement and labels.
+/// A calendar event's pre-computed placement and labels, plus the entry it came
+/// from so a click can open it for editing.
 struct CalEvent {
     top: i32,
     height: i32,
@@ -496,8 +561,13 @@ struct CalEvent {
     task: String,
     duration: String,
     client: String,
+    entry: TimeEntry,
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "view renderer takes the week's data, display maps, and the add/edit actions"
+)]
 fn render_calendar_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
@@ -506,6 +576,7 @@ fn render_calendar_view(
     today: NaiveDate,
     labels: &CalLabels,
     open_add: Callback<NaiveDate>,
+    open_edit: Callback<TimeEntry>,
 ) -> Element {
     // Pixels per hour. Entries are placed by *duration* (Harvest's duration mode):
     // stacked from the top of the day, height proportional to minutes.
@@ -543,6 +614,7 @@ fn render_calendar_view(
                 task: labels.tasks.get(&e.task_id).cloned().unwrap_or_default(),
                 duration: format_hm(e.minutes),
                 client,
+                entry: e.clone(),
             });
         }
         day_events.push(evs);
@@ -586,6 +658,13 @@ fn render_calendar_view(
                                 div {
                                     class: "ts-cal-event",
                                     style: "top: {ev.top}px; height: {ev.height}px;",
+                                    onclick: {
+                                        let entry = ev.entry.clone();
+                                        move |e: MouseEvent| {
+                                            e.stop_propagation();
+                                            open_edit.call(entry.clone());
+                                        }
+                                    },
                                     div { class: "ts-cal-ev-project",
                                         span { class: "ts-cal-ev-name", "{ev.project}" }
                                         span { class: "ts-cal-ev-dur", "{ev.duration}" }
@@ -607,6 +686,10 @@ fn render_calendar_view(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "view renderer takes the week's data, display maps, and the edit action"
+)]
 fn render_day_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
@@ -615,6 +698,7 @@ fn render_day_view(
     mut selected_day_offset: Signal<i64>,
     project_names: &HashMap<Uuid, String>,
     task_names: &HashMap<Uuid, String>,
+    open_edit: Callback<TimeEntry>,
 ) -> Element {
     let offset = selected_offset.clamp(0, 6) as usize;
     let day_date = week_start + Duration::days(offset as i64);
@@ -666,8 +750,11 @@ fn render_day_view(
                                 {
                                     let proj = project_names.get(&entry.project_id).cloned().unwrap_or_else(|| entry.project_id.to_string());
                                     let task = task_names.get(&entry.task_id).cloned().unwrap_or_else(|| "\u{2014}".into());
+                                    let entry = entry.clone();
                                     rsx! {
                                         tr {
+                                            class: "ts-clickrow",
+                                            onclick: move |_| open_edit.call(entry.clone()),
                                             td { "{proj}" }
                                             td { "{task}" }
                                             td { class: "text-mono",
