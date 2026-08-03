@@ -259,6 +259,24 @@ pub fn Timesheet() -> Element {
         add_open.set(Some(e.spent_date));
     });
 
+    // Start a timer for an existing entry's project/task (the Day-view "Start"
+    // action, Harvest-style resume).
+    let start_entry = use_callback(move |e: TimeEntry| {
+        let mut entries = entries;
+        spawn(async move {
+            if server_fns::start_timer(
+                e.project_id.to_string(),
+                e.task_id.to_string(),
+                e.notes.clone(),
+            )
+            .await
+            .is_ok()
+            {
+                entries.restart();
+            }
+        });
+    });
+
     // ── Editable week grid ───────────────────────────────────────────────────
     // Rows added via "Add row" that have no entries yet this week.
     let mut pending_rows = use_signal(Vec::<(Uuid, Uuid)>::new);
@@ -498,7 +516,7 @@ pub fn Timesheet() -> Element {
                         }
                     },
                     ViewMode::Day => rsx! {
-                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit)}
+                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
                         {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add, open_edit)}
@@ -876,7 +894,7 @@ fn render_calendar_view(
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "view renderer takes the week's data, display maps, and the edit action"
+    reason = "view renderer takes the week's data, display maps, and the row actions"
 )]
 fn render_day_view(
     by_day: &[Vec<TimeEntry>; 7],
@@ -887,6 +905,7 @@ fn render_day_view(
     project_names: &HashMap<Uuid, String>,
     task_names: &HashMap<Uuid, String>,
     open_edit: Callback<TimeEntry>,
+    start_entry: Callback<TimeEntry>,
 ) -> Element {
     let offset = selected_offset.clamp(0, 6) as usize;
     let day_date = week_start + Duration::days(offset as i64);
@@ -922,48 +941,42 @@ fn render_day_view(
             }
 
             if day_entries.is_empty() {
-                div { class: "text-muted text-sm p-8 text-center",
-                    "No entries for this day."
-                }
+                div { class: "ts-day-empty text-muted text-sm", "No entries for this day." }
             } else {
-                div { class: "table-container",
-                    table {
-                        thead {
-                            tr {
-                                th { "Project" }
-                                th { "Task" }
-                                th { "Duration" }
-                                th { "Notes" }
-                                th { "Billable" }
-                            }
-                        }
-                        tbody {
-                            for entry in day_entries.iter() {
-                                {
-                                    let proj = project_names.get(&entry.project_id).cloned().unwrap_or_else(|| entry.project_id.to_string());
-                                    let task = task_names.get(&entry.task_id).cloned().unwrap_or_else(|| "\u{2014}".into());
-                                    let entry = entry.clone();
-                                    rsx! {
-                                        tr {
-                                            class: "ts-clickrow",
-                                            onclick: move |_| open_edit.call(entry.clone()),
-                                            td { "{proj}" }
-                                            td { "{task}" }
-                                            td { class: "text-mono",
-                                                if entry.is_running {
-                                                    span { class: "badge badge-success", "Running" }
-                                                } else {
-                                                    "{entry.format_duration()}"
-                                                }
+                div { class: "ts-day-list",
+                    for entry in day_entries.iter() {
+                        {
+                            let proj = project_names.get(&entry.project_id).cloned().unwrap_or_else(|| entry.project_id.to_string());
+                            let task = task_names.get(&entry.task_id).cloned().unwrap_or_else(|| "\u{2014}".into());
+                            let note = entry.notes.clone().filter(|n| !n.trim().is_empty());
+                            let running = entry.is_running;
+                            let dur = entry.format_duration();
+                            let e_start = entry.clone();
+                            let e_edit = entry.clone();
+                            rsx! {
+                                div { class: "ts-day-entry",
+                                    div { class: "ts-day-entry-main",
+                                        div { class: "ts-day-entry-project", "{proj}" }
+                                        div { class: "ts-day-entry-task", "{task}" }
+                                        if let Some(n) = note {
+                                            div { class: "ts-day-entry-notes", "{n}" }
+                                        }
+                                    }
+                                    div { class: "ts-day-entry-side",
+                                        if running {
+                                            span { class: "badge badge-success", "Running" }
+                                        } else {
+                                            span { class: "ts-day-entry-dur text-mono", "{dur}" }
+                                            button {
+                                                class: "ts-day-action primary",
+                                                onclick: move |_| start_entry.call(e_start.clone()),
+                                                "Start"
                                             }
-                                            td { "{entry.notes.as_deref().unwrap_or(\"-\")}" }
-                                            td {
-                                                if entry.billable {
-                                                    span { class: "badge badge-info", "Billable" }
-                                                } else {
-                                                    span { class: "badge badge-neutral", "No" }
-                                                }
-                                            }
+                                        }
+                                        button {
+                                            class: "ts-day-action",
+                                            onclick: move |_| open_edit.call(e_edit.clone()),
+                                            "Edit"
                                         }
                                     }
                                 }
