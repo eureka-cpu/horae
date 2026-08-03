@@ -943,8 +943,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   background: var(--color-pine); border: 1px solid #2b7a66; border-radius: 7px; padding: 8px 9px;
 }
 .ts-cal-event:hover { border-color: var(--color-primary); }
-.ts-clickrow { cursor: pointer; }
-.ts-clickrow:hover td { background: var(--color-bg-tertiary); }
 .ts-cal-col.today .ts-cal-event { background: var(--color-accent); border-color: #e6b45f; }
 .ts-cal-ev-project { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11.5px; font-weight: 600; color: #f6f2e9; }
 .ts-cal-col.today .ts-cal-ev-project { color: var(--color-on-accent); font-weight: 700; }
