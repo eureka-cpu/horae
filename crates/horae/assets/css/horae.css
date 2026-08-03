@@ -186,8 +186,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-collapse:hover { color: var(--color-text); background: var(--color-bg-tertiary); }
 
-/* Sidebar timer: idle button → project/task picker → running countdown */
-.sidebar-timer-wrap { margin-bottom: var(--space-6); }
+/* Sidebar timer: idle button → project/task popover → running countdown */
+.sidebar-timer-wrap { position: relative; margin-bottom: var(--space-6); }
 .sidebar-timer {
   width: 100%;
   display: flex; align-items: center; justify-content: center; gap: var(--space-2);
@@ -228,13 +228,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-timer-stop:hover { background: var(--color-danger-line); }
 
-/* Start form (project/task pickers) */
-.sidebar-timer-form { display: flex; flex-direction: column; gap: var(--space-2); }
-.sidebar-timer-form select {
-  width: 100%; padding: var(--space-2) var(--space-3);
-  background: var(--color-bg); color: var(--color-text); font: inherit; font-size: var(--font-size-sm);
-  border: 1px solid var(--color-border-input); border-radius: var(--radius-btn);
+/* Start popover (anchored under the button; box chrome comes from .menu) */
+.sidebar-timer-pop {
+  position: absolute; top: calc(100% + var(--space-1)); left: 0; right: 0; z-index: 21;
+  padding: var(--space-3);
 }
+.sidebar-timer-pop-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text);
+}
+.sidebar-timer-pop-close {
+  padding: 0; border: none; background: none; cursor: pointer; line-height: 1;
+  font-size: var(--font-size-xl); color: var(--color-text-muted);
+}
+.sidebar-timer-pop-close:hover { color: var(--color-text); }
+.sidebar-timer-pop-body { display: flex; flex-direction: column; gap: var(--space-2); }
 .sidebar-timer-form-actions { display: flex; gap: var(--space-2); }
 .sidebar-timer-form-actions .btn { flex: 1; }
 

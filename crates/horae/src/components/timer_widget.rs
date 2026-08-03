@@ -33,6 +33,7 @@ pub fn TimerWidget() -> Element {
     let mut picking = use_signal(|| false);
     let mut selected_project = use_signal(String::new);
     let mut selected_task = use_signal(String::new);
+    let mut notes = use_signal(String::new);
 
     // Tasks narrow to the picked project, falling back to all tasks.
     let tasks = use_resource(move || {
@@ -85,10 +86,15 @@ pub fn TimerWidget() -> Element {
         if proj.is_empty() || task.is_empty() {
             return;
         }
+        let note = notes.read().trim().to_string();
+        let note = (!note.is_empty()).then_some(note);
         spawn(async move {
-            match server_fns::start_timer(proj, task, None).await {
+            match server_fns::start_timer(proj, task, note).await {
                 Ok(_) => {
                     picking.set(false);
+                    notes.set(String::new());
+                    selected_project.set(String::new());
+                    selected_task.set(String::new());
                     timer_resource.restart();
                 }
                 Err(e) => error!("Start timer error: {e}"),
@@ -118,46 +124,68 @@ pub fn TimerWidget() -> Element {
                     }
                     button { class: "sidebar-timer-stop", onclick: handle_stop, "Stop" }
                 }
-            } else if picking() {
-                div { class: "sidebar-timer-form",
-                    select {
-                        value: "{selected_project}",
-                        oninput: move |e| {
-                            selected_project.set(e.value());
-                            selected_task.set(String::new());
-                        },
-                        option { value: "", "Select project…" }
-                        {projects.read().as_ref().and_then(|r| r.as_ref().ok()).map(|ps| rsx! {
-                            for p in ps.iter() {
-                                option { value: "{p.id}", "{p.name}" }
-                            }
-                        })}
-                    }
-                    select {
-                        value: "{selected_task}",
-                        oninput: move |e| selected_task.set(e.value()),
-                        option { value: "", "Select task…" }
-                        {tasks.read().as_ref().and_then(|r| r.as_ref().ok()).map(|ts| rsx! {
-                            for t in ts.iter() {
-                                option { value: "{t.id}", "{t.name}" }
-                            }
-                        })}
-                    }
-                    div { class: "sidebar-timer-form-actions",
-                        button { class: "btn btn-primary", onclick: handle_start, "Start" }
-                        button {
-                            class: "btn btn-ghost",
-                            onclick: move |_| picking.set(false),
-                            "Cancel"
-                        }
-                    }
-                }
             } else {
                 button {
                     class: "sidebar-timer",
                     onclick: move |_| picking.set(true),
                     span { class: "sidebar-timer-icon" }
                     span { class: "sidebar-timer-label", "Start timer" }
+                }
+                if picking() {
+                    div { class: "menu-overlay", onclick: move |_| picking.set(false) }
+                    div { class: "sidebar-timer-pop menu",
+                        div { class: "sidebar-timer-pop-head",
+                            span { "Start timer" }
+                            button {
+                                class: "sidebar-timer-pop-close",
+                                "aria-label": "Close",
+                                onclick: move |_| picking.set(false),
+                                "×"
+                            }
+                        }
+                        div { class: "sidebar-timer-pop-body",
+                            label { class: "form-label", "Project / Task" }
+                            select {
+                                class: "form-input",
+                                value: "{selected_project}",
+                                oninput: move |e| {
+                                    selected_project.set(e.value());
+                                    selected_task.set(String::new());
+                                },
+                                option { value: "", "Select project…" }
+                                {projects.read().as_ref().and_then(|r| r.as_ref().ok()).map(|ps| rsx! {
+                                    for p in ps.iter() {
+                                        option { value: "{p.id}", "{p.name}" }
+                                    }
+                                })}
+                            }
+                            select {
+                                class: "form-input",
+                                value: "{selected_task}",
+                                oninput: move |e| selected_task.set(e.value()),
+                                option { value: "", "Select task…" }
+                                {tasks.read().as_ref().and_then(|r| r.as_ref().ok()).map(|ts| rsx! {
+                                    for t in ts.iter() {
+                                        option { value: "{t.id}", "{t.name}" }
+                                    }
+                                })}
+                            }
+                            textarea {
+                                class: "form-input form-textarea",
+                                placeholder: "Notes (optional)",
+                                value: "{notes}",
+                                oninput: move |e| notes.set(e.value()),
+                            }
+                            div { class: "sidebar-timer-form-actions",
+                                button { class: "btn btn-primary", onclick: handle_start, "Start timer" }
+                                button {
+                                    class: "btn btn-ghost",
+                                    onclick: move |_| picking.set(false),
+                                    "Cancel"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
