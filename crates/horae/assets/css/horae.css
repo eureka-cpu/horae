@@ -57,6 +57,9 @@
 
   /* Control chrome */
   --color-border-input: #3d382e;   /* inputs, checkboxes — lighter than --color-border */
+  --color-cell-empty-bg: #161510;      /* week-grid empty cell fill */
+  --color-cell-empty-border: #2a271f;  /* week-grid empty cell border */
+  --color-cell-today-bg: #1c1a12;      /* week-grid today cell fill */
   --color-border-danger: #6e3634;  /* danger (outline) button border */
   --color-accent-dark: #c48934;    /* accent hover */
   --color-pine-hover: #24705d;     /* solid button hover */
@@ -788,9 +791,9 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   background: var(--color-bg); border: 1px solid var(--color-border-input); border-radius: var(--radius-btn);
   font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--color-text);
 }
-.ts-cell-box.empty { background: #161510; border-color: #2a271f; color: var(--color-text-muted); }
+.ts-cell-box.empty { background: var(--color-cell-empty-bg); border-color: var(--color-cell-empty-border); color: var(--color-text-muted); }
 .ts-cell-box.today {
-  background: #1c1a12; border-color: var(--color-accent); color: var(--color-text);
+  background: var(--color-cell-today-bg); border-color: var(--color-accent); color: var(--color-text);
   box-shadow: 0 0 0 3px var(--color-accent-bg);
 }
 .ts-rowtotal { text-align: right; font-family: var(--font-family-mono); font-size: var(--font-size-base); font-weight: 600; color: var(--color-text); }
@@ -804,8 +807,8 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--color-text);
 }
 .ts-cell-input::placeholder { color: var(--color-text-muted); }
-.ts-cell-input.empty { background: #161510; border-color: #2a271f; }
-.ts-cell-input.today { background: #1c1a12; border-color: var(--color-accent); }
+.ts-cell-input.empty { background: var(--color-cell-empty-bg); border-color: var(--color-cell-empty-border); }
+.ts-cell-input.today { background: var(--color-cell-today-bg); border-color: var(--color-accent); }
 .ts-cell-input:focus { border-color: var(--color-primary); box-shadow: var(--ring-soft); }
 .ts-addrow-wrap { padding: var(--space-4) var(--space-5); }
 .ts-addrow {
