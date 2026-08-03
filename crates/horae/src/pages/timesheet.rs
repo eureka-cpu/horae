@@ -5,7 +5,6 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::components::controls::Segmented;
-use crate::components::timer_widget::TimerWidget;
 use crate::models::time_entry::TimeEntry;
 use crate::server_fns;
 
@@ -400,10 +399,6 @@ pub fn Timesheet() -> Element {
                     },
                 }
             }
-
-            // The running timer lives on the timesheet now that the standalone
-            // Time page is gone.
-            TimerWidget {}
 
             // Toolbar: add entry + week pager
             div { class: "ts-toolbar",
