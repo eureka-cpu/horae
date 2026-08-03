@@ -59,6 +59,34 @@ fn from_list<T: 'static, E: 'static, R: Default>(
         .unwrap_or_default()
 }
 
+/// Create, update, or (when `minutes` is 0) delete a time entry — `existing` is
+/// the entry to change, or `None` to create one. Shared by the week grid cells
+/// and the entry dialog so both save the same way.
+async fn persist_entry(
+    existing: Option<Uuid>,
+    project_id: String,
+    task_id: String,
+    day: NaiveDate,
+    minutes: i32,
+    notes: Option<String>,
+    billable: bool,
+) -> Result<(), ServerFnError> {
+    match (existing, minutes) {
+        (Some(id), 0) => server_fns::delete_time_entry(id.to_string())
+            .await
+            .map(|_| ()),
+        (Some(id), m) => server_fns::update_time_entry(id.to_string(), m, notes, billable)
+            .await
+            .map(|_| ()),
+        (None, m) if m > 0 => {
+            server_fns::create_time_entry(project_id, task_id, day.to_string(), m, notes, billable)
+                .await
+                .map(|_| ())
+        }
+        _ => Ok(()),
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 enum ViewMode {
     Day,
@@ -242,25 +270,16 @@ pub fn Timesheet() -> Element {
             .unwrap_or((None, true));
         let mut entries = entries;
         spawn(async move {
-            let res = match (edit.existing, edit.minutes) {
-                (Some(id), 0) => server_fns::delete_time_entry(id.to_string())
-                    .await
-                    .map(|_| ()),
-                (Some(id), m) => server_fns::update_time_entry(id.to_string(), m, notes, billable)
-                    .await
-                    .map(|_| ()),
-                (None, m) if m > 0 => server_fns::create_time_entry(
-                    edit.project_id.to_string(),
-                    edit.task_id.to_string(),
-                    edit.day.to_string(),
-                    m,
-                    None,
-                    true,
-                )
-                .await
-                .map(|_| ()),
-                _ => Ok(()),
-            };
+            let res = persist_entry(
+                edit.existing,
+                edit.project_id.to_string(),
+                edit.task_id.to_string(),
+                edit.day,
+                edit.minutes,
+                notes,
+                billable,
+            )
+            .await;
             if res.is_ok() {
                 entries.restart();
             }
@@ -548,33 +567,21 @@ pub fn Timesheet() -> Element {
                                             let n = add_notes.read().trim().to_string();
                                             (!n.is_empty()).then_some(n)
                                         };
-                                        let spent = date.to_string();
                                         let editing_id = *editing.read();
-                                        let bill = edit_billable();
+                                        let billable = if editing_id.is_some() {
+                                            edit_billable()
+                                        } else {
+                                            true
+                                        };
                                         let mut entries = entries;
                                         add_saving.set(true);
                                         add_error.set(None);
                                         spawn(async move {
-                                            let result = match editing_id {
-                                                Some(id) => server_fns::update_time_entry(
-                                                        id.to_string(),
-                                                        minutes,
-                                                        notes,
-                                                        bill,
-                                                    )
-                                                    .await
-                                                    .map(|_| ()),
-                                                None => server_fns::create_time_entry(
-                                                        project_id,
-                                                        task_id,
-                                                        spent,
-                                                        minutes,
-                                                        notes,
-                                                        true,
-                                                    )
-                                                    .await
-                                                    .map(|_| ()),
-                                            };
+                                            let result = persist_entry(
+                                                editing_id, project_id, task_id, date, minutes,
+                                                notes, billable,
+                                            )
+                                            .await;
                                             match result {
                                                 Ok(()) => {
                                                     add_open.set(None);
