@@ -21,8 +21,8 @@ ______________________________________________________________________
 
 **Purpose**: Schema and offline-cache groundwork every story builds on.
 
-- [ ] T001 Add migration `crates/horae/migrations/0005_time_entry_start_minute.sql` adding nullable `start_minute smallint` with the range and within-day CHECK constraints per [data-model.md](./data-model.md).
-- [ ] T002 Apply the migration to the dev DB and regenerate the committed `.sqlx/` cache (`cargo sqlx prepare --workspace -- --features server --all-targets`).
+- [X] T001 Add migration `crates/horae/migrations/0005_time_entry_start_minute.sql` adding nullable `start_minute smallint` with the range and within-day CHECK constraints per [data-model.md](./data-model.md).
+- [X] T002 Apply the migration to the dev DB and regenerate the committed `.sqlx/` cache (`cargo sqlx prepare --workspace -- --features server --all-targets`).
 
 ______________________________________________________________________
 
@@ -30,12 +30,12 @@ ______________________________________________________________________
 
 **Purpose**: Domain helpers, the DTO field, the shared mutation plumbing, and calendar positioning that ALL stories depend on. No user story is complete until this phase is.
 
-- [ ] T003 [P] Create pure module `crates/core/src/time_of_day.rs` with `parse`, `format`, `format_12h`, `snap(minutes, step)`, `clamp_to_day(start, minutes)`, and `MIN_DURATION` per [data-model.md](./data-model.md); export it from `crates/core/src/lib.rs`.
-- [ ] T004 [P] Unit tests for `time_of_day` in `crates/core/src/time_of_day.rs` (parse valid/invalid, format round-trip, snap to 15, clamp at end-of-day, min-duration) — `cargo test -p horae-core`.
-- [ ] T005 [P] Add `start_minute: Option<i32>` to the shared `TimeEntry` DTO in `crates/horae/src/models/time_entry.rs`.
-- [ ] T006 Include `start_minute` in the read queries/mappings (`list_time_entries` and any `query_as!`) in `crates/horae/src/server_fns/time_entries.rs` so the calendar receives it.
-- [ ] T007 Extend `create_time_entry` and `update_time_entry` in `crates/horae/src/server_fns/time_entries.rs` to accept and persist `start_minute` (snap + `clamp_to_day` via `horae-core`; reject out-of-range) per [contracts/server-fns.md](./contracts/server-fns.md).
-- [ ] T008 In `render_calendar_view` (`crates/horae/src/pages/timesheet.rs`), split each day's entries into timed (positioned at `start_minute`) and untimed (stacked from the top as today), sizing both by duration; add supporting CSS in `crates/horae/assets/css/horae.css` (D5).
+- [X] T003 [P] Create pure module `crates/core/src/time_of_day.rs` with `parse`, `format`, `format_12h`, `snap(minutes, step)`, `clamp_to_day(start, minutes)`, and `MIN_DURATION` per [data-model.md](./data-model.md); export it from `crates/core/src/lib.rs`.
+- [X] T004 [P] Unit tests for `time_of_day` in `crates/core/src/time_of_day.rs` (parse valid/invalid, format round-trip, snap to 15, clamp at end-of-day, min-duration) — `cargo test -p horae-core`.
+- [X] T005 [P] Add `start_minute: Option<i32>` to the shared `TimeEntry` DTO in `crates/horae/src/models/time_entry.rs`.
+- [X] T006 Include `start_minute` in the read queries/mappings (`list_time_entries` and any `query_as!`) in `crates/horae/src/server_fns/time_entries.rs` so the calendar receives it.
+- [X] T007 Extend `create_time_entry` and `update_time_entry` in `crates/horae/src/server_fns/time_entries.rs` to accept and persist `start_minute` (snap + `clamp_to_day` via `horae-core`; reject out-of-range) per [contracts/server-fns.md](./contracts/server-fns.md).
+- [X] T008 In `render_calendar_view` (`crates/horae/src/pages/timesheet.rs`), split each day's entries into timed (positioned at `start_minute`) and untimed (stacked from the top as today), sizing both by duration; add supporting CSS in `crates/horae/assets/css/horae.css` (D5).
 
 **Checkpoint**: entries can carry a start time end-to-end and the calendar renders timed vs untimed correctly — user-story phases can now proceed.
 

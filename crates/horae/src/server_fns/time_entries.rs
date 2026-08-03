@@ -2,6 +2,25 @@
 
 use super::*;
 
+/// Validate an optional start time (minutes since midnight, 0..=1439) and clamp
+/// the duration so the entry never crosses midnight (Constitution: exactness).
+/// Returns the possibly-clamped minutes and the validated start.
+#[cfg(feature = "server")]
+fn normalize_start(
+    minutes: i32,
+    start_minute: Option<i32>,
+) -> Result<(i32, Option<i32>), ServerFnError> {
+    match start_minute {
+        None => Ok((minutes, None)),
+        Some(sm) if (0..=1439).contains(&sm) => {
+            let clamped =
+                horae_core::time_of_day::clamp_to_day(sm as u16, minutes.max(0) as u32) as i32;
+            Ok((clamped, Some(sm)))
+        }
+        Some(_) => Err(server_err("start time must be within the day (0..=1439)")),
+    }
+}
+
 // ── Time Entries ─────────────────────────────────────────────────────────────
 
 #[server]
@@ -39,7 +58,7 @@ pub async fn list_time_entries(
         TimeEntry,
         r#"SELECT id, org_id, user_id, project_id, task_id,
                 spent_date as "spent_date: chrono::NaiveDate",
-                minutes, rounded_minutes, notes, billable, is_running,
+                minutes, start_minute, rounded_minutes, notes, billable, is_running,
                 started_at as "started_at: chrono::DateTime<chrono::Utc>",
                 state as "state: EntryState", invoice_id,
                 created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -114,7 +133,7 @@ pub async fn start_timer(
          VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), $8)
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -172,7 +191,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
          WHERE id = $1 AND user_id = $2 AND is_running = true
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -201,7 +220,7 @@ pub async fn get_current_timer() -> Result<Option<TimeEntry>, ServerFnError> {
         TimeEntry,
         r#"SELECT id, org_id, user_id, project_id, task_id,
                 spent_date as "spent_date: chrono::NaiveDate",
-                minutes, rounded_minutes, notes, billable, is_running,
+                minutes, start_minute, rounded_minutes, notes, billable, is_running,
                 started_at as "started_at: chrono::DateTime<chrono::Utc>",
                 state as "state: EntryState", invoice_id,
                 created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -227,6 +246,7 @@ pub async fn create_time_entry(
     minutes: i32,
     notes: Option<String>,
     billable: bool,
+    start_minute: Option<i32>,
 ) -> Result<TimeEntry, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
@@ -235,6 +255,7 @@ pub async fn create_time_entry(
     let spent_date: chrono::NaiveDate = spent_date
         .parse()
         .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
+    let (minutes, start_minute) = normalize_start(minutes, start_minute)?;
 
     let row = sqlx::query!(
         r#"SELECT org_id, org_role as "org_role: OrgRole" FROM users WHERE id = $1"#,
@@ -265,11 +286,11 @@ pub async fn create_time_entry(
 
     let entry = sqlx::query_as!(
         TimeEntry,
-        r#"INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10)
+        r#"INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state, start_minute)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11)
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -284,6 +305,7 @@ pub async fn create_time_entry(
         notes.as_deref(),
         billable,
         EntryState::Open as EntryState,
+        start_minute,
     )
     .fetch_one(&state.db)
     .await
@@ -301,14 +323,16 @@ pub async fn update_time_entry(
     minutes: i32,
     notes: Option<String>,
     billable: bool,
+    start_minute: Option<i32>,
 ) -> Result<TimeEntry, ServerFnError> {
     let user_id = session_user_id().await?;
     let state = crate::state::global_state().await;
     let entry_id = parse_uuid(&entry_id, "entry_id")?;
+    let (minutes, start_minute) = normalize_start(minutes, start_minute)?;
 
     // Read current values first so a no-op update emits no event (FR-012).
     let before = sqlx::query!(
-        r#"SELECT minutes, notes, billable FROM time_entries
+        r#"SELECT minutes, start_minute, notes, billable FROM time_entries
            WHERE id = $1 AND user_id = $2 AND state = $3"#,
         entry_id,
         user_id,
@@ -321,11 +345,11 @@ pub async fn update_time_entry(
     let entry = sqlx::query_as!(
         TimeEntry,
         r#"UPDATE time_entries
-         SET minutes = $3, notes = $4, billable = $5, updated_at = now()
+         SET minutes = $3, notes = $4, billable = $5, start_minute = $7, updated_at = now()
          WHERE id = $1 AND user_id = $2 AND state = $6
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -336,6 +360,7 @@ pub async fn update_time_entry(
         notes.as_deref(),
         billable,
         EntryState::Open as EntryState,
+        start_minute,
     )
     .fetch_optional(&state.db)
     .await
@@ -343,7 +368,10 @@ pub async fn update_time_entry(
     .ok_or_else(|| conflict("Entry not found or is locked (not in 'open' state)"))?;
 
     let changed = before.is_none_or(|b| {
-        b.minutes != minutes || b.notes.as_deref() != notes.as_deref() || b.billable != billable
+        b.minutes != minutes
+            || b.notes.as_deref() != notes.as_deref()
+            || b.billable != billable
+            || b.start_minute != start_minute
     });
     if changed {
         state
@@ -375,7 +403,7 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
            WHERE id = $1 AND user_id = $2 AND state = $3
            RETURNING id, org_id, user_id, project_id, task_id,
                      spent_date as "spent_date: chrono::NaiveDate",
-                     minutes, rounded_minutes, notes, billable, is_running,
+                     minutes, start_minute, rounded_minutes, notes, billable, is_running,
                      started_at as "started_at: chrono::DateTime<chrono::Utc>",
                      state as "state: EntryState", invoice_id,
                      created_at as "created_at: chrono::DateTime<chrono::Utc>",

@@ -63,6 +63,10 @@ fn from_list<T: 'static, E: 'static, R: Default>(
 /// Create, update, or (when `minutes` is 0) delete a time entry — `existing` is
 /// the entry to change, or `None` to create one. Shared by the week grid cells
 /// and the entry dialog so both save the same way.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one shared create/update/delete dispatch mirroring the entry's fields"
+)]
 async fn persist_entry(
     existing: Option<Uuid>,
     project_id: String,
@@ -71,19 +75,28 @@ async fn persist_entry(
     minutes: i32,
     notes: Option<String>,
     billable: bool,
+    start_minute: Option<i32>,
 ) -> Result<(), ServerFnError> {
     match (existing, minutes) {
         (Some(id), 0) => server_fns::delete_time_entry(id.to_string())
             .await
             .map(|_| ()),
-        (Some(id), m) => server_fns::update_time_entry(id.to_string(), m, notes, billable)
-            .await
-            .map(|_| ()),
-        (None, m) if m > 0 => {
-            server_fns::create_time_entry(project_id, task_id, day.to_string(), m, notes, billable)
+        (Some(id), m) => {
+            server_fns::update_time_entry(id.to_string(), m, notes, billable, start_minute)
                 .await
                 .map(|_| ())
         }
+        (None, m) if m > 0 => server_fns::create_time_entry(
+            project_id,
+            task_id,
+            day.to_string(),
+            m,
+            notes,
+            billable,
+            start_minute,
+        )
+        .await
+        .map(|_| ()),
         _ => Ok(()),
     }
 }
@@ -286,6 +299,9 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
     // billable flag is carried through (the modal doesn't expose it).
     let mut editing = use_signal(|| None::<Uuid>);
     let mut edit_billable = use_signal(|| true);
+    // The entry's optional start time (minutes since midnight); None = untimed.
+    // Set by a calendar drag or when editing a timed entry; carried into save.
+    let mut add_start = use_signal(|| None::<i32>);
 
     // Whether the entry modal's primary action starts a timer (Harvest-style):
     // a new entry on today's column with no duration typed yet. Otherwise the
@@ -313,6 +329,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
         add_task.set(first_task);
         add_notes.set(String::new());
         add_duration.set("0:00".to_string());
+        add_start.set(None);
         add_error.set(None);
         add_open.set(Some(date));
     });
@@ -325,6 +342,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
         add_task.set(e.task_id.to_string());
         add_notes.set(e.notes.clone().unwrap_or_default());
         add_duration.set(format_hm(e.minutes));
+        add_start.set(e.start_minute);
         edit_billable.set(e.billable);
         add_error.set(None);
         add_open.set(Some(e.spent_date));
@@ -378,6 +396,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 edit.minutes,
                 notes,
                 billable,
+                None, // Week-grid cells are untimed (no time of day)
             )
             .await;
             if res.is_ok() {
@@ -707,6 +726,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                                                 return;
                                             }
                                         };
+                                        let start_minute = *add_start.read();
                                         let editing_id = *editing.read();
                                         let billable = if editing_id.is_some() {
                                             edit_billable()
@@ -718,7 +738,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                                         spawn(async move {
                                             let result = persist_entry(
                                                 editing_id, project_id, task_id, date, minutes,
-                                                notes, billable,
+                                                notes, billable, start_minute,
                                             )
                                             .await;
                                             match result {
@@ -847,6 +867,9 @@ struct CalLabels<'a> {
 struct CalEvent {
     top: i32,
     height: i32,
+    /// True when the entry has a start time (positioned at its hour); false when
+    /// untimed (stacked from the top of the day).
+    timed: bool,
     project: String,
     task: String,
     duration: String,
@@ -868,34 +891,40 @@ fn render_calendar_view(
     open_add: Callback<NaiveDate>,
     open_edit: Callback<TimeEntry>,
 ) -> Element {
-    // Pixels per hour. Entries are placed by *duration* (Harvest's duration mode):
-    // stacked from the top of the day, height proportional to minutes.
+    // Pixels per hour.
     const CAL_HOUR: i32 = 48;
-    let max_min = daily_totals.iter().copied().max().unwrap_or(0);
-    // At least 8 rows so a light week still reads as a calendar.
-    let max_hours = ((max_min + 59) / 60).max(8);
-
     let today_off = today_offset(today, week_start);
     let col_class = |i: usize| day_col_class("ts-cal-col", today_off, i);
     let head_class = |i: usize| day_col_class("ts-cal-dayhead", today_off, i);
 
-    // Pre-compute each entry's placement, stacked from the top of its day.
+    // Place entries: timed ones (with a start time) at their hour; untimed ones
+    // stacked from the top of the day by cumulative duration (Harvest does the
+    // same for duration-only entries). Track the latest bottom so the grid is
+    // tall enough to show every block.
     let mut day_events: Vec<Vec<CalEvent>> = Vec::with_capacity(7);
+    let mut max_bottom_min = 0i32;
     for day in by_day.iter() {
-        let mut cum = 0i32;
+        let mut untimed_cum = 0i32;
         let mut evs = Vec::new();
         for e in day {
-            let top = cum * CAL_HOUR / 60;
-            let height = (e.minutes * CAL_HOUR / 60).max(20);
-            cum += e.minutes;
+            let (top_min, timed) = match e.start_minute {
+                Some(sm) => (sm, true),
+                None => {
+                    let t = untimed_cum;
+                    untimed_cum += e.minutes;
+                    (t, false)
+                }
+            };
+            max_bottom_min = max_bottom_min.max(top_min + e.minutes);
             let client = labels
                 .clients
                 .get(&e.project_id)
                 .map(|(name, currency)| format!("{name} · {currency}"))
                 .unwrap_or_default();
             evs.push(CalEvent {
-                top,
-                height,
+                top: top_min * CAL_HOUR / 60,
+                height: (e.minutes * CAL_HOUR / 60).max(20),
+                timed,
                 project: labels
                     .projects
                     .get(&e.project_id)
@@ -909,6 +938,8 @@ fn render_calendar_view(
         }
         day_events.push(evs);
     }
+    // At least 8 rows so a light week still reads as a calendar.
+    let max_hours = ((max_bottom_min + 59) / 60).max(8);
 
     rsx! {
         div { class: "ts-cal",
@@ -946,7 +977,7 @@ fn render_calendar_view(
                             onclick: move |_| open_add.call(week_start + Duration::days(i as i64)),
                             for ev in day_events[i].iter() {
                                 div {
-                                    class: "ts-cal-event",
+                                    class: if ev.timed { "ts-cal-event timed" } else { "ts-cal-event" },
                                     style: "top: {ev.top}px; height: {ev.height}px;",
                                     onclick: {
                                         let entry = ev.entry.clone();

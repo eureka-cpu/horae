@@ -21,6 +21,9 @@ pub struct TimeEntry {
     pub is_running: bool,
     /// Non-null only while is_running = true.
     pub started_at: Option<DateTime<Utc>>,
+    /// Optional start time as minutes since local midnight (0..=1439). `None` =
+    /// untimed (duration-only); the calendar stacks those from the top of the day.
+    pub start_minute: Option<i32>,
     pub state: EntryState,
     pub invoice_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
