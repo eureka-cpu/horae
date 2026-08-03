@@ -216,6 +216,18 @@ pub fn Timesheet() -> Element {
     let mut editing = use_signal(|| None::<Uuid>);
     let mut edit_billable = use_signal(|| true);
 
+    // Whether the entry modal's primary action starts a timer (Harvest-style):
+    // a new entry on today's column with no duration typed yet. Otherwise the
+    // primary saves a fixed-duration entry.
+    let timer_mode = use_memo(move || {
+        let Some(date) = *add_open.read() else {
+            return false;
+        };
+        editing.read().is_none()
+            && date == today
+            && !matches!(horae_core::duration::parse(&add_duration.read()), Ok(m) if m > 0)
+    });
+
     // Open the modal to create a new entry for `date`, defaulting the selects to
     // the first project/task.
     let open_add = use_callback(move |date: NaiveDate| {
@@ -504,7 +516,7 @@ pub fn Timesheet() -> Element {
                         onclick: move |e| e.stop_propagation(),
                         div { class: "ts-modal-title",
                             if editing.read().is_some() { "Edit time entry" } else { "New time entry" }
-                            " for {date.format(\"%A, %-d %b\")}"
+                            " for {date.format(\"%A, %d %b\")}"
                         }
                         div { class: "ts-modal-body",
                             label { class: "form-label", "Project / Task" }
@@ -544,17 +556,19 @@ pub fn Timesheet() -> Element {
                                 div { class: "ts-modal-error", "{err}" }
                             }
                             div { class: "ts-modal-actions",
-                                // Timer-first: a running timer starts now, so it's
-                                // only offered for a new entry on today's column.
-                                if editing.read().is_none() && date == today {
-                                    button {
-                                        class: "btn btn-primary",
-                                        disabled: add_saving(),
-                                        onclick: move |_| {
-                                            let Some((project_id, task_id, notes)) = read_pt_notes.call(()) else {
-                                                return;
-                                            };
-                                            let mut entries = entries;
+                                // Harvest-style single primary: with no duration on
+                                // today's column it starts a running timer; once a
+                                // duration is typed (or on a past day / when editing)
+                                // it saves a fixed entry.
+                                button {
+                                    class: "btn btn-primary",
+                                    disabled: add_saving(),
+                                    onclick: move |_| {
+                                        let Some((project_id, task_id, notes)) = read_pt_notes.call(()) else {
+                                            return;
+                                        };
+                                        let mut entries = entries;
+                                        if timer_mode() {
                                             add_saving.set(true);
                                             add_error.set(None);
                                             spawn(async move {
@@ -568,21 +582,8 @@ pub fn Timesheet() -> Element {
                                                 }
                                                 add_saving.set(false);
                                             });
-                                        },
-                                        "Start timer"
-                                    }
-                                }
-                                button {
-                                    class: if editing.read().is_none() && date == today {
-                                        "btn btn-secondary"
-                                    } else {
-                                        "btn btn-primary"
-                                    },
-                                    disabled: add_saving(),
-                                    onclick: move |_| {
-                                        let Some((project_id, task_id, notes)) = read_pt_notes.call(()) else {
                                             return;
-                                        };
+                                        }
                                         // Parse cap keeps the u32 -> i32 cast lossless: a day
                                         // can't hold more than 24h, and 0 is not an entry.
                                         const MAX_ENTRY_MINUTES: u32 = 24 * 60;
@@ -610,7 +611,6 @@ pub fn Timesheet() -> Element {
                                         } else {
                                             true
                                         };
-                                        let mut entries = entries;
                                         add_saving.set(true);
                                         add_error.set(None);
                                         spawn(async move {
@@ -629,7 +629,13 @@ pub fn Timesheet() -> Element {
                                             add_saving.set(false);
                                         });
                                     },
-                                    if add_saving() { "Saving…" } else { "Save entry" }
+                                    if add_saving() {
+                                        "Saving…"
+                                    } else if timer_mode() {
+                                        "Start timer"
+                                    } else {
+                                        "Save entry"
+                                    }
                                 }
                                 if editing.read().is_some() {
                                     button {
