@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{Datelike, Duration, NaiveDate};
 use dioxus::prelude::*;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::components::controls::Segmented;
@@ -259,6 +260,24 @@ pub fn Timesheet() -> Element {
         add_open.set(Some(e.spent_date));
     });
 
+    // Start a timer for an existing entry's project/task (the Day-view "Start"
+    // action, Harvest-style resume).
+    let start_entry = use_callback(move |e: TimeEntry| {
+        let mut entries = entries;
+        spawn(async move {
+            match server_fns::start_timer(
+                e.project_id.to_string(),
+                e.task_id.to_string(),
+                e.notes.clone(),
+            )
+            .await
+            {
+                Ok(_) => entries.restart(),
+                Err(err) => error!("Start timer error: {err}"),
+            }
+        });
+    });
+
     // ── Editable week grid ───────────────────────────────────────────────────
     // Rows added via "Add row" that have no entries yet this week.
     let mut pending_rows = use_signal(Vec::<(Uuid, Uuid)>::new);
@@ -382,6 +401,22 @@ pub fn Timesheet() -> Element {
 
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();
+
+    // Pager stepping: Day view moves one day (rolling across the week edge);
+    // Week/Calendar move a whole week. `forward` picks the direction.
+    let step = use_callback(move |forward: bool| {
+        let day_mode = *view_mode.read() == ViewMode::Day;
+        let off = *selected_day_offset.read();
+        if day_mode && ((forward && off < 6) || (!forward && off > 0)) {
+            selected_day_offset.set(off + if forward { 1 } else { -1 });
+            return;
+        }
+        let ws = *week_start.read();
+        week_start.set(ws + Duration::days(if forward { 7 } else { -7 }));
+        if day_mode {
+            selected_day_offset.set(if forward { 0 } else { 6 });
+        }
+    });
     let is_this_week = ws == iso_week_monday(today);
     let range_label = format!("{} – {}", ws.format("%d %b"), week_end.format("%d %b %Y"));
 
@@ -423,19 +458,29 @@ pub fn Timesheet() -> Element {
                 div { class: "ts-pager",
                     button {
                         class: "ts-pager-btn prev",
-                        "aria-label": "Previous week",
-                        onclick: move |_| week_start.set(ws - Duration::days(7)),
+                        "aria-label": if current_mode == ViewMode::Day { "Previous day" } else { "Previous week" },
+                        onclick: move |_| step.call(false),
                         "←"
                     }
                     div { class: "ts-pager-label",
                         span { class: "text-faint", "▦" }
-                        span { class: "cur", if is_this_week { "This week" } else { "Week" } }
-                        span { class: "ts-pager-range", "{range_label}" }
+                        if current_mode == ViewMode::Day {
+                            {
+                                let d = ws + Duration::days((*selected_day_offset.read()).clamp(0, 6));
+                                rsx! {
+                                    span { class: "cur", if d == today { "Today" } else { "{d.format(\"%A\")}" } }
+                                    span { class: "ts-pager-range", "{d.format(\"%d %b %Y\")}" }
+                                }
+                            }
+                        } else {
+                            span { class: "cur", if is_this_week { "This week" } else { "Week" } }
+                            span { class: "ts-pager-range", "{range_label}" }
+                        }
                     }
                     button {
                         class: "ts-pager-btn next",
-                        "aria-label": "Next week",
-                        onclick: move |_| week_start.set(ws + Duration::days(7)),
+                        "aria-label": if current_mode == ViewMode::Day { "Next day" } else { "Next week" },
+                        onclick: move |_| step.call(true),
                         "→"
                     }
                 }
@@ -498,7 +543,7 @@ pub fn Timesheet() -> Element {
                         }
                     },
                     ViewMode::Day => rsx! {
-                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit)}
+                        {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
                         {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add, open_edit)}
@@ -876,90 +921,83 @@ fn render_calendar_view(
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "view renderer takes the week's data, display maps, and the edit action"
+    reason = "view renderer takes the week's data, display maps, and the row actions"
 )]
 fn render_day_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
-    week_start: NaiveDate,
     selected_offset: i64,
     mut selected_day_offset: Signal<i64>,
     project_names: &HashMap<Uuid, String>,
     task_names: &HashMap<Uuid, String>,
     open_edit: Callback<TimeEntry>,
+    start_entry: Callback<TimeEntry>,
 ) -> Element {
     let offset = selected_offset.clamp(0, 6) as usize;
-    let day_date = week_start + Duration::days(offset as i64);
     let day_entries = &by_day[offset];
     let total = daily_totals[offset];
 
     rsx! {
-        // Day selector tabs
-        div { class: "flex gap-1 mb-4",
+        // Day strip: each day shows its own total and the viewed day is
+        // underlined — Harvest presents the days this way here, not as tabs.
+        div { class: "ts-daystrip",
             for i in 0i64..7 {
                 {
-                    let d = week_start + Duration::days(i);
-                    let is_sel = i == selected_offset;
+                    let cls = if i == selected_offset { "ts-dayitem active" } else { "ts-dayitem" };
                     rsx! {
                         button {
-                            class: if is_sel { "btn btn-primary" } else { "btn btn-ghost" },
-                            style: "padding: 0.25rem 0.75rem; font-size: 0.8rem;",
+                            class: "{cls}",
                             onclick: move |_| selected_day_offset.set(i),
-                            "{DAY_LABELS[i as usize]} {d.format(\"%d\")}"
+                            span { class: "ts-dayitem-name", "{DAY_LABELS[i as usize]}" }
+                            span { class: "ts-dayitem-total", "{format_hm(daily_totals[i as usize])}" }
                         }
                     }
                 }
             }
+            div { class: "ts-dayitem ts-weektotal",
+                span { class: "ts-dayitem-name", "Week total" }
+                span { class: "ts-dayitem-total", "{format_hm(daily_totals.iter().sum::<i32>())}" }
+            }
         }
 
         div { class: "card",
-            h3 { class: "mb-4 text-default",
-                "{day_date.format(\"%A, %B %d, %Y\")}"
-            }
-
             if day_entries.is_empty() {
-                div { class: "text-muted text-sm p-8 text-center",
-                    "No entries for this day."
-                }
+                div { class: "ts-day-empty text-muted text-sm", "No entries for this day." }
             } else {
-                div { class: "table-container",
-                    table {
-                        thead {
-                            tr {
-                                th { "Project" }
-                                th { "Task" }
-                                th { "Duration" }
-                                th { "Notes" }
-                                th { "Billable" }
-                            }
-                        }
-                        tbody {
-                            for entry in day_entries.iter() {
-                                {
-                                    let proj = project_names.get(&entry.project_id).cloned().unwrap_or_else(|| entry.project_id.to_string());
-                                    let task = task_names.get(&entry.task_id).cloned().unwrap_or_else(|| "\u{2014}".into());
-                                    let entry = entry.clone();
-                                    rsx! {
-                                        tr {
-                                            class: "ts-clickrow",
-                                            onclick: move |_| open_edit.call(entry.clone()),
-                                            td { "{proj}" }
-                                            td { "{task}" }
-                                            td { class: "text-mono",
-                                                if entry.is_running {
-                                                    span { class: "badge badge-success", "Running" }
-                                                } else {
-                                                    "{entry.format_duration()}"
-                                                }
+                div { class: "ts-day-list",
+                    for entry in day_entries.iter() {
+                        {
+                            let proj = project_names.get(&entry.project_id).cloned().unwrap_or_else(|| entry.project_id.to_string());
+                            let task = task_names.get(&entry.task_id).cloned().unwrap_or_else(|| "\u{2014}".into());
+                            let note = entry.notes.clone().filter(|n| !n.trim().is_empty());
+                            let running = entry.is_running;
+                            let dur = entry.format_duration();
+                            let e_start = entry.clone();
+                            let e_edit = entry.clone();
+                            rsx! {
+                                div { class: "ts-day-entry",
+                                    div { class: "ts-day-entry-main",
+                                        div { class: "ts-day-entry-project", "{proj}" }
+                                        div { class: "ts-day-entry-task", "{task}" }
+                                        if let Some(n) = note {
+                                            div { class: "ts-day-entry-notes", "{n}" }
+                                        }
+                                    }
+                                    div { class: "ts-day-entry-side",
+                                        if running {
+                                            span { class: "badge badge-success", "Running" }
+                                        } else {
+                                            span { class: "ts-day-entry-dur text-mono", "{dur}" }
+                                            button {
+                                                class: "ts-day-action primary",
+                                                onclick: move |_| start_entry.call(e_start.clone()),
+                                                "Start"
                                             }
-                                            td { "{entry.notes.as_deref().unwrap_or(\"-\")}" }
-                                            td {
-                                                if entry.billable {
-                                                    span { class: "badge badge-info", "Billable" }
-                                                } else {
-                                                    span { class: "badge badge-neutral", "No" }
-                                                }
-                                            }
+                                        }
+                                        button {
+                                            class: "ts-day-action",
+                                            onclick: move |_| open_edit.call(e_edit.clone()),
+                                            "Edit"
                                         }
                                     }
                                 }
