@@ -220,6 +220,90 @@ pub fn Timesheet() -> Element {
         add_open.set(Some(e.spent_date));
     });
 
+    // ── Editable week grid ───────────────────────────────────────────────────
+    // Rows added via "Add row" that have no entries yet this week.
+    let mut pending_rows = use_signal(Vec::<(Uuid, Uuid)>::new);
+    let mut addrow_open = use_signal(|| false);
+    let mut addrow_project = use_signal(String::new);
+    let mut addrow_task = use_signal(String::new);
+
+    // Commit a grid cell: create, update, or clear the entry behind it, then
+    // reload. Notes/billable of an updated entry are preserved.
+    let commit_cell = use_callback(move |edit: CellEdit| {
+        let (notes, billable) = edit
+            .existing
+            .and_then(|id| {
+                week_entries
+                    .read()
+                    .iter()
+                    .find(|e| e.id == id)
+                    .map(|e| (e.notes.clone(), e.billable))
+            })
+            .unwrap_or((None, true));
+        let mut entries = entries;
+        spawn(async move {
+            let res = match (edit.existing, edit.minutes) {
+                (Some(id), 0) => server_fns::delete_time_entry(id.to_string())
+                    .await
+                    .map(|_| ()),
+                (Some(id), m) => server_fns::update_time_entry(id.to_string(), m, notes, billable)
+                    .await
+                    .map(|_| ()),
+                (None, m) if m > 0 => server_fns::create_time_entry(
+                    edit.project_id.to_string(),
+                    edit.task_id.to_string(),
+                    edit.day.to_string(),
+                    m,
+                    None,
+                    true,
+                )
+                .await
+                .map(|_| ()),
+                _ => Ok(()),
+            };
+            if res.is_ok() {
+                entries.restart();
+            }
+        });
+    });
+
+    // Remove a row: drop a pending one, or delete every entry it holds this week.
+    let remove_row = use_callback(move |key: (Uuid, Uuid)| {
+        pending_rows.write().retain(|k| *k != key);
+        let ids: Vec<Uuid> = week_entries
+            .read()
+            .iter()
+            .filter(|e| e.project_id == key.0 && e.task_id == key.1)
+            .map(|e| e.id)
+            .collect();
+        if ids.is_empty() {
+            return;
+        }
+        let mut entries = entries;
+        spawn(async move {
+            for id in ids {
+                let _ = server_fns::delete_time_entry(id.to_string()).await;
+            }
+            entries.restart();
+        });
+    });
+
+    let open_add_row = use_callback(move |()| {
+        addrow_project.set(from_list(&projects, |ps| {
+            ps.first().map(|p| p.id.to_string()).unwrap_or_default()
+        }));
+        addrow_task.set(from_list(&tasks, |ts| {
+            ts.first().map(|t| t.id.to_string()).unwrap_or_default()
+        }));
+        addrow_open.set(true);
+    });
+
+    let week_actions = WeekActions {
+        commit: commit_cell,
+        remove_row,
+        add_row: open_add_row,
+    };
+
     // Options for the modal selects: (id, label).
     let project_options = use_memo(move || -> Vec<(String, String)> {
         from_list(&projects, |ps| {
@@ -335,7 +419,7 @@ pub fn Timesheet() -> Element {
                 },
                 Some(Ok(_)) => match current_mode {
                     ViewMode::Week => rsx! {
-                        {render_week_view(&week_entries.read(), &daily_totals.read(), ws, today, &project_names.read(), &task_names.read())}
+                        {render_week_view(&week_entries.read(), &daily_totals.read(), ws, today, &project_names.read(), &task_names.read(), &pending_rows.read(), week_actions)}
                         div { class: "ts-submit-bar",
                             if all_submitted_or_approved {
                                 span { class: "badge badge-success", "Submitted" }
@@ -533,6 +617,60 @@ pub fn Timesheet() -> Element {
                                 button {
                                     class: "btn btn-ghost",
                                     onclick: move |_| add_open.set(None),
+                                    "Cancel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add-row picker: choose a project/task to add an empty grid row.
+            if addrow_open() {
+                div {
+                    class: "modal-overlay",
+                    onclick: move |_| addrow_open.set(false),
+                    div {
+                        class: "modal",
+                        onclick: move |e| e.stop_propagation(),
+                        div { class: "ts-modal-title", "Add a row" }
+                        div { class: "ts-modal-body",
+                            label { class: "form-label", "Project / Task" }
+                            select {
+                                class: "form-select",
+                                value: "{addrow_project}",
+                                onchange: move |e| addrow_project.set(e.value()),
+                                for (id , label) in project_options.read().iter() {
+                                    option { value: "{id}", "{label}" }
+                                }
+                            }
+                            select {
+                                class: "form-select",
+                                value: "{addrow_task}",
+                                onchange: move |e| addrow_task.set(e.value()),
+                                for (id , label) in task_options.read().iter() {
+                                    option { value: "{id}", "{label}" }
+                                }
+                            }
+                            div { class: "ts-modal-actions",
+                                button {
+                                    class: "btn btn-primary",
+                                    onclick: move |_| {
+                                        let p = addrow_project.read().parse::<Uuid>();
+                                        let t = addrow_task.read().parse::<Uuid>();
+                                        if let (Ok(pid), Ok(tid)) = (p, t) {
+                                            let key = (pid, tid);
+                                            if !pending_rows.read().contains(&key) {
+                                                pending_rows.write().push(key);
+                                            }
+                                        }
+                                        addrow_open.set(false);
+                                    },
+                                    "Add row"
+                                }
+                                button {
+                                    class: "btn btn-ghost",
+                                    onclick: move |_| addrow_open.set(false),
                                     "Cancel"
                                 }
                             }
@@ -791,6 +929,38 @@ fn render_day_view(
     }
 }
 
+/// A single week-grid cell edit, committed when the input loses focus.
+#[derive(Clone)]
+struct CellEdit {
+    project_id: Uuid,
+    task_id: Uuid,
+    day: NaiveDate,
+    /// The entry already in the cell (update/delete), or `None` to create one.
+    existing: Option<Uuid>,
+    minutes: i32,
+}
+
+/// The actions the editable week grid dispatches back to the page.
+#[derive(Clone, Copy)]
+struct WeekActions {
+    commit: Callback<CellEdit>,
+    remove_row: Callback<(Uuid, Uuid)>,
+    add_row: Callback<()>,
+}
+
+/// A week grid row's per-day minutes and the entry ids behind each day, so a cell
+/// can update its entry (one id), create a new one (none), or fall back to a
+/// read-only total when a day holds several entries for the same project/task.
+#[derive(Default)]
+struct RowAgg {
+    mins: [i32; 7],
+    ids: [Vec<Uuid>; 7],
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "view renderer takes the week's data, display maps, pending rows, and grid actions"
+)]
 fn render_week_view(
     entries: &[TimeEntry],
     daily_totals: &[i32],
@@ -798,10 +968,14 @@ fn render_week_view(
     today: NaiveDate,
     project_names: &HashMap<Uuid, String>,
     task_names: &HashMap<Uuid, String>,
+    pending: &[(Uuid, Uuid)],
+    actions: WeekActions,
 ) -> Element {
-    // Group by (project_id, task_id) into per-day minutes, preserving order.
+    // Group by (project_id, task_id), tracking per-day minutes and entry ids,
+    // preserving first-seen order. Rows added via "Add row" (no entries yet)
+    // are appended so they render as empty, editable rows.
     let mut row_keys: Vec<(Uuid, Uuid)> = Vec::new();
-    let mut row_map: HashMap<(Uuid, Uuid), [i32; 7]> = HashMap::new();
+    let mut row_map: HashMap<(Uuid, Uuid), RowAgg> = HashMap::new();
     for entry in entries {
         let offset = (entry.spent_date - week_start).num_days();
         if !(0..7).contains(&offset) {
@@ -811,9 +985,16 @@ fn render_week_view(
             .entry((entry.project_id, entry.task_id))
             .or_insert_with(|| {
                 row_keys.push((entry.project_id, entry.task_id));
-                [0i32; 7]
+                RowAgg::default()
             });
-        row[offset as usize] += entry.minutes;
+        row.mins[offset as usize] += entry.minutes;
+        row.ids[offset as usize].push(entry.id);
+    }
+    for key in pending {
+        if !row_map.contains_key(key) {
+            row_keys.push(*key);
+            row_map.insert(*key, RowAgg::default());
+        }
     }
 
     let today_off = today_offset(today, week_start);
@@ -854,8 +1035,8 @@ fn render_week_view(
                         let (pid, tid) = *key;
                         let proj = project_names.get(&pid).cloned().unwrap_or_else(|| pid.to_string());
                         let task = task_names.get(&tid).cloned().unwrap_or_else(|| "\u{2014}".into());
-                        let row = row_map.get(key).copied().unwrap_or([0; 7]);
-                        let row_total: i32 = row.iter().sum();
+                        let agg = &row_map[key];
+                        let row_total: i32 = agg.mins.iter().sum();
                         rsx! {
                             div { class: "ts-row ts-body",
                                 div { class: "ts-project",
@@ -867,16 +1048,45 @@ fn render_week_view(
                                 }
                                 for i in 0..7 {
                                     {
-                                        let mins = row[i];
-                                        let cls = value_cell_class("ts-cell-box", mins, today_off, i);
-                                        rsx! {
-                                            div { class: "ts-cell",
-                                                div { class: "{cls}",
-                                                    if mins > 0 {
-                                                        "{format_hm(mins)}"
-                                                    } else {
-                                                        "\u{2013}"
+                                        let mins = agg.mins[i];
+                                        // A cell is editable when it holds at most one entry: type a
+                                        // duration to create/update/clear it. Days with several entries
+                                        // show a read-only total (edit them in the Day view).
+                                        if agg.ids[i].len() <= 1 {
+                                            let day = week_start + Duration::days(i as i64);
+                                            let existing = agg.ids[i].first().copied();
+                                            let val = if mins > 0 { format_hm(mins) } else { String::new() };
+                                            let icls = value_cell_class("ts-cell-input", mins, today_off, i);
+                                            rsx! {
+                                                div { class: "ts-cell",
+                                                    input {
+                                                        class: "{icls}",
+                                                        r#type: "text",
+                                                        value: "{val}",
+                                                        placeholder: "\u{2013}",
+                                                        onchange: move |e| {
+                                                            let raw = e.value();
+                                                            let v = raw.trim();
+                                                            let minutes = if v.is_empty() {
+                                                                0
+                                                            } else {
+                                                                match horae_core::duration::parse(v) {
+                                                                    Ok(m) if m <= 24 * 60 => m as i32,
+                                                                    _ => return,
+                                                                }
+                                                            };
+                                                            actions
+                                                                .commit
+                                                                .call(CellEdit { project_id: pid, task_id: tid, day, existing, minutes });
+                                                        },
                                                     }
+                                                }
+                                            }
+                                        } else {
+                                            let cls = value_cell_class("ts-cell-box", mins, today_off, i);
+                                            rsx! {
+                                                div { class: "ts-cell",
+                                                    div { class: "{cls}", title: "Multiple entries — edit in Day view", "{format_hm(mins)}" }
                                                 }
                                             }
                                         }
@@ -884,10 +1094,26 @@ fn render_week_view(
                                 }
                                 div { class: "ts-rowtotal", "{format_hm(row_total)}" }
                                 div { class: "text-center",
-                                    button { class: "ts-del", "aria-label": "Remove row", "\u{00d7}" }
+                                    button {
+                                        class: "ts-del",
+                                        "aria-label": "Remove row",
+                                        onclick: move |_| actions.remove_row.call((pid, tid)),
+                                        "\u{00d7}"
+                                    }
                                 }
                             }
                         }
+                    }
+                }
+
+                // Add a project/task row to fill in across the week.
+                div { class: "ts-addrow-wrap",
+                    button {
+                        r#type: "button",
+                        class: "ts-addrow",
+                        onclick: move |_| actions.add_row.call(()),
+                        span { class: "plus", "\u{ff0b}" }
+                        "Add row"
                     }
                 }
 

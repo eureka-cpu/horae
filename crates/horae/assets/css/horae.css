@@ -797,6 +797,26 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-del { width: 30px; height: 30px; background: transparent; border: none; color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-base); }
 .ts-del:hover { color: var(--color-danger); }
 
+/* Editable week-grid cell (type a duration; blur to autosave) + Add row. */
+.ts-cell-input {
+  width: 100%; height: 40px; text-align: center; outline: none;
+  background: var(--color-bg); border: 1px solid var(--color-border-input); border-radius: var(--radius-btn);
+  font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--color-text);
+}
+.ts-cell-input::placeholder { color: var(--color-text-muted); }
+.ts-cell-input.empty { background: #161510; border-color: #2a271f; }
+.ts-cell-input.today { background: #1c1a12; border-color: var(--color-accent); }
+.ts-cell-input:focus { border-color: var(--color-primary); box-shadow: var(--ring-soft); }
+.ts-addrow-wrap { padding: var(--space-4) var(--space-5); }
+.ts-addrow {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 10px var(--space-4); background: transparent;
+  border: 1px dashed var(--color-border-input); border-radius: 9px;
+  color: var(--color-text-secondary); font: inherit; font-size: var(--font-size-sm); cursor: pointer;
+}
+.ts-addrow:hover { border-color: var(--color-primary); color: var(--color-text); }
+.ts-addrow .plus { color: var(--color-primary); font-size: var(--font-size-base); }
+
 .ts-coltotal { text-align: center; font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .ts-coltotal.today { color: var(--color-accent); font-weight: 600; }
 .ts-coltotal.empty { color: var(--color-text-muted); }
