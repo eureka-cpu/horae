@@ -67,7 +67,7 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
 #[component]
 fn SideLink(to: Route, icon: String, label: String) -> Element {
     // Match by route variant, not the exact URL, so a param-carrying route (the
-    // timesheet's ?view=&date=) stays highlighted regardless of its query.
+    // timesheet's /timesheet/<view>/<date>) stays highlighted on any view/day.
     let active = std::mem::discriminant(&use_route::<Route>()) == std::mem::discriminant(&to);
     rsx! {
         Link { to, class: if active { "nav-item active" } else { "nav-item" },

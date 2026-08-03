@@ -118,8 +118,9 @@ impl std::str::FromStr for ViewMode {
     }
 }
 
-/// The timesheet's anchor day, carried in the URL (`?date=YYYY-MM-DD`). The week
-/// shown is the ISO week containing it; in Day view it is the selected day.
+/// The timesheet's anchor day, carried in the URL path
+/// (`/timesheet/<view>/YYYY-MM-DD`). The week shown is the ISO week containing
+/// it; in Day view it is the selected day.
 #[derive(Clone, Copy, PartialEq)]
 pub struct Anchor(pub NaiveDate);
 
@@ -155,9 +156,9 @@ const DAY_LABELS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 #[component]
 pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
     let today = chrono::Utc::now().date_naive();
-    // View, week and selected day all derive from the URL (?view=&date=), so
-    // switching views or navigating is shareable and works with the browser's
-    // back/forward buttons. User actions push a new Timesheet route.
+    // View, week and selected day all derive from the URL path
+    // (/timesheet/<view>/<date>), so switching views or navigating is shareable
+    // and works with the browser's back/forward. Actions push a new route.
     let view_mode = use_memo(use_reactive!(|(view,)| view));
     let week_start = use_memo(use_reactive!(|(date,)| iso_week_monday(date.0)));
     // Which day is selected within the week (0 = Monday .. 6 = Sunday) for Day view.
@@ -474,13 +475,10 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
     // Pager stepping: Day view moves one day, Week/Calendar a whole week. Moving
     // the anchor date across the week edge rolls the week automatically.
     let step = use_callback(move |forward: bool| {
-        let days = if *view_mode.read() == ViewMode::Day {
-            1
-        } else {
-            7
-        };
+        let mode = *view_mode.read();
+        let days = if mode == ViewMode::Day { 1 } else { 7 };
         let delta = Duration::days(if forward { days } else { -days });
-        go.call((*view_mode.read(), date.0 + delta));
+        go.call((mode, date.0 + delta));
     });
     let is_this_week = ws == iso_week_monday(today);
     let range_label = format!("{} – {}", ws.format("%d %b"), week_end.format("%d %b %Y"));
