@@ -186,10 +186,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-collapse:hover { color: var(--color-text); background: var(--color-bg-tertiary); }
 
-/* Start-timer button */
+/* Sidebar timer: idle button → project/task picker → running countdown */
+.sidebar-timer-wrap { margin-bottom: var(--space-6); }
 .sidebar-timer {
+  width: 100%;
   display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-4); margin-bottom: var(--space-6);
+  padding: var(--space-2) var(--space-4);
   background: var(--color-primary); color: var(--color-on-primary);
   border: none; border-radius: var(--radius-btn); font: inherit; font-size: var(--font-size-sm); font-weight: 700;
   cursor: pointer; text-decoration: none;
@@ -203,6 +205,38 @@ h1, h2, h3, h4, h5, h6 {
   content: ''; position: absolute; left: 50%; top: 2px; width: 1.5px; height: 4px;
   background: var(--color-on-primary); transform: translateX(-50%);
 }
+
+/* Running state */
+.sidebar-timer-live {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-success-bg); border: 1px solid var(--color-success-line);
+  border-radius: var(--radius-btn);
+}
+.sidebar-timer-time {
+  font-family: var(--font-family-mono); font-size: var(--font-size-xl); font-weight: 600;
+  color: var(--color-success-fg); letter-spacing: 0.04em;
+}
+.sidebar-timer-proj {
+  font-size: var(--font-size-sm); color: var(--color-text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-timer-stop {
+  padding: var(--space-2); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer;
+  color: var(--color-danger-fg); background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-line); border-radius: var(--radius-btn);
+}
+.sidebar-timer-stop:hover { background: var(--color-danger-line); }
+
+/* Start form (project/task pickers) */
+.sidebar-timer-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.sidebar-timer-form select {
+  width: 100%; padding: var(--space-2) var(--space-3);
+  background: var(--color-bg); color: var(--color-text); font: inherit; font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border-input); border-radius: var(--radius-btn);
+}
+.sidebar-timer-form-actions { display: flex; gap: var(--space-2); }
+.sidebar-timer-form-actions .btn { flex: 1; }
 
 /* Sections */
 .sidebar-group { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-6); }
@@ -457,23 +491,6 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .badge-warning::before { background: var(--color-warning); }
 .badge-danger::before  { background: var(--color-danger); }
 .badge-info::before    { background: var(--color-primary); }
-
-/* Timer widget */
-.timer-widget {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-.timer-display {
-  font-size: var(--font-size-3xl);
-  font-family: var(--font-family-mono);
-  font-weight: 500;
-  color: var(--color-primary);
-  letter-spacing: 0.05em;
-}
-.timer-running .timer-display { color: var(--color-success); }
 
 /* Page header */
 .page-header { margin-bottom: var(--space-6); display: flex; align-items: center; gap: var(--space-4); }
