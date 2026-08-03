@@ -228,9 +228,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-timer-stop:hover { background: var(--color-danger-line); }
 
-/* Start popover (anchored under the button; box chrome comes from .menu) */
+/* Start popover. Fixed (not absolute) so it can be wider than the rail: the
+   sidebar scrolls (overflow-y: auto), which per spec also clips horizontally,
+   so an absolute child would be cut off at the rail's edge. Anchored just under
+   the Start-timer button, whose position is fixed by the static brand + button
+   above it. */
 .sidebar-timer-pop {
-  position: absolute; top: calc(100% + var(--space-1)); left: 0; z-index: 30;
+  position: fixed; top: 121px; left: var(--space-4); z-index: 40;
   width: 300px; max-width: calc(100vw - 2 * var(--space-4));
   padding: var(--space-3);
 }
