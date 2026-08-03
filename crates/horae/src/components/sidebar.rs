@@ -4,6 +4,7 @@ use crate::components::avatar::Avatar;
 use crate::components::icons::NavIcon;
 use crate::components::logo::HoraeMark;
 use crate::components::timer_widget::TimerWidget;
+use crate::pages::timesheet::{Anchor, ViewMode};
 use crate::route::Route;
 use crate::server_fns;
 
@@ -31,7 +32,7 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
 
             div { class: "sidebar-section", "Track" }
             div { class: "sidebar-group",
-                SideLink { to: Route::Timesheet {}, icon: "timesheet", label: "Timesheet" }
+                SideLink { to: Route::Timesheet { view: ViewMode::Week, date: Anchor::default() }, icon: "timesheet", label: "Timesheet" }
             }
 
             div { class: "sidebar-section", "Organize" }
@@ -65,8 +66,11 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
 /// (via `.nav-item.active` CSS), matching the design's rail language.
 #[component]
 fn SideLink(to: Route, icon: String, label: String) -> Element {
+    // Match by route variant, not the exact URL, so a param-carrying route (the
+    // timesheet's /timesheet/<view>/<date>) stays highlighted on any view/day.
+    let active = std::mem::discriminant(&use_route::<Route>()) == std::mem::discriminant(&to);
     rsx! {
-        Link { to, active_class: "active", class: "nav-item",
+        Link { to, class: if active { "nav-item active" } else { "nav-item" },
             span { class: "nav-item-icon", NavIcon { name: icon } }
             span { class: "nav-item-dot" }
             span { class: "nav-item-label", "{label}" }
