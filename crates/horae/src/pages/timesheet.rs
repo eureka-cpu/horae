@@ -323,6 +323,23 @@ pub fn Timesheet() -> Element {
         add_row: open_add_row,
     };
 
+    // Shared validation for the entry dialog's Start-timer / Save actions: a
+    // project and task must be picked. Returns the values (notes trimmed) or sets
+    // the modal error and yields None.
+    let read_pt_notes = use_callback(move |()| -> Option<(String, String, Option<String>)> {
+        let project_id = add_project.read().clone();
+        let task_id = add_task.read().clone();
+        if project_id.is_empty() || task_id.is_empty() {
+            add_error.set(Some("Select a project and task.".to_string()));
+            return None;
+        }
+        let notes = {
+            let n = add_notes.read().trim().to_string();
+            (!n.is_empty()).then_some(n)
+        };
+        Some((project_id, task_id, notes))
+    });
+
     // Options for the modal selects: (id, label).
     let project_options = use_memo(move || -> Vec<(String, String)> {
         from_list(&projects, |ps| {
@@ -532,16 +549,45 @@ pub fn Timesheet() -> Element {
                                 div { class: "ts-modal-error", "{err}" }
                             }
                             div { class: "ts-modal-actions",
+                                // Timer-first: a running timer starts now, so it's
+                                // only offered for a new entry on today's column.
+                                if editing.read().is_none() && date == today {
+                                    button {
+                                        class: "btn btn-primary",
+                                        disabled: add_saving(),
+                                        onclick: move |_| {
+                                            let Some((project_id, task_id, notes)) = read_pt_notes.call(()) else {
+                                                return;
+                                            };
+                                            let mut entries = entries;
+                                            add_saving.set(true);
+                                            add_error.set(None);
+                                            spawn(async move {
+                                                match server_fns::start_timer(project_id, task_id, notes).await {
+                                                    Ok(_) => {
+                                                        add_open.set(None);
+                                                        entries.restart();
+                                                    }
+                                                    Err(e) => add_error
+                                                        .set(Some(format!("Could not start timer: {e}"))),
+                                                }
+                                                add_saving.set(false);
+                                            });
+                                        },
+                                        "Start timer"
+                                    }
+                                }
                                 button {
-                                    class: "btn btn-primary",
+                                    class: if editing.read().is_none() && date == today {
+                                        "btn btn-secondary"
+                                    } else {
+                                        "btn btn-primary"
+                                    },
                                     disabled: add_saving(),
                                     onclick: move |_| {
-                                        let project_id = add_project.read().clone();
-                                        let task_id = add_task.read().clone();
-                                        if project_id.is_empty() || task_id.is_empty() {
-                                            add_error.set(Some("Select a project and task.".to_string()));
+                                        let Some((project_id, task_id, notes)) = read_pt_notes.call(()) else {
                                             return;
-                                        }
+                                        };
                                         // Parse cap keeps the u32 -> i32 cast lossless: a day
                                         // can't hold more than 24h, and 0 is not an entry.
                                         const MAX_ENTRY_MINUTES: u32 = 24 * 60;
@@ -562,10 +608,6 @@ pub fn Timesheet() -> Element {
                                                     .set(Some("Enter a duration like 1:30.".to_string()));
                                                 return;
                                             }
-                                        };
-                                        let notes = {
-                                            let n = add_notes.read().trim().to_string();
-                                            (!n.is_empty()).then_some(n)
                                         };
                                         let editing_id = *editing.read();
                                         let billable = if editing_id.is_some() {
