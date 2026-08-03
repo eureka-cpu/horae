@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::components::controls::Segmented;
 use crate::models::time_entry::TimeEntry;
+use crate::route::Route;
 use crate::server_fns;
 
 /// `H:MM` clock format from integer minutes (the design's cell/total format).
@@ -87,11 +88,61 @@ async fn persist_entry(
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum ViewMode {
+#[derive(Clone, Copy, PartialEq, Default)]
+pub enum ViewMode {
     Day,
+    #[default]
     Week,
     Calendar,
+}
+
+impl std::fmt::Display for ViewMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ViewMode::Day => "day",
+            ViewMode::Week => "week",
+            ViewMode::Calendar => "calendar",
+        })
+    }
+}
+
+impl std::str::FromStr for ViewMode {
+    type Err = std::convert::Infallible;
+    // Unknown values fall back to Week so a stray URL never fails to route.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "day" => ViewMode::Day,
+            "calendar" => ViewMode::Calendar,
+            _ => ViewMode::Week,
+        })
+    }
+}
+
+/// The timesheet's anchor day, carried in the URL (`?date=YYYY-MM-DD`). The week
+/// shown is the ISO week containing it; in Day view it is the selected day.
+#[derive(Clone, Copy, PartialEq)]
+pub struct Anchor(pub NaiveDate);
+
+impl Default for Anchor {
+    fn default() -> Self {
+        Anchor(chrono::Utc::now().date_naive())
+    }
+}
+
+impl std::fmt::Display for Anchor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.format("%Y-%m-%d"))
+    }
+}
+
+impl std::str::FromStr for Anchor {
+    type Err = std::convert::Infallible;
+    // A malformed date falls back to today rather than failing the route.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .map(Anchor)
+            .unwrap_or_default())
+    }
 }
 
 /// Return the Monday of the ISO week containing `date`.
@@ -102,12 +153,30 @@ fn iso_week_monday(date: NaiveDate) -> NaiveDate {
 const DAY_LABELS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 #[component]
-pub fn Timesheet() -> Element {
+pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
     let today = chrono::Utc::now().date_naive();
-    let mut view_mode = use_signal(|| ViewMode::Week);
-    let mut week_start = use_signal(move || iso_week_monday(today));
-    // Which day is selected within the week (0 = Monday .. 6 = Sunday) for Day view
-    let mut selected_day_offset = use_signal(|| today.weekday().num_days_from_monday() as i64);
+    // View, week and selected day all derive from the URL (?view=&date=), so
+    // switching views or navigating is shareable and works with the browser's
+    // back/forward buttons. User actions push a new Timesheet route.
+    let view_mode = use_memo(use_reactive!(|(view,)| view));
+    let week_start = use_memo(use_reactive!(|(date,)| iso_week_monday(date.0)));
+    // Which day is selected within the week (0 = Monday .. 6 = Sunday) for Day view.
+    let selected_day_offset =
+        use_memo(use_reactive!(
+            |(date,)| date.0.weekday().num_days_from_monday() as i64
+        ));
+
+    // Push a new view/anchor to the URL.
+    let go = use_callback(move |(v, anchor): (ViewMode, NaiveDate)| {
+        navigator().push(Route::Timesheet {
+            view: v,
+            date: Anchor(anchor),
+        });
+    });
+    // Selecting a day in the Day-view strip navigates to that day.
+    let select_day = use_callback(move |i: i64| {
+        go.call((ViewMode::Day, week_start() + Duration::days(i)));
+    });
 
     let entries = use_resource(move || {
         let ws = *week_start.read();
@@ -402,20 +471,16 @@ pub fn Timesheet() -> Element {
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();
 
-    // Pager stepping: Day view moves one day (rolling across the week edge);
-    // Week/Calendar move a whole week. `forward` picks the direction.
+    // Pager stepping: Day view moves one day, Week/Calendar a whole week. Moving
+    // the anchor date across the week edge rolls the week automatically.
     let step = use_callback(move |forward: bool| {
-        let day_mode = *view_mode.read() == ViewMode::Day;
-        let off = *selected_day_offset.read();
-        if day_mode && ((forward && off < 6) || (!forward && off > 0)) {
-            selected_day_offset.set(off + if forward { 1 } else { -1 });
-            return;
-        }
-        let ws = *week_start.read();
-        week_start.set(ws + Duration::days(if forward { 7 } else { -7 }));
-        if day_mode {
-            selected_day_offset.set(if forward { 0 } else { 6 });
-        }
+        let days = if *view_mode.read() == ViewMode::Day {
+            1
+        } else {
+            7
+        };
+        let delta = Duration::days(if forward { days } else { -days });
+        go.call((*view_mode.read(), date.0 + delta));
     });
     let is_this_week = ws == iso_week_monday(today);
     let range_label = format!("{} – {}", ws.format("%d %b"), week_end.format("%d %b %Y"));
@@ -435,14 +500,12 @@ pub fn Timesheet() -> Element {
                     }
                         .to_string(),
                     onselect: move |v: String| {
-                        view_mode
-                            .set(
-                                match v.as_str() {
-                                    "Day" => ViewMode::Day,
-                                    "Calendar" => ViewMode::Calendar,
-                                    _ => ViewMode::Week,
-                                },
-                            )
+                        let v = match v.as_str() {
+                            "Day" => ViewMode::Day,
+                            "Calendar" => ViewMode::Calendar,
+                            _ => ViewMode::Week,
+                        };
+                        go.call((v, date.0));
                     },
                 }
             }
@@ -487,11 +550,7 @@ pub fn Timesheet() -> Element {
                 if !is_this_week {
                     button {
                         class: "btn btn-ghost btn-sm",
-                        onclick: move |_| {
-                            let t = chrono::Utc::now().date_naive();
-                            week_start.set(iso_week_monday(t));
-                            selected_day_offset.set(t.weekday().num_days_from_monday() as i64);
-                        },
+                        onclick: move |_| go.call((current_mode, today)),
                         "Today"
                     }
                 }
@@ -543,7 +602,7 @@ pub fn Timesheet() -> Element {
                         }
                     },
                     ViewMode::Day => rsx! {
-                        {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit, start_entry)}
+                        {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, select_day, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
                         {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add, open_edit)}
@@ -927,7 +986,7 @@ fn render_day_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
     selected_offset: i64,
-    mut selected_day_offset: Signal<i64>,
+    select_day: Callback<i64>,
     project_names: &HashMap<Uuid, String>,
     task_names: &HashMap<Uuid, String>,
     open_edit: Callback<TimeEntry>,
@@ -947,7 +1006,7 @@ fn render_day_view(
                     rsx! {
                         button {
                             class: "{cls}",
-                            onclick: move |_| selected_day_offset.set(i),
+                            onclick: move |_| select_day.call(i),
                             span { class: "ts-dayitem-name", "{DAY_LABELS[i as usize]}" }
                             span { class: "ts-dayitem-total", "{format_hm(daily_totals[i as usize])}" }
                         }

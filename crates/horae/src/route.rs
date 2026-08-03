@@ -11,7 +11,7 @@ use crate::pages::{
     projects::{ProjectDetail, ProjectList},
     reports::Reports,
     settings::Settings,
-    timesheet::Timesheet,
+    timesheet::{Anchor, Timesheet, ViewMode},
 };
 
 #[component]
@@ -25,7 +25,7 @@ fn NotFound(route: Vec<String>) -> Element {
                 }
                 div { style: "text-align: center; margin-top: 1rem;",
                     Link {
-                        to: Route::Timesheet {},
+                        to: Route::Timesheet { view: ViewMode::Week, date: Anchor::default() },
                         class: "btn btn-primary",
                         "Go to Timesheet"
                     }
@@ -40,8 +40,11 @@ pub enum Route {
     // /auth/* routes are handled by Axum directly (see src/auth/mod.rs).
     // The Dioxus router only manages the authenticated SPA.
     #[layout(AppLayout)]
-    #[route("/")]
-    Timesheet {},
+    // Clean, shareable paths like Harvest (/timesheet/day/2026-08-06); bare "/"
+    // lands on this week.
+    #[redirect("/", || Route::Timesheet { view: ViewMode::Week, date: Anchor::default() })]
+    #[route("/timesheet/:view/:date")]
+    Timesheet { view: ViewMode, date: Anchor },
     #[route("/clients")]
     ClientList {},
     #[route("/clients/:id")]
