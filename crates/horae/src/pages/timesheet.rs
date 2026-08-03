@@ -401,6 +401,22 @@ pub fn Timesheet() -> Element {
 
     let current_mode = *view_mode.read();
     let sel_offset = *selected_day_offset.read();
+
+    // Pager stepping: Day view moves one day (rolling across the week edge);
+    // Week/Calendar move a whole week. `forward` picks the direction.
+    let step = use_callback(move |forward: bool| {
+        let day_mode = *view_mode.read() == ViewMode::Day;
+        let off = *selected_day_offset.read();
+        if day_mode && ((forward && off < 6) || (!forward && off > 0)) {
+            selected_day_offset.set(off + if forward { 1 } else { -1 });
+            return;
+        }
+        let ws = *week_start.read();
+        week_start.set(ws + Duration::days(if forward { 7 } else { -7 }));
+        if day_mode {
+            selected_day_offset.set(if forward { 0 } else { 6 });
+        }
+    });
     let is_this_week = ws == iso_week_monday(today);
     let range_label = format!("{} – {}", ws.format("%d %b"), week_end.format("%d %b %Y"));
 
@@ -443,18 +459,7 @@ pub fn Timesheet() -> Element {
                     button {
                         class: "ts-pager-btn prev",
                         "aria-label": if current_mode == ViewMode::Day { "Previous day" } else { "Previous week" },
-                        onclick: move |_| {
-                            // Day view steps one day (rolling into the previous
-                            // week at the Monday edge); other views step a week.
-                            if current_mode == ViewMode::Day && *selected_day_offset.read() > 0 {
-                                selected_day_offset -= 1;
-                            } else {
-                                week_start.set(ws - Duration::days(7));
-                                if current_mode == ViewMode::Day {
-                                    selected_day_offset.set(6);
-                                }
-                            }
-                        },
+                        onclick: move |_| step.call(false),
                         "←"
                     }
                     div { class: "ts-pager-label",
@@ -475,16 +480,7 @@ pub fn Timesheet() -> Element {
                     button {
                         class: "ts-pager-btn next",
                         "aria-label": if current_mode == ViewMode::Day { "Next day" } else { "Next week" },
-                        onclick: move |_| {
-                            if current_mode == ViewMode::Day && *selected_day_offset.read() < 6 {
-                                selected_day_offset += 1;
-                            } else {
-                                week_start.set(ws + Duration::days(7));
-                                if current_mode == ViewMode::Day {
-                                    selected_day_offset.set(0);
-                                }
-                            }
-                        },
+                        onclick: move |_| step.call(true),
                         "→"
                     }
                 }
