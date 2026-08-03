@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{Datelike, Duration, NaiveDate};
 use dioxus::prelude::*;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::components::controls::Segmented;
@@ -264,15 +265,15 @@ pub fn Timesheet() -> Element {
     let start_entry = use_callback(move |e: TimeEntry| {
         let mut entries = entries;
         spawn(async move {
-            if server_fns::start_timer(
+            match server_fns::start_timer(
                 e.project_id.to_string(),
                 e.task_id.to_string(),
                 e.notes.clone(),
             )
             .await
-            .is_ok()
             {
-                entries.restart();
+                Ok(_) => entries.restart(),
+                Err(err) => error!("Start timer error: {err}"),
             }
         });
     });
