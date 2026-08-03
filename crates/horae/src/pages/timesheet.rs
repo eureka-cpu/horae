@@ -894,21 +894,25 @@ fn render_day_view(
     let total = daily_totals[offset];
 
     rsx! {
-        // Day selector tabs
-        div { class: "flex gap-1 mb-4",
+        // Day strip: each day shows its own total and the viewed day is
+        // underlined — Harvest presents the days this way here, not as tabs.
+        div { class: "ts-daystrip",
             for i in 0i64..7 {
                 {
-                    let d = week_start + Duration::days(i);
-                    let is_sel = i == selected_offset;
+                    let cls = if i == selected_offset { "ts-dayitem active" } else { "ts-dayitem" };
                     rsx! {
                         button {
-                            class: if is_sel { "btn btn-primary" } else { "btn btn-ghost" },
-                            style: "padding: 0.25rem 0.75rem; font-size: 0.8rem;",
+                            class: "{cls}",
                             onclick: move |_| selected_day_offset.set(i),
-                            "{DAY_LABELS[i as usize]} {d.format(\"%d\")}"
+                            span { class: "ts-dayitem-name", "{DAY_LABELS[i as usize]}" }
+                            span { class: "ts-dayitem-total", "{format_hm(daily_totals[i as usize])}" }
                         }
                     }
                 }
+            }
+            div { class: "ts-dayitem ts-weektotal",
+                span { class: "ts-dayitem-name", "Week total" }
+                span { class: "ts-dayitem-total", "{format_hm(daily_totals.iter().sum::<i32>())}" }
             }
         }
 
