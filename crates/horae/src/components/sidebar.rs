@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 use crate::components::avatar::Avatar;
 use crate::components::icons::NavIcon;
 use crate::components::logo::HoraeMark;
+use crate::components::timer_widget::TimerWidget;
 use crate::route::Route;
 use crate::server_fns;
 
@@ -26,10 +27,7 @@ pub fn Sidebar(collapsed: Signal<bool>) -> Element {
                 }
             }
 
-            Link { to: Route::Timesheet {}, class: "sidebar-timer",
-                span { class: "sidebar-timer-icon" }
-                span { class: "sidebar-timer-label", "Start timer" }
-            }
+            TimerWidget {}
 
             div { class: "sidebar-section", "Track" }
             div { class: "sidebar-group",
