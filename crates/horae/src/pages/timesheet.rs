@@ -442,19 +442,49 @@ pub fn Timesheet() -> Element {
                 div { class: "ts-pager",
                     button {
                         class: "ts-pager-btn prev",
-                        "aria-label": "Previous week",
-                        onclick: move |_| week_start.set(ws - Duration::days(7)),
+                        "aria-label": if current_mode == ViewMode::Day { "Previous day" } else { "Previous week" },
+                        onclick: move |_| {
+                            // Day view steps one day (rolling into the previous
+                            // week at the Monday edge); other views step a week.
+                            if current_mode == ViewMode::Day && *selected_day_offset.read() > 0 {
+                                selected_day_offset -= 1;
+                            } else {
+                                week_start.set(ws - Duration::days(7));
+                                if current_mode == ViewMode::Day {
+                                    selected_day_offset.set(6);
+                                }
+                            }
+                        },
                         "←"
                     }
                     div { class: "ts-pager-label",
                         span { class: "text-faint", "▦" }
-                        span { class: "cur", if is_this_week { "This week" } else { "Week" } }
-                        span { class: "ts-pager-range", "{range_label}" }
+                        if current_mode == ViewMode::Day {
+                            {
+                                let d = ws + Duration::days((*selected_day_offset.read()).clamp(0, 6));
+                                rsx! {
+                                    span { class: "cur", if d == today { "Today" } else { "{d.format(\"%A\")}" } }
+                                    span { class: "ts-pager-range", "{d.format(\"%d %b %Y\")}" }
+                                }
+                            }
+                        } else {
+                            span { class: "cur", if is_this_week { "This week" } else { "Week" } }
+                            span { class: "ts-pager-range", "{range_label}" }
+                        }
                     }
                     button {
                         class: "ts-pager-btn next",
-                        "aria-label": "Next week",
-                        onclick: move |_| week_start.set(ws + Duration::days(7)),
+                        "aria-label": if current_mode == ViewMode::Day { "Next day" } else { "Next week" },
+                        onclick: move |_| {
+                            if current_mode == ViewMode::Day && *selected_day_offset.read() < 6 {
+                                selected_day_offset += 1;
+                            } else {
+                                week_start.set(ws + Duration::days(7));
+                                if current_mode == ViewMode::Day {
+                                    selected_day_offset.set(0);
+                                }
+                            }
+                        },
                         "→"
                     }
                 }
@@ -517,7 +547,7 @@ pub fn Timesheet() -> Element {
                         }
                     },
                     ViewMode::Day => rsx! {
-                        {render_day_view(&by_day.read(), &daily_totals.read(), ws, sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit, start_entry)}
+                        {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, selected_day_offset, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
                         {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add, open_edit)}
@@ -900,7 +930,6 @@ fn render_calendar_view(
 fn render_day_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
-    week_start: NaiveDate,
     selected_offset: i64,
     mut selected_day_offset: Signal<i64>,
     project_names: &HashMap<Uuid, String>,
@@ -909,7 +938,6 @@ fn render_day_view(
     start_entry: Callback<TimeEntry>,
 ) -> Element {
     let offset = selected_offset.clamp(0, 6) as usize;
-    let day_date = week_start + Duration::days(offset as i64);
     let day_entries = &by_day[offset];
     let total = daily_totals[offset];
 
@@ -937,10 +965,6 @@ fn render_day_view(
         }
 
         div { class: "card",
-            h3 { class: "mb-4 text-default",
-                "{day_date.format(\"%A, %B %d, %Y\")}"
-            }
-
             if day_entries.is_empty() {
                 div { class: "ts-day-empty text-muted text-sm", "No entries for this day." }
             } else {
