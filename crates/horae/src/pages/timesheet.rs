@@ -356,6 +356,18 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
             horae_core::time_of_day::clamp_to_day(start.clamp(0, 1439) as u16, dur.max(0) as u32)
                 as i32
         };
+        // Move and Resize both persist through reschedule and refresh on success.
+        let reschedule = move |id: String, date: String, start: i32, dur: i32| {
+            let mut entries = entries;
+            spawn(async move {
+                if server_fns::reschedule_time_entry(id, date, start, dur)
+                    .await
+                    .is_ok()
+                {
+                    entries.restart();
+                }
+            });
+        };
         match d.kind {
             // Draw a new slot → open the entry form; a real drag prefills the
             // start and duration, a near-zero drag opens an untimed form.
@@ -382,16 +394,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 }
                 let dur = clamp(new_start, d.orig_dur);
                 let date = (ws + Duration::days(d.day as i64)).to_string();
-                let id = entry.id.to_string();
-                let mut entries = entries;
-                spawn(async move {
-                    if server_fns::reschedule_time_entry(id, date, new_start, dur)
-                        .await
-                        .is_ok()
-                    {
-                        entries.restart();
-                    }
-                });
+                reschedule(entry.id.to_string(), date, new_start, dur);
             }
             // Resize an entry → new duration from its start to the pointer.
             DragKind::Resize => {
@@ -403,17 +406,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                     (d.cur_min - d.start_min).max(i32::from(horae_core::time_of_day::MIN_DURATION)),
                 );
                 let date = (ws + Duration::days(d.orig_day as i64)).to_string();
-                let id = entry.id.to_string();
-                let start = d.start_min;
-                let mut entries = entries;
-                spawn(async move {
-                    if server_fns::reschedule_time_entry(id, date, start, dur)
-                        .await
-                        .is_ok()
-                    {
-                        entries.restart();
-                    }
-                });
+                reschedule(entry.id.to_string(), date, d.start_min, dur);
             }
         }
     });
