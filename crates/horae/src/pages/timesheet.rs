@@ -387,6 +387,10 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
 
     // Calendar drag: the slot/entry being manipulated, committed on release.
     let cal_drag = use_signal(|| None::<CalDrag>);
+
+    // The free calendar slot the cursor is over: (column, snapped minute). Drives
+    // the cursor-following "+ Add time" hint.
+    let add_hint = use_signal(|| None::<(usize, i32)>);
     let drag_commit = use_callback(move |d: CalDrag| {
         let ws = *week_start.read();
         let clamp = |start: i32, dur: i32| {
@@ -404,17 +408,21 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
             });
         };
         match d.kind {
-            // Draw a new slot → open the entry form; a real drag prefills the
-            // start and duration, a near-zero drag opens an untimed form.
+            // Draw a new slot → open the entry form prefilled at that hour. A drag
+            // sets the duration to the dragged span; a plain click seeds a default
+            // one-hour block starting at the clicked time.
             DragKind::Create => {
                 let day = ws + Duration::days(d.day as i64);
                 let start = d.start_min.min(d.cur_min).clamp(0, 1439);
                 let raw = (d.cur_min - d.start_min).abs();
+                let dur = if raw >= i32::from(horae_core::time_of_day::MIN_DURATION) {
+                    raw
+                } else {
+                    60
+                };
                 open_add.call(day);
-                if raw >= i32::from(horae_core::time_of_day::MIN_DURATION) {
-                    add_start.set(Some(start));
-                    add_duration.set(format_hm(clamp(start, raw)));
-                }
+                add_start.set(Some(start));
+                add_duration.set(format_hm(clamp(start, dur)));
             }
             // Move an entry → new start follows the pointer (keeping the grab
             // offset), possibly to another day. No movement → open it for editing.
@@ -797,7 +805,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                     ViewMode::Calendar => rsx! {
                         {
                             let visible = cal_span.read().visible_days(*selected_day_offset.read() as usize);
-                            render_calendar_view(&by_day.read(), &daily_totals.read(), &visible, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, cal_drag, drag_commit)
+                            render_calendar_view(&by_day.read(), &daily_totals.read(), &visible, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, cal_drag, add_hint, drag_commit)
                         }
                     },
                 },
@@ -1223,6 +1231,7 @@ fn render_calendar_view(
     today: NaiveDate,
     labels: &CalLabels,
     mut cal_drag: Signal<Option<CalDrag>>,
+    mut add_hint: Signal<Option<(usize, i32)>>,
     drag_commit: Callback<CalDrag>,
 ) -> Element {
     let today_off = today_offset(today, week_start);
@@ -1235,6 +1244,9 @@ fn render_calendar_view(
     // tall enough to show every block.
     let mut day_events: Vec<Vec<CalEvent>> = Vec::with_capacity(7);
     let mut max_bottom_min = 0i32;
+    // Per-column occupied minute ranges, so the "+ Add time" hint hides over
+    // existing blocks and a click there edits instead of adding.
+    let mut occupied: Vec<Vec<(i32, i32)>> = Vec::with_capacity(7);
     for day in by_day.iter() {
         // Lay out timed entries side by side where they overlap: greedily assign
         // each a lane, then give every entry in an overlap cluster the same
@@ -1250,12 +1262,14 @@ fn render_calendar_view(
             cum += e.minutes;
         }
         let mut evs = Vec::new();
+        let mut occ: Vec<(i32, i32)> = Vec::new();
         for (idx, e) in day.iter().enumerate() {
             let (top_min, timed, lane, lanes) = match e.start_minute {
                 Some(sm) => (sm, true, lane_of[idx], lanes_of[idx].max(1)),
                 None => (untimed_top.get(&e.id).copied().unwrap_or(0), false, 0, 1),
             };
             max_bottom_min = max_bottom_min.max(top_min + e.minutes);
+            occ.push((top_min, top_min + e.minutes));
             let client = labels
                 .clients
                 .get(&e.project_id)
@@ -1284,6 +1298,7 @@ fn render_calendar_view(
             });
         }
         day_events.push(evs);
+        occupied.push(occ);
     }
     // At least 8 rows so a light week still reads as a calendar.
     let max_hours = ((max_bottom_min + 59) / 60).max(8);
@@ -1327,6 +1342,9 @@ fn render_calendar_view(
                         if cal_drag.read().is_some() {
                             cal_drag.set(None);
                         }
+                        if add_hint.read().is_some() {
+                            add_hint.set(None);
+                        }
                     },
                     div { class: "ts-cal-rail",
                         for h in 0..max_hours {
@@ -1353,20 +1371,31 @@ fn render_calendar_view(
                                     orig_day: i,
                                 }));
                             },
-                            onmousemove: move |e: MouseEvent| {
-                                if cal_drag.read().is_some() {
+                            onmousemove: {
+                                let occ = occupied[i].clone();
+                                move |e: MouseEvent| {
                                     let m = cal_y_to_min(e.element_coordinates().y);
-                                    cal_drag.with_mut(|d| {
-                                        if let Some(d) = d {
-                                            d.cur_min = m;
-                                            // Move follows the pointer across days;
-                                            // Reorder tracks the column so a drop on
-                                            // another day snaps back.
-                                            if matches!(d.kind, DragKind::Move | DragKind::Reorder) {
-                                                d.day = i;
+                                    if cal_drag.read().is_some() {
+                                        cal_drag.with_mut(|d| {
+                                            if let Some(d) = d {
+                                                d.cur_min = m;
+                                                // Move follows the pointer across days;
+                                                // Reorder tracks the column so a drop on
+                                                // another day snaps back.
+                                                if matches!(d.kind, DragKind::Move | DragKind::Reorder) {
+                                                    d.day = i;
+                                                }
                                             }
+                                        });
+                                    } else {
+                                        // Track the free slot under the cursor for the
+                                        // "+ Add time" hint; hide it over a block.
+                                        let free = !occ.iter().any(|&(lo, hi)| m >= lo && m < hi);
+                                        let next = free.then_some((i, m));
+                                        if *add_hint.read() != next {
+                                            add_hint.set(next);
                                         }
-                                    });
+                                    }
                                 }
                             },
                             onmouseup: move |_| {
@@ -1385,6 +1414,18 @@ fn render_calendar_view(
                                         div { class: "ts-cal-ghost", style: "top: {top}px; height: {h}px;" }
                                     }
                                 }
+                            }
+                            // Cursor-following "+ Add time" over a free slot; a click
+                            // there seeds a timed entry at that hour (drag_commit).
+                            if let Some(top) = cal_drag
+                                .read()
+                                .is_none()
+                                .then(|| *add_hint.read())
+                                .flatten()
+                                .filter(|&(hd, _)| hd == i)
+                                .map(|(_, m)| m * CAL_HOUR / 60)
+                            {
+                                div { class: "ts-cal-add-hint", style: "top: {top}px;", "+ Add time" }
                             }
                             for ev in day_events[i].iter() {
                                 {
@@ -1424,6 +1465,14 @@ fn render_calendar_view(
                                 div {
                                     class: "{ev_class}",
                                     style: "top: {top_px}px; height: {height_px}px; left: calc(4px + {ev.lane} * (100% - 8px) / {ev.lanes}); width: calc((100% - 8px) / {ev.lanes} - 2px); right: auto;",
+                                    // Over a block there's no free slot — clear the
+                                    // "+ Add time" hint (the column's mousemove can't
+                                    // fire while the block captures the pointer).
+                                    onmouseenter: move |_| {
+                                        if add_hint.read().is_some() {
+                                            add_hint.set(None);
+                                        }
+                                    },
                                     // Pressing a timed entry starts a move drag (its
                                     // body); a plain click with no move opens it for
                                     // editing. Untimed entries just open for editing.
@@ -1504,26 +1553,6 @@ fn render_calendar_view(
                                 }
                                 }
                                 }
-                            }
-                            // Hover affordance to add an entry to this day (a
-                            // zero-length Create just opens the untimed form).
-                            div {
-                                class: "ts-cal-add-hint",
-                                onmousedown: move |e: MouseEvent| e.stop_propagation(),
-                                onclick: move |e: MouseEvent| {
-                                    e.stop_propagation();
-                                    drag_commit.call(CalDrag {
-                                        kind: DragKind::Create,
-                                        day: i,
-                                        start_min: 0,
-                                        cur_min: 0,
-                                        grab_min: 0,
-                                        entry: None,
-                                        orig_dur: 0,
-                                        orig_day: i,
-                                    });
-                                },
-                                "+ Add time"
                             }
                         }
                     }
