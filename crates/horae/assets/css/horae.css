@@ -967,7 +967,7 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-add-hint {
   position: absolute; bottom: var(--space-2); left: 50%; transform: translateX(-50%); z-index: 2;
   padding: 2px var(--space-2); font-size: 11px; font-weight: 600; white-space: nowrap;
-  color: var(--color-text-secondary); background: var(--color-surface);
+  color: var(--color-text-secondary); background: var(--color-bg-overlay);
   border: 1px dashed var(--color-border); border-radius: var(--radius-btn);
   opacity: 0; pointer-events: none; cursor: pointer;
 }

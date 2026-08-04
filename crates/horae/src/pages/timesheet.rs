@@ -389,7 +389,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 let Some(entry) = d.entry.clone() else {
                     return;
                 };
-                let new_start = (d.cur_min - (d.grab_min - d.start_min)).clamp(0, 1439);
+                let new_start = d.move_start();
                 if new_start == d.start_min && d.day == d.orig_day {
                     open_edit.call(entry);
                     return;
@@ -403,10 +403,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 let Some(entry) = d.entry.clone() else {
                     return;
                 };
-                let dur = clamp(
-                    d.start_min,
-                    (d.cur_min - d.start_min).max(i32::from(horae_core::time_of_day::MIN_DURATION)),
-                );
+                let dur = clamp(d.start_min, d.resize_end() - d.start_min);
                 let date = (ws + Duration::days(d.orig_day as i64)).to_string();
                 reschedule(entry.id.to_string(), date, d.start_min, dur);
             }
@@ -1055,6 +1052,32 @@ struct CalDrag {
     orig_day: usize,
 }
 
+impl CalDrag {
+    /// Move: the entry's new start, following the pointer while keeping the grab
+    /// offset, clamped into the day. Shared by the commit and the live preview so
+    /// the two can't drift.
+    fn move_start(&self) -> i32 {
+        (self.cur_min - (self.grab_min - self.start_min)).clamp(0, 1439)
+    }
+
+    /// Resize: the entry's new end — the bottom edge follows the pointer but stays
+    /// at least one snap step below the start. Shared by the commit and preview.
+    fn resize_end(&self) -> i32 {
+        self.cur_min
+            .max(self.start_min + i32::from(horae_core::time_of_day::MIN_DURATION))
+    }
+}
+
+/// A calendar block's start–end clock label, e.g. "9:00–10:30". `end` is capped at
+/// the end of day for display.
+fn cal_time_label(start: i32, end: i32) -> String {
+    format!(
+        "{}–{}",
+        horae_core::time_of_day::format(start as u16),
+        horae_core::time_of_day::format(end.min(1440) as u16),
+    )
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "view renderer takes the week's data, display maps, and the add/edit/drag actions"
@@ -1104,11 +1127,7 @@ fn render_calendar_view(
                 .map(|(name, currency)| format!("{name} · {currency}"))
                 .unwrap_or_default();
             let time_label = match e.start_minute {
-                Some(sm) => format!(
-                    "{}–{}",
-                    horae_core::time_of_day::format(sm as u16),
-                    horae_core::time_of_day::format((sm + e.minutes) as u16),
-                ),
+                Some(sm) => cal_time_label(sm, sm + e.minutes),
                 None => String::new(),
             };
             evs.push(CalEvent {
@@ -1229,16 +1248,9 @@ fn render_calendar_view(
                                         return None;
                                     }
                                     match d.kind {
-                                        DragKind::Resize => {
-                                            let end = d.cur_min.max(
-                                                d.start_min
-                                                    + i32::from(horae_core::time_of_day::MIN_DURATION),
-                                            );
-                                            Some((d.start_min, end))
-                                        }
+                                        DragKind::Resize => Some((d.start_min, d.resize_end())),
                                         DragKind::Move if d.day == i => {
-                                            let s = (d.cur_min - (d.grab_min - d.start_min))
-                                                .clamp(0, 1439);
+                                            let s = d.move_start();
                                             Some((s, s + d.orig_dur))
                                         }
                                         _ => None,
@@ -1248,11 +1260,7 @@ fn render_calendar_view(
                                     Some((s, e)) => (
                                         s * CAL_HOUR / 60,
                                         ((e - s) * CAL_HOUR / 60).max(20),
-                                        format!(
-                                            "{}–{}",
-                                            horae_core::time_of_day::format(s as u16),
-                                            horae_core::time_of_day::format(e.min(1440) as u16),
-                                        ),
+                                        cal_time_label(s, e),
                                     ),
                                     None => (ev.top, ev.height, ev.time_label.clone()),
                                 };
