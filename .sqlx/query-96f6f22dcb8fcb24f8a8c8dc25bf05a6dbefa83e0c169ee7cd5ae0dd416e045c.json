@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) FROM time_entries WHERE user_id = $1 AND spent_date = CURRENT_DATE + 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "96f6f22dcb8fcb24f8a8c8dc25bf05a6dbefa83e0c169ee7cd5ae0dd416e045c"
+}

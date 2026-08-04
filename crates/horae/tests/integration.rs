@@ -2125,24 +2125,26 @@ async fn reschedule_moves_open_entry_and_rejects_locked(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 #[serial]
-async fn reorder_untimed_assigns_positions(pool: PgPool) {
+async fn reorder_untimed_orders_and_moves_across_days(pool: PgPool) {
     let org_id = seed_org(&pool).await;
     let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
     let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
 
-    // Three untimed entries on the same day, all at the default sort_order 0.
-    let ids: Vec<Uuid> = (0..3).map(|_| Uuid::now_v7()).collect();
-    for id in &ids {
+    // Two untimed entries on today, one on tomorrow (day offset 0 vs 1).
+    let today: Vec<Uuid> = (0..2).map(|_| Uuid::now_v7()).collect();
+    let moved = Uuid::now_v7();
+    for (id, day_off) in today.iter().map(|id| (*id, 0i32)).chain([(moved, 1i32)]) {
         sqlx::query!(
             "INSERT INTO time_entries \
                (id, org_id, user_id, project_id, task_id, spent_date, \
                 minutes, billable, is_running, state) \
-             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 60, true, false, $6)",
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE + $6::int4, 60, true, false, $7)",
             id,
             org_id,
             user_id,
             project_id,
             task_id,
+            day_off,
             EntryState::Open as EntryState,
         )
         .execute(&pool)
@@ -2150,13 +2152,14 @@ async fn reorder_untimed_assigns_positions(pool: PgPool) {
         .unwrap();
     }
 
-    // Reorder to [third, first, second] — mirrors reorder_untimed_entries.
-    let ordered = vec![ids[2], ids[0], ids[1]];
+    // Place [moved, today[0], today[1]] on today — mirrors reorder_untimed_entries.
+    // The tomorrow entry is pulled onto today, and the stack is ordered.
+    let ordered = vec![moved, today[0], today[1]];
     let orders: Vec<i32> = vec![0, 1, 2];
     sqlx::query!(
-        "UPDATE time_entries AS t SET sort_order = v.ord \
+        "UPDATE time_entries AS t SET sort_order = v.ord, spent_date = CURRENT_DATE \
          FROM unnest($1::uuid[], $2::int4[]) AS v(id, ord) \
-         WHERE t.id = v.id AND t.user_id = $3 AND t.spent_date = CURRENT_DATE",
+         WHERE t.id = v.id AND t.user_id = $3 AND t.start_minute IS NULL",
         &ordered,
         &orders,
         user_id,
@@ -2167,12 +2170,22 @@ async fn reorder_untimed_assigns_positions(pool: PgPool) {
 
     let got: Vec<Uuid> = sqlx::query_scalar!(
         "SELECT id FROM time_entries \
-         WHERE user_id = $1 AND spent_date = CURRENT_DATE \
-         ORDER BY sort_order",
+         WHERE user_id = $1 AND spent_date = CURRENT_DATE ORDER BY sort_order",
         user_id,
     )
     .fetch_all(&pool)
     .await
     .unwrap();
-    assert_eq!(got, ordered, "entries read back in the requested order");
+    assert_eq!(got, ordered, "moved entry lands on today, in order");
+
+    let tomorrow_count: i64 = sqlx::query_scalar!(
+        "SELECT count(*) FROM time_entries \
+         WHERE user_id = $1 AND spent_date = CURRENT_DATE + 1",
+        user_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .unwrap_or(0);
+    assert_eq!(tomorrow_count, 0, "the moved entry left tomorrow");
 }
