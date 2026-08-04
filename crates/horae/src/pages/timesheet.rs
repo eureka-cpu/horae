@@ -7,6 +7,7 @@ use tracing::error;
 use uuid::Uuid;
 
 use crate::components::controls::Segmented;
+use crate::components::menu::{Menu, MenuItem};
 use crate::models::time_entry::TimeEntry;
 use crate::route::Route;
 use crate::server_fns;
@@ -188,13 +189,12 @@ impl CalSpan {
         }
     }
 
-    /// Selector label. Distinct from the Day/Week view toggle so the two
-    /// segmented controls don't read as duplicates.
+    /// Dropdown label (Harvest wording).
     fn label(self) -> &'static str {
         match self {
-            CalSpan::Week => "7 days",
-            CalSpan::WorkWeek => "5 days",
-            CalSpan::Day => "1 day",
+            CalSpan::Week => "Week view",
+            CalSpan::WorkWeek => "5-day view",
+            CalSpan::Day => "Day view",
         }
     }
 }
@@ -688,21 +688,6 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                         go.call((v, date.0));
                     },
                 }
-                // Calendar-only: how many days the grid spans.
-                if current_mode == ViewMode::Calendar {
-                    Segmented {
-                        items: vec!["7 days".to_string(), "5 days".to_string(), "1 day".to_string()],
-                        active: cal_span.read().label().to_string(),
-                        onselect: move |v: String| {
-                            cal_span
-                                .set(match v.as_str() {
-                                    "1 day" => CalSpan::Day,
-                                    "5 days" => CalSpan::WorkWeek,
-                                    _ => CalSpan::Week,
-                                });
-                        },
-                    }
-                }
             }
 
             // Toolbar: add entry + week pager
@@ -740,6 +725,26 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                         "aria-label": if current_mode == ViewMode::Day { "Next day" } else { "Next week" },
                         onclick: move |_| step.call(true),
                         "→"
+                    }
+                }
+                // Calendar-only: day-range dropdown beside the pager (Harvest-style).
+                if current_mode == ViewMode::Calendar {
+                    Menu { label: cal_span.read().label().to_string(),
+                        MenuItem {
+                            selected: *cal_span.read() == CalSpan::Day,
+                            onclick: move |_| cal_span.set(CalSpan::Day),
+                            "Day view"
+                        }
+                        MenuItem {
+                            selected: *cal_span.read() == CalSpan::WorkWeek,
+                            onclick: move |_| cal_span.set(CalSpan::WorkWeek),
+                            "5-day view"
+                        }
+                        MenuItem {
+                            selected: *cal_span.read() == CalSpan::Week,
+                            onclick: move |_| cal_span.set(CalSpan::Week),
+                            "Week view"
+                        }
                     }
                 }
                 if !is_this_week {
