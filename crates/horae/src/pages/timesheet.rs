@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{Datelike, Duration, NaiveDate};
+use dioxus::html::geometry::PixelsVector2D;
 use dioxus::prelude::*;
 use tracing::error;
 use uuid::Uuid;
@@ -1243,7 +1244,6 @@ fn render_calendar_view(
     // same for duration-only entries). Track the latest bottom so the grid is
     // tall enough to show every block.
     let mut day_events: Vec<Vec<CalEvent>> = Vec::with_capacity(7);
-    let mut max_bottom_min = 0i32;
     // Per-column occupied minute ranges, so the "+ Add time" hint hides over
     // existing blocks and a click there edits instead of adding.
     let mut occupied: Vec<Vec<(i32, i32)>> = Vec::with_capacity(7);
@@ -1268,7 +1268,6 @@ fn render_calendar_view(
                 Some(sm) => (sm, true, lane_of[idx], lanes_of[idx].max(1)),
                 None => (untimed_top.get(&e.id).copied().unwrap_or(0), false, 0, 1),
             };
-            max_bottom_min = max_bottom_min.max(top_min + e.minutes);
             occ.push((top_min, top_min + e.minutes));
             let client = labels
                 .clients
@@ -1300,8 +1299,17 @@ fn render_calendar_view(
         day_events.push(evs);
         occupied.push(occ);
     }
-    // At least 8 rows so a light week still reads as a calendar.
-    let max_hours = ((max_bottom_min + 59) / 60).max(8);
+    // Show the full 24-hour day (the scroll container clips it); the grid scrolls
+    // vertically and, on mount, jumps to the earliest block across the visible
+    // days — or to the working hours (7am) when the range is empty.
+    let max_hours = 24;
+    let first_min = visible_days
+        .iter()
+        .flat_map(|&i| occupied.get(i).into_iter().flatten())
+        .map(|&(s, _)| s)
+        .min()
+        .unwrap_or(7 * 60);
+    let scroll_px = (first_min - 30).max(0) * CAL_HOUR / 60;
 
     // The grid spans a variable number of days; size the columns to match and
     // sum only the visible days for the header total.
@@ -1315,7 +1323,20 @@ fn render_calendar_view(
 
     rsx! {
         div { class: "ts-cal",
-            div { class: "ts-cal-scroll",
+            div {
+                class: "ts-cal-scroll",
+                // Open on the earliest block (or the working hours), not midnight.
+                onmounted: move |evt: MountedEvent| {
+                    spawn(async move {
+                        let _ = evt
+                            .data()
+                            .scroll(
+                                PixelsVector2D::new(0.0, f64::from(scroll_px)),
+                                ScrollBehavior::Instant,
+                            )
+                            .await;
+                    });
+                },
                 div { class: "ts-cal-head", style: "{grid_style}",
                     span {}
                     for i in visible_days.iter().copied() {
