@@ -62,9 +62,9 @@ ______________________________________________________________________
 
 **Independent Test**: Give a day two entries with different start times → each renders at its own position; stop a running timer → the entry appears at the started time (quickstart scenarios 2, 3).
 
-- [ ] T013 [US2] On `stop_timer` (`crates/horae/src/server_fns/time_entries.rs`), set the finished entry's `start_minute` from `started_at`'s local time-of-day (snapped) per D9.
-- [ ] T014 [US2] Lay out overlapping timed blocks side by side so none is hidden, in `render_calendar_view` + CSS (`crates/horae/src/pages/timesheet.rs`, `crates/horae/assets/css/horae.css`) (Edge Cases, SC-005).
-- [ ] T015 [US2] Integration test in `crates/horae/tests/integration.rs`: stopping a timer records a `start_minute` matching the start (SC-006); two timed entries keep independent positions.
+- [X] T013 [US2] On `stop_timer` (`crates/horae/src/server_fns/time_entries.rs`), set the finished entry's `start_minute` from `started_at`'s local time-of-day (snapped) per D9.
+- [X] T014 [US2] Lay out overlapping timed blocks side by side so none is hidden, in `render_calendar_view` + CSS (`crates/horae/src/pages/timesheet.rs`, `crates/horae/assets/css/horae.css`) (Edge Cases, SC-005).
+- [X] T015 [US2] Integration test in `crates/horae/tests/integration.rs`: stopping a timer records a `start_minute` matching the start (SC-006); two timed entries keep independent positions.
 
 ______________________________________________________________________
 

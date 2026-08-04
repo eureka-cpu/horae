@@ -180,11 +180,23 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
 
     let minutes = horae_core::duration::minutes_between(started_at, chrono::Utc::now()) as i32;
 
+    // Record the clock time the timer started as the entry's start time (D9), so
+    // it lands on the calendar at the right hour. `started_at` is UTC, matching
+    // how `spent_date` is derived. A timer that ran across midnight would exceed
+    // the day, so it stays untimed in that case.
+    use chrono::Timelike;
+    let raw_start = started_at.hour() as i32 * 60 + started_at.minute() as i32;
+    let snapped = horae_core::time_of_day::snap(raw_start, horae_core::time_of_day::SNAP_STEP)
+        .min(i32::from(horae_core::time_of_day::DAY_MINUTES) - 1);
+    let start_minute =
+        (snapped + minutes <= i32::from(horae_core::time_of_day::DAY_MINUTES)).then_some(snapped);
+
     let entry = sqlx::query_as!(
         TimeEntry,
         r#"UPDATE time_entries
          SET is_running = false,
              minutes = $3,
+             start_minute = $4,
              started_at = NULL,
              notified_long_running_at = NULL,
              updated_at = now()
@@ -199,6 +211,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
         entry_id,
         user_id,
         minutes,
+        start_minute,
     )
     .fetch_optional(&state.db)
     .await

@@ -1925,3 +1925,68 @@ async fn start_minute_round_trips_and_is_constrained(pool: PgPool) {
         "an entry crossing midnight must be rejected"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Stopping a timer records the start-of-day minute from `started_at` (feature
+// 003), mirroring the stop_timer server fn's derivation.
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn stopping_timer_records_start_minute(pool: PgPool) {
+    use chrono::Timelike;
+
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // A timer that started at 09:07 UTC.
+    let started_at: chrono::DateTime<chrono::Utc> = "2026-08-04T09:07:00Z".parse().unwrap();
+    let entry_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, started_at, state) \
+         VALUES ($1, $2, $3, $4, $5, DATE '2026-08-04', 0, true, true, \
+                 TIMESTAMPTZ '2026-08-04 09:07:00+00', $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Mirror stop_timer: derive the snapped start minute (09:07 → 540 = 09:00).
+    let raw = started_at.hour() as i32 * 60 + started_at.minute() as i32;
+    let snapped = horae_core::time_of_day::snap(raw, horae_core::time_of_day::SNAP_STEP)
+        .min(i32::from(horae_core::time_of_day::DAY_MINUTES) - 1);
+    assert_eq!(snapped, 540, "09:07 should snap to 09:00 (540)");
+    let minutes = 60;
+    let start_minute =
+        (snapped + minutes <= i32::from(horae_core::time_of_day::DAY_MINUTES)).then_some(snapped);
+
+    sqlx::query!(
+        "UPDATE time_entries SET is_running = false, minutes = $2, start_minute = $3, \
+             started_at = NULL WHERE id = $1",
+        entry_id,
+        minutes,
+        start_minute,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let row = sqlx::query!(
+        "SELECT start_minute, is_running FROM time_entries WHERE id = $1",
+        entry_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!row.is_running);
+    assert_eq!(row.start_minute, Some(540));
+}

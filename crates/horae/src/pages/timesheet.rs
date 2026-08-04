@@ -886,6 +886,9 @@ struct CalEvent {
     /// True when the entry has a start time (positioned at its hour); false when
     /// untimed (stacked from the top of the day).
     timed: bool,
+    /// Column and column-count for laying overlapping timed blocks side by side.
+    lane: i32,
+    lanes: i32,
     project: String,
     task: String,
     duration: String,
@@ -902,6 +905,60 @@ fn cal_y_to_min(y: f64) -> i32 {
         (y * 60.0 / CAL_HOUR as f64) as i32,
         horae_core::time_of_day::SNAP_STEP,
     )
+}
+
+/// Assign overlapping timed entries to side-by-side lanes. Returns, per index of
+/// `day` (parallel to the slice), the entry's lane and the number of lanes in its
+/// overlap cluster; untimed entries get `(0, 1)`.
+fn timed_lanes(day: &[TimeEntry]) -> (Vec<i32>, Vec<i32>) {
+    let n = day.len();
+    let mut lane_of = vec![0i32; n];
+    let mut lanes_of = vec![1i32; n];
+
+    // (index, start, end) for timed entries, sorted by start then end.
+    let mut timed: Vec<(usize, i32, i32)> = day
+        .iter()
+        .enumerate()
+        .filter_map(|(i, e)| e.start_minute.map(|s| (i, s, s + e.minutes)))
+        .collect();
+    timed.sort_by_key(|&(_, s, e)| (s, e));
+
+    // Greedy: put each entry in the first lane free by its start time.
+    let mut lane_end: Vec<i32> = Vec::new();
+    for &(i, s, e) in &timed {
+        let lane = match lane_end.iter().position(|&end| end <= s) {
+            Some(l) => {
+                lane_end[l] = e;
+                l
+            }
+            None => {
+                lane_end.push(e);
+                lane_end.len() - 1
+            }
+        };
+        lane_of[i] = lane as i32;
+    }
+
+    // Every entry in a maximal overlap run shares the run's lane count so all
+    // stay the same width and none is hidden.
+    let mut k = 0;
+    while k < timed.len() {
+        let mut j = k;
+        let mut cluster_end = timed[k].2;
+        let mut max_lane = 0i32;
+        while j < timed.len() && timed[j].1 < cluster_end {
+            cluster_end = cluster_end.max(timed[j].2);
+            max_lane = max_lane.max(lane_of[timed[j].0]);
+            j += 1;
+        }
+        let count = max_lane + 1;
+        for &(i, _, _) in &timed[k..j] {
+            lanes_of[i] = count;
+        }
+        k = j;
+    }
+
+    (lane_of, lanes_of)
 }
 
 /// In-progress calendar drag: which day column, and the start/current minute of
@@ -939,15 +996,20 @@ fn render_calendar_view(
     let mut day_events: Vec<Vec<CalEvent>> = Vec::with_capacity(7);
     let mut max_bottom_min = 0i32;
     for day in by_day.iter() {
+        // Lay out timed entries side by side where they overlap: greedily assign
+        // each a lane, then give every entry in an overlap cluster the same
+        // column count so none is hidden (SC-005). Keyed by index into `day`.
+        let (lane_of, lanes_of) = timed_lanes(day);
+
         let mut untimed_cum = 0i32;
         let mut evs = Vec::new();
-        for e in day {
-            let (top_min, timed) = match e.start_minute {
-                Some(sm) => (sm, true),
+        for (idx, e) in day.iter().enumerate() {
+            let (top_min, timed, lane, lanes) = match e.start_minute {
+                Some(sm) => (sm, true, lane_of[idx], lanes_of[idx].max(1)),
                 None => {
                     let t = untimed_cum;
                     untimed_cum += e.minutes;
-                    (t, false)
+                    (t, false, 0, 1)
                 }
             };
             max_bottom_min = max_bottom_min.max(top_min + e.minutes);
@@ -960,6 +1022,8 @@ fn render_calendar_view(
                 top: top_min * CAL_HOUR / 60,
                 height: (e.minutes * CAL_HOUR / 60).max(20),
                 timed,
+                lane,
+                lanes,
                 project: labels
                     .projects
                     .get(&e.project_id)
@@ -1050,7 +1114,7 @@ fn render_calendar_view(
                             for ev in day_events[i].iter() {
                                 div {
                                     class: if ev.timed { "ts-cal-event timed" } else { "ts-cal-event" },
-                                    style: "top: {ev.top}px; height: {ev.height}px;",
+                                    style: "top: {ev.top}px; height: {ev.height}px; left: calc(4px + {ev.lane} * (100% - 8px) / {ev.lanes}); width: calc((100% - 8px) / {ev.lanes} - 2px); right: auto;",
                                     // Don't let pressing an entry start a column drag.
                                     onmousedown: move |e: MouseEvent| e.stop_propagation(),
                                     onclick: {
