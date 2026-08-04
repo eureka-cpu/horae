@@ -952,8 +952,9 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   background: var(--color-primary-bg); border: 1px dashed var(--color-primary);
   border-radius: 7px;
 }
-/* Bottom-edge grip for resizing a timed entry. */
-.ts-cal-event { cursor: grab; }
+/* Only timed entries can be grabbed to move/resize; untimed ones are
+   click-to-edit and keep the default pointer. */
+.ts-cal-event.timed { cursor: grab; }
 .ts-cal-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
 .ts-cal-event:hover .ts-cal-resize { background: rgba(255, 255, 255, 0.18); }
 .ts-cal-col.today .ts-cal-event { background: var(--color-accent); border-color: #e6b45f; }
