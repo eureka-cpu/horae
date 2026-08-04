@@ -1432,6 +1432,28 @@ fn render_calendar_view(
                                     }
                                 }
                             }
+                            // While reordering/moving an untimed block, a ghost of it
+                            // follows the cursor in the hovered column for feedback.
+                            if let Some(entry) = cal_drag
+                                .read()
+                                .clone()
+                                .filter(|d| d.day == i && d.kind == DragKind::Reorder)
+                                .and_then(|d| d.entry.map(|e| (e, d.cur_min)))
+                            {
+                                {
+                                    let (e, cur) = entry;
+                                    let h = (e.minutes * CAL_HOUR / 60).max(20);
+                                    let top = (cur * CAL_HOUR / 60 - h / 2).max(0);
+                                    let name = labels
+                                        .projects
+                                        .get(&e.project_id)
+                                        .cloned()
+                                        .unwrap_or_default();
+                                    rsx! {
+                                        div { class: "ts-cal-ghost drag", style: "top: {top}px; height: {h}px;", "{name}" }
+                                    }
+                                }
+                            }
                             // Cursor-following "+ Add time" over a free slot; a click
                             // there seeds a timed entry at that hour (drag_commit).
                             if let Some(top) = cal_drag
@@ -1471,7 +1493,15 @@ fn render_calendar_view(
                                     ),
                                     None => (ev.top, ev.height, ev.time_label.clone()),
                                 };
-                                let ev_class = if live.is_some() {
+                                // Dim the untimed block being reordered — its ghost
+                                // follows the cursor instead.
+                                let reordering = cal_drag.read().as_ref().is_some_and(|d| {
+                                    d.kind == DragKind::Reorder
+                                        && d.entry.as_ref().map(|e| e.id) == Some(ev.entry.id)
+                                });
+                                let ev_class = if reordering {
+                                    "ts-cal-event dragging"
+                                } else if live.is_some() {
                                     "ts-cal-event timed live"
                                 } else if ev.timed {
                                     "ts-cal-event timed"
