@@ -358,14 +358,12 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
             horae_core::time_of_day::clamp_to_day(start.clamp(0, 1439) as u16, dur.max(0) as u32)
                 as i32
         };
-        // Move and Resize both persist through reschedule and refresh on success.
-        let reschedule = move |id: String, date: String, start: i32, dur: i32| {
+        // Run a mutation and refresh the week's entries when it succeeds. Shared
+        // by every drag that writes (move, resize, reorder).
+        let commit = move |fut: std::pin::Pin<Box<dyn std::future::Future<Output = bool>>>| {
             let mut entries = entries;
             spawn(async move {
-                if server_fns::reschedule_time_entry(id, date, start, dur)
-                    .await
-                    .is_ok()
-                {
+                if fut.await {
                     entries.restart();
                 }
             });
@@ -396,7 +394,12 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 }
                 let dur = clamp(new_start, d.orig_dur);
                 let date = (ws + Duration::days(d.day as i64)).to_string();
-                reschedule(entry.id.to_string(), date, new_start, dur);
+                let id = entry.id.to_string();
+                commit(Box::pin(async move {
+                    server_fns::reschedule_time_entry(id, date, new_start, dur)
+                        .await
+                        .is_ok()
+                }));
             }
             // Resize an entry → new duration from its start to the pointer.
             DragKind::Resize => {
@@ -405,7 +408,13 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 };
                 let dur = clamp(d.start_min, d.resize_end() - d.start_min);
                 let date = (ws + Duration::days(d.orig_day as i64)).to_string();
-                reschedule(entry.id.to_string(), date, d.start_min, dur);
+                let id = entry.id.to_string();
+                let start = d.start_min;
+                commit(Box::pin(async move {
+                    server_fns::reschedule_time_entry(id, date, start, dur)
+                        .await
+                        .is_ok()
+                }));
             }
             // Reorder an untimed entry within its day's stack. No move (or a drop
             // on another day) → treat as a click and open it for editing.
@@ -455,12 +464,9 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 }
                 let ids: Vec<String> = after.iter().map(|id| id.to_string()).collect();
                 let date = day_date.to_string();
-                let mut entries = entries;
-                spawn(async move {
-                    if server_fns::reorder_untimed_entries(date, ids).await.is_ok() {
-                        entries.restart();
-                    }
-                });
+                commit(Box::pin(async move {
+                    server_fns::reorder_untimed_entries(date, ids).await.is_ok()
+                }));
             }
         }
     });
