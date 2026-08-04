@@ -74,8 +74,8 @@ ______________________________________________________________________
 
 **Independent Test**: Add via the Week grid (duration only) → it stacks from the top and totals are unchanged; clear a timed entry's start in the form → it becomes untimed (quickstart scenario 4).
 
-- [ ] T016 [US3] Add a start-time field to the entry form (set/change/clear) that maps to `update_time_entry`'s `start_minute`; clearing sends `None` → untimed, duration unchanged — `crates/horae/src/pages/timesheet.rs` (FR-007).
-- [ ] T017 [US3] Integration test in `crates/horae/tests/integration.rs`: quick-add creates `start_minute = NULL`; day/week totals equal the exact sum of minutes with a mix of timed/untimed (SC-003, SC-004); pre-existing rows unaffected.
+- [X] T016 [US3] Add a start-time field to the entry form (set/change/clear) that maps to `update_time_entry`'s `start_minute`; clearing sends `None` → untimed, duration unchanged — `crates/horae/src/pages/timesheet.rs` (FR-007).
+- [X] T017 [US3] Integration test in `crates/horae/tests/integration.rs`: quick-add creates `start_minute = NULL`; day/week totals equal the exact sum of minutes with a mix of timed/untimed (SC-003, SC-004); pre-existing rows unaffected.
 
 ______________________________________________________________________
 

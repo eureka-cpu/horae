@@ -1990,3 +1990,55 @@ async fn stopping_timer_records_start_minute(pool: PgPool) {
     assert!(!row.is_running);
     assert_eq!(row.start_minute, Some(540));
 }
+
+// ---------------------------------------------------------------------------
+// A start time is scheduling metadata only: totals equal the exact sum of
+// minutes regardless of how many entries are timed vs untimed (feature 003,
+// FR-011 / SC-003 / SC-004).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn totals_unaffected_by_start_minute(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    for (minutes, start) in [(30i32, None), (60, Some(540i32)), (90, Some(840))] {
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state, start_minute) \
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, true, false, $7, $8)",
+            Uuid::now_v7(),
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            minutes,
+            EntryState::Open as EntryState,
+            start,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    let total: Option<i64> = sqlx::query_scalar!(
+        "SELECT SUM(minutes)::bigint FROM time_entries WHERE user_id = $1",
+        user_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(total, Some(180), "total ignores start_minute");
+
+    let untimed: Option<i64> = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM time_entries WHERE user_id = $1 AND start_minute IS NULL",
+        user_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(untimed, Some(1), "the quick-add entry stays untimed (NULL)");
+}

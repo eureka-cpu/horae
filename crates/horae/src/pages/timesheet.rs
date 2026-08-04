@@ -689,6 +689,21 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                                     oninput: move |e| add_duration.set(e.value()),
                                 }
                             }
+                            input {
+                                class: "form-input",
+                                "aria-label": "Start time",
+                                placeholder: "Start time, e.g. 9:00 (optional)",
+                                value: add_start().map(|m| horae_core::time_of_day::format(m as u16)).unwrap_or_default(),
+                                oninput: move |e| {
+                                    let v = e.value();
+                                    let v = v.trim();
+                                    if v.is_empty() {
+                                        add_start.set(None);
+                                    } else if let Some(m) = horae_core::time_of_day::parse(v) {
+                                        add_start.set(Some(i32::from(m)));
+                                    }
+                                },
+                            }
                             if let Some(err) = &*add_error.read() {
                                 div { class: "ts-modal-error", "{err}" }
                             }
