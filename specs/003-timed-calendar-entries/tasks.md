@@ -47,10 +47,10 @@ ______________________________________________________________________
 
 **Independent Test**: In Calendar view, drag 9:00→11:30 on a day, confirm the form opens with that day/start/duration, save, and confirm the entry renders at 9:00 (2:30 tall) and persists after reload (quickstart scenario 1).
 
-- [ ] T009 [US1] Add calendar drag state (`Signal<Option<{day, start_minute, cur_minute}>>`) and pointer handlers (mousedown on a column, mousemove/mouseup on the grid) with a live "ghost" block, in `crates/horae/src/pages/timesheet.rs` + ghost CSS in `crates/horae/assets/css/horae.css` (D6).
-- [ ] T010 [US1] On drag release, `snap` + `clamp_to_day` (core) and open the entry form prefilled with the day, `start_minute`, and duration; a zero-movement press opens the form with no start (today's click behavior) — `crates/horae/src/pages/timesheet.rs`.
-- [ ] T011 [US1] Wire the entry form's Save to pass `start_minute` into `create_time_entry` (reuse the shared persist path) so the created block is timed — `crates/horae/src/pages/timesheet.rs`.
-- [ ] T012 [US1] Integration test in `crates/horae/tests/integration.rs`: creating with a `start_minute` round-trips and lands within the day; snap/clamp applied.
+- [X] T009 [US1] Add calendar drag state (`Signal<Option<{day, start_minute, cur_minute}>>`) and pointer handlers (mousedown on a column, mousemove/mouseup on the grid) with a live "ghost" block, in `crates/horae/src/pages/timesheet.rs` + ghost CSS in `crates/horae/assets/css/horae.css` (D6).
+- [X] T010 [US1] On drag release, `snap` + `clamp_to_day` (core) and open the entry form prefilled with the day, `start_minute`, and duration; a zero-movement press opens the form with no start (today's click behavior) — `crates/horae/src/pages/timesheet.rs`.
+- [X] T011 [US1] Wire the entry form's Save to pass `start_minute` into `create_time_entry` (reuse the shared persist path) so the created block is timed — `crates/horae/src/pages/timesheet.rs`.
+- [X] T012 [US1] Integration test in `crates/horae/tests/integration.rs`: creating with a `start_minute` round-trips and lands within the day; snap/clamp applied.
 
 **Checkpoint**: US1 is an independently shippable MVP.
 

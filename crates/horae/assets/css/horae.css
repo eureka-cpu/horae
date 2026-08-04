@@ -943,6 +943,15 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   background: var(--color-pine); border: 1px solid #2b7a66; border-radius: 7px; padding: 8px 9px;
 }
 .ts-cal-event:hover { border-color: var(--color-primary); }
+/* While drawing a slot, entries ignore the pointer so the drag stays on the column. */
+.ts-cal-grid.dragging { cursor: ns-resize; }
+.ts-cal-grid.dragging .ts-cal-event { pointer-events: none; }
+/* The live "ghost" of the slot being dragged. */
+.ts-cal-ghost {
+  position: absolute; left: 4px; right: 4px; z-index: 3; pointer-events: none;
+  background: var(--color-primary-bg); border: 1px dashed var(--color-primary);
+  border-radius: 7px;
+}
 .ts-cal-col.today .ts-cal-event { background: var(--color-accent); border-color: #e6b45f; }
 .ts-cal-ev-project { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11.5px; font-weight: 600; color: #f6f2e9; }
 .ts-cal-col.today .ts-cal-ev-project { color: var(--color-on-accent); font-weight: 700; }

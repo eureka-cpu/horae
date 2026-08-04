@@ -348,6 +348,22 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
         add_open.set(Some(e.spent_date));
     });
 
+    // Calendar drag-to-create: the slot being drawn, committed on release.
+    let cal_drag = use_signal(|| None::<CalDrag>);
+    let drag_commit = use_callback(move |d: CalDrag| {
+        let day = *week_start.read() + Duration::days(d.day as i64);
+        let start = d.start_min.min(d.cur_min).clamp(0, 1439);
+        let raw = (d.cur_min - d.start_min).abs();
+        // Always open the entry form for the day; a real drag prefills the start
+        // time and duration, a click (near-zero movement) opens an untimed form.
+        open_add.call(day);
+        if raw >= i32::from(horae_core::time_of_day::MIN_DURATION) {
+            let dur = horae_core::time_of_day::clamp_to_day(start as u16, raw as u32) as i32;
+            add_start.set(Some(start));
+            add_duration.set(format_hm(dur));
+        }
+    });
+
     // Start a timer for an existing entry's project/task (the Day-view "Start"
     // action, Harvest-style resume).
     let start_entry = use_callback(move |e: TimeEntry| {
@@ -622,7 +638,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                         {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, select_day, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_add, open_edit)}
+                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_edit, cal_drag, drag_commit)}
                     },
                 },
             }
@@ -877,9 +893,29 @@ struct CalEvent {
     entry: TimeEntry,
 }
 
+/// Calendar grid pixels per hour.
+const CAL_HOUR: i32 = 48;
+
+/// Pointer Y (px within a day column) → snapped minutes since midnight.
+fn cal_y_to_min(y: f64) -> i32 {
+    horae_core::time_of_day::snap(
+        (y * 60.0 / CAL_HOUR as f64) as i32,
+        horae_core::time_of_day::SNAP_STEP,
+    )
+}
+
+/// In-progress calendar drag: which day column, and the start/current minute of
+/// the slot being drawn (snapped). `day` is the 0..7 offset within the week.
+#[derive(Clone, Copy)]
+struct CalDrag {
+    day: usize,
+    start_min: i32,
+    cur_min: i32,
+}
+
 #[expect(
     clippy::too_many_arguments,
-    reason = "view renderer takes the week's data, display maps, and the add/edit actions"
+    reason = "view renderer takes the week's data, display maps, and the add/edit/drag actions"
 )]
 fn render_calendar_view(
     by_day: &[Vec<TimeEntry>; 7],
@@ -888,11 +924,10 @@ fn render_calendar_view(
     week_start: NaiveDate,
     today: NaiveDate,
     labels: &CalLabels,
-    open_add: Callback<NaiveDate>,
     open_edit: Callback<TimeEntry>,
+    mut cal_drag: Signal<Option<CalDrag>>,
+    drag_commit: Callback<CalDrag>,
 ) -> Element {
-    // Pixels per hour.
-    const CAL_HOUR: i32 = 48;
     let today_off = today_offset(today, week_start);
     let col_class = |i: usize| day_col_class("ts-cal-col", today_off, i);
     let head_class = |i: usize| day_col_class("ts-cal-dayhead", today_off, i);
@@ -963,7 +998,13 @@ fn render_calendar_view(
                     }
                 }
 
-                div { class: "ts-cal-grid",
+                div {
+                    class: if cal_drag.read().is_some() { "ts-cal-grid dragging" } else { "ts-cal-grid" },
+                    onmouseleave: move |_| {
+                        if cal_drag.read().is_some() {
+                            cal_drag.set(None);
+                        }
+                    },
                     div { class: "ts-cal-rail",
                         for h in 0..max_hours {
                             div { class: "ts-cal-hour",
@@ -974,11 +1015,44 @@ fn render_calendar_view(
                     for i in 0..7 {
                         div {
                             class: "{col_class(i)}",
-                            onclick: move |_| open_add.call(week_start + Duration::days(i as i64)),
+                            // Press-drag on an empty column draws a slot; release
+                            // opens the entry form (a plain click has no start).
+                            onmousedown: move |e: MouseEvent| {
+                                let m = cal_y_to_min(e.element_coordinates().y);
+                                cal_drag.set(Some(CalDrag { day: i, start_min: m, cur_min: m }));
+                            },
+                            onmousemove: move |e: MouseEvent| {
+                                if cal_drag().map(|d| d.day) == Some(i) {
+                                    let m = cal_y_to_min(e.element_coordinates().y);
+                                    cal_drag.with_mut(|d| {
+                                        if let Some(d) = d {
+                                            d.cur_min = m;
+                                        }
+                                    });
+                                }
+                            },
+                            onmouseup: move |_| {
+                                if let Some(d) = cal_drag() {
+                                    cal_drag.set(None);
+                                    drag_commit.call(d);
+                                }
+                            },
+                            if let Some(d) = cal_drag().filter(|d| d.day == i) {
+                                {
+                                    let a = d.start_min.min(d.cur_min);
+                                    let top = a * CAL_HOUR / 60;
+                                    let h = ((d.cur_min - d.start_min).abs() * CAL_HOUR / 60).max(2);
+                                    rsx! {
+                                        div { class: "ts-cal-ghost", style: "top: {top}px; height: {h}px;" }
+                                    }
+                                }
+                            }
                             for ev in day_events[i].iter() {
                                 div {
                                     class: if ev.timed { "ts-cal-event timed" } else { "ts-cal-event" },
                                     style: "top: {ev.top}px; height: {ev.height}px;",
+                                    // Don't let pressing an entry start a column drag.
+                                    onmousedown: move |e: MouseEvent| e.stop_propagation(),
                                     onclick: {
                                         let entry = ev.entry.clone();
                                         move |e: MouseEvent| {

@@ -1822,3 +1822,106 @@ async fn last_active_admin_cannot_be_removed(pool: PgPool) {
         .unwrap();
     assert_eq!(other_active_admins(&pool, org_id, admin).await, 0);
 }
+
+// ---------------------------------------------------------------------------
+// A start time (minutes since midnight) round-trips, and the DB rejects an
+// out-of-range start or one whose duration would cross midnight (feature 003).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn start_minute_round_trips_and_is_constrained(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    async fn insert(
+        pool: &PgPool,
+        ids: (Uuid, Uuid, Uuid, Uuid, Uuid),
+        minutes: i32,
+        start: Option<i32>,
+    ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        let (id, org_id, user_id, project_id, task_id) = ids;
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state, start_minute) \
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, true, false, $7, $8)",
+            id,
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            minutes,
+            EntryState::Open as EntryState,
+            start,
+        )
+        .execute(pool)
+        .await
+    }
+
+    // A timed entry at 9:00 (540) for 2:30 (150) round-trips.
+    let timed = Uuid::now_v7();
+    insert(
+        &pool,
+        (timed, org_id, user_id, project_id, task_id),
+        150,
+        Some(540),
+    )
+    .await
+    .unwrap();
+    let row = sqlx::query!(
+        "SELECT start_minute, minutes FROM time_entries WHERE id = $1",
+        timed
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.start_minute, Some(540));
+    assert_eq!(row.minutes, 150);
+
+    // An untimed entry stores NULL.
+    let untimed = Uuid::now_v7();
+    insert(
+        &pool,
+        (untimed, org_id, user_id, project_id, task_id),
+        60,
+        None,
+    )
+    .await
+    .unwrap();
+    let row = sqlx::query!(
+        "SELECT start_minute FROM time_entries WHERE id = $1",
+        untimed
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.start_minute, None);
+
+    // Out-of-range start is rejected.
+    assert!(
+        insert(
+            &pool,
+            (Uuid::now_v7(), org_id, user_id, project_id, task_id),
+            30,
+            Some(1500)
+        )
+        .await
+        .is_err(),
+        "start_minute > 1439 must be rejected"
+    );
+
+    // A start + duration that crosses midnight is rejected (23:00 + 2h = 25:00).
+    assert!(
+        insert(
+            &pool,
+            (Uuid::now_v7(), org_id, user_id, project_id, task_id),
+            120,
+            Some(1380)
+        )
+        .await
+        .is_err(),
+        "an entry crossing midnight must be rejected"
+    );
+}
