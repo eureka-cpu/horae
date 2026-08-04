@@ -206,6 +206,10 @@ fn main() -> anyhow::Result<()> {
                     )
                     .merge(auth::router(cfg.dev_login))
                     .merge(harvest::router())
+                    // Redirect signed-out page loads to /auth/login. Layered inside
+                    // the session layer so the session is populated; the session
+                    // layer stays outermost.
+                    .layer(axum::middleware::from_fn(auth::login_redirect_guard))
                     .layer(session_layer);
 
                 let listener = tokio::net::TcpListener::bind(&addr).await?;

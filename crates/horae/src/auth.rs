@@ -5,11 +5,15 @@ pub mod session;
 
 use axum::{
     Router,
+    extract::Request,
+    http::{Method, header},
+    middleware::Next,
+    response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
 use sqlx::PgPool;
 use tower_sessions::cookie::SameSite;
-use tower_sessions::{Expiry, SessionManagerLayer};
+use tower_sessions::{Expiry, Session, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
 
 /// Build the Axum sub-router for all `/auth/*` endpoints.
@@ -34,6 +38,35 @@ pub fn router(dev_login: bool) -> Router {
     }
 
     router
+}
+
+/// Redirect unauthenticated page navigations to the login screen.
+///
+/// Only plain page loads are guarded: `GET` requests that accept HTML and fall
+/// outside the public paths (`/auth/*`, `/api/*`, `/harvest/*`, `/health`).
+/// Assets, server-function calls, and the Harvest API pass through untouched, and
+/// excluding `/auth/*` keeps the login page reachable (no redirect loop). Data is
+/// already protected by the server functions' own 401s; this only fixes the UX so
+/// a signed-out visitor lands on login instead of a dead, empty app shell.
+///
+/// Must be layered *inside* the session layer so the session is populated.
+pub async fn login_redirect_guard(session: Session, request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    let public = path.starts_with("/auth/")
+        || path.starts_with("/api/")
+        || path.starts_with("/harvest/")
+        || path == "/health";
+    let is_page = request.method() == Method::GET
+        && request
+            .headers()
+            .get(header::ACCEPT)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|accept| accept.contains("text/html"));
+
+    if is_page && !public && session::get_session_user_id(&session).await.is_none() {
+        return Redirect::to("/auth/login").into_response();
+    }
+    next.run(request).await
 }
 
 /// Create and migrate the Postgres-backed session store, then return a
