@@ -28,9 +28,9 @@ A person opens the Timesheet in Calendar view and presses on the grid at, say, 9
 **Acceptance Scenarios**:
 
 1. **Given** an empty Tuesday in Calendar view, **When** the user drags from 9:00 to 11:30 in Tuesday's column and releases, **Then** an entry form opens pre-filled with Tuesday, start 9:00, duration 2:30.
-2. **Given** the pre-filled form, **When** the user selects a project and task and saves, **Then** a new entry is created for Tuesday starting at 9:00 lasting 2:30, and it renders at that position on the calendar.
-3. **Given** a saved timed entry, **When** the user reloads or shares the timesheet URL, **Then** the entry still appears at its start time with the same duration.
-4. **Given** a drag that ends higher than it began, **When** the user releases, **Then** the slot is interpreted as start = the earlier time and duration = the absolute difference (drag direction does not matter).
+1. **Given** the pre-filled form, **When** the user selects a project and task and saves, **Then** a new entry is created for Tuesday starting at 9:00 lasting 2:30, and it renders at that position on the calendar.
+1. **Given** a saved timed entry, **When** the user reloads or shares the timesheet URL, **Then** the entry still appears at its start time with the same duration.
+1. **Given** a drag that ends higher than it began, **When** the user releases, **Then** the slot is interpreted as start = the earlier time and duration = the absolute difference (drag direction does not matter).
 
 ______________________________________________________________________
 
@@ -45,8 +45,8 @@ A person who has recorded (or run a timer for) work at specific times opens Cale
 **Acceptance Scenarios**:
 
 1. **Given** an entry that starts at 14:00 for 1:00, **When** the user views that day in Calendar view, **Then** the entry's block begins at the 14:00 gridline and is one hour tall.
-2. **Given** a running timer that was started at a real clock time, **When** the timer is stopped, **Then** the resulting entry records that clock time as its start time and appears there on the calendar.
-3. **Given** two timed entries whose times overlap, **When** the user views the day, **Then** both entries remain visible and readable (neither is hidden or lost).
+1. **Given** a running timer that was started at a real clock time, **When** the timer is stopped, **Then** the resulting entry records that clock time as its start time and appears there on the calendar.
+1. **Given** two timed entries whose times overlap, **When** the user views the day, **Then** both entries remain visible and readable (neither is hidden or lost).
 
 ______________________________________________________________________
 
@@ -61,8 +61,8 @@ A person continues to add time the quick way — typing a duration in the Week g
 **Acceptance Scenarios**:
 
 1. **Given** an entry with a duration but no start time, **When** the user views Calendar view, **Then** the entry stacks from the top of its day sized by its duration and counts toward the day and week totals.
-2. **Given** a timed entry, **When** the user clears its start time in the entry form, **Then** it becomes an untimed entry and stacks from the top of the day with its duration unchanged.
-3. **Given** entries that existed before this feature, **When** the user opens any timesheet view, **Then** they display, edit, submit, and total exactly as before.
+1. **Given** a timed entry, **When** the user clears its start time in the entry form, **Then** it becomes an untimed entry and stacks from the top of the day with its duration unchanged.
+1. **Given** entries that existed before this feature, **When** the user opens any timesheet view, **Then** they display, edit, submit, and total exactly as before.
 
 ______________________________________________________________________
 
@@ -77,9 +77,9 @@ Once entries sit on the calendar at their time, the user drags an entry's edge t
 **Acceptance Scenarios**:
 
 1. **Given** a timed entry lasting 1:00, **When** the user drags its bottom edge down by one hour and releases, **Then** its duration becomes 2:00 with the same start time.
-2. **Given** a timed entry at 09:00, **When** the user drags its body to 13:00 on the same day, **Then** its start time becomes 13:00 with the same duration.
-3. **Given** a timed entry on Monday, **When** the user drags it into Wednesday's column, **Then** it moves to Wednesday keeping its start time and duration.
-4. **Given** a locked (submitted/approved) entry, **When** the user tries to move or resize it, **Then** it does not move and the user is told it is locked.
+1. **Given** a timed entry at 09:00, **When** the user drags its body to 13:00 on the same day, **Then** its start time becomes 13:00 with the same duration.
+1. **Given** a timed entry on Monday, **When** the user drags it into Wednesday's column, **Then** it moves to Wednesday keeping its start time and duration.
+1. **Given** a locked (submitted/approved) entry, **When** the user tries to move or resize it, **Then** it does not move and the user is told it is locked.
 
 ______________________________________________________________________
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT te.id,\n               te.spent_date as \"spent_date: chrono::NaiveDate\",\n               te.minutes, te.rounded_minutes, te.notes,\n               te.billable, te.is_running,\n               te.started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n               te.state::text AS \"state!: String\", te.invoice_id,\n               te.created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n               te.updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\",\n               te.user_id, u.name AS user_name,\n               te.project_id, p.name AS project_name, p.code AS project_code,\n               te.task_id, t.name AS task_name,\n               p.client_id, c.name AS client_name,\n               u.billable_rate_cents AS user_billable_rate_cents,\n               u.cost_rate_cents AS user_cost_rate_cents,\n               p.budget_kind::text AS \"budget_kind!: String\"\n         FROM time_entries te\n         JOIN users u ON u.id = te.user_id\n         JOIN projects p ON p.id = te.project_id\n         JOIN tasks t ON t.id = te.task_id\n         JOIN clients c ON c.id = p.client_id\n         WHERE te.id = $1 AND te.org_id = $2",
+  "query": "SELECT te.id,\n               te.spent_date as \"spent_date: chrono::NaiveDate\",\n               te.minutes, te.start_minute, te.rounded_minutes, te.notes,\n               te.billable, te.is_running,\n               te.started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n               te.state::text AS \"state!: String\", te.invoice_id,\n               te.created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n               te.updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\",\n               te.user_id, u.name AS user_name,\n               te.project_id, p.name AS project_name, p.code AS project_code,\n               te.task_id, t.name AS task_name,\n               p.client_id, c.name AS client_name,\n               u.billable_rate_cents AS user_billable_rate_cents,\n               u.cost_rate_cents AS user_cost_rate_cents,\n               p.budget_kind::text AS \"budget_kind!: String\"\n         FROM time_entries te\n         JOIN users u ON u.id = te.user_id\n         JOIN projects p ON p.id = te.project_id\n         JOIN tasks t ON t.id = te.task_id\n         JOIN clients c ON c.id = p.client_id\n         WHERE te.id = $1 AND te.org_id = $2",
   "describe": {
     "columns": [
       {
@@ -20,106 +20,111 @@
       },
       {
         "ordinal": 3,
-        "name": "rounded_minutes",
+        "name": "start_minute",
         "type_info": "Int4"
       },
       {
         "ordinal": 4,
+        "name": "rounded_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
         "name": "notes",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "billable",
         "type_info": "Bool"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "is_running",
         "type_info": "Bool"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "started_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "state!: String",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "invoice_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "created_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "updated_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "user_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "user_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "project_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "project_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "project_code",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "task_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "task_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "client_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "client_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "user_billable_rate_cents",
         "type_info": "Int8"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "user_cost_rate_cents",
         "type_info": "Int8"
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "budget_kind!: String",
         "type_info": "Text"
       }
@@ -134,6 +139,7 @@
       false,
       false,
       false,
+      true,
       true,
       true,
       false,
@@ -157,5 +163,5 @@
       null
     ]
   },
-  "hash": "8ff0e4d0076a173252539f54247f0fbdafa11e027d3a8bc0c41405a1ecbeb85e"
+  "hash": "fb6be9146a676b24361ef0d24961c5e6bf46d9d1fd5fdbc38b49db67012a9df8"
 }

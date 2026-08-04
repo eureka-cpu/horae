@@ -87,6 +87,7 @@ struct TimeEntryRow {
     id: Uuid,
     spent_date: NaiveDate,
     minutes: i32,
+    start_minute: Option<i32>,
     rounded_minutes: Option<i32>,
     notes: Option<String>,
     billable: bool,
@@ -139,11 +140,21 @@ fn time_entry_row_to_harvest(
         other => other,
     };
 
+    // Wall-clock start/end from the optional start minute (D8); null when untimed.
+    let started_time = row
+        .start_minute
+        .map(|m| horae_core::time_of_day::format_12h(m as u16));
+    let ended_time = row
+        .start_minute
+        .map(|m| horae_core::time_of_day::format_12h((m + row.minutes) as u16));
+
     HarvestTimeEntry {
         id: row.id.to_string(),
         spent_date: row.spent_date.to_string(),
         hours,
         rounded_hours,
+        started_time,
+        ended_time,
         notes: row.notes.clone(),
         is_locked,
         locked_reason,
@@ -236,7 +247,7 @@ async fn list_time_entries(
         TimeEntryRow,
         r#"SELECT te.id,
                te.spent_date as "spent_date: chrono::NaiveDate",
-               te.minutes, te.rounded_minutes, te.notes,
+               te.minutes, te.start_minute, te.rounded_minutes, te.notes,
                te.billable, te.is_running,
                te.started_at as "started_at: chrono::DateTime<chrono::Utc>",
                te.state::text AS "state!: String", te.invoice_id,
@@ -309,7 +320,7 @@ async fn get_time_entry(user: AuthUser, Path(id): Path<Uuid>) -> ApiResult<Harve
         TimeEntryRow,
         r#"SELECT te.id,
                te.spent_date as "spent_date: chrono::NaiveDate",
-               te.minutes, te.rounded_minutes, te.notes,
+               te.minutes, te.start_minute, te.rounded_minutes, te.notes,
                te.billable, te.is_running,
                te.started_at as "started_at: chrono::DateTime<chrono::Utc>",
                te.state::text AS "state!: String", te.invoice_id,

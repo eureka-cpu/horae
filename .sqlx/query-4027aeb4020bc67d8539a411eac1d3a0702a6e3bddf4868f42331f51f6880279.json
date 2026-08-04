@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT minutes, notes, billable FROM time_entries\n           WHERE id = $1 AND user_id = $2 AND state = $3",
+  "query": "SELECT minutes, start_minute, notes, billable FROM time_entries\n           WHERE id = $1 AND user_id = $2 AND state = $3",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,16 @@
       },
       {
         "ordinal": 1,
+        "name": "start_minute",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
         "name": "notes",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "billable",
         "type_info": "Bool"
       }
@@ -41,8 +46,9 @@
     "nullable": [
       false,
       true,
+      true,
       false
     ]
   },
-  "hash": "443e733c8ee8f6f0ab388a112a4e4bad427bdfd9b6c211d14a0a67336ef0f148"
+  "hash": "4027aeb4020bc67d8539a411eac1d3a0702a6e3bddf4868f42331f51f6880279"
 }

@@ -92,6 +92,10 @@ pub struct HarvestTimeEntry {
     pub spent_date: String,
     pub hours: f64,
     pub rounded_hours: f64,
+    /// Wall-clock start/end (Harvest tracks by start/end times); null when the
+    /// entry is duration-only (no start time).
+    pub started_time: Option<String>,
+    pub ended_time: Option<String>,
     pub notes: Option<String>,
     pub is_locked: bool,
     pub locked_reason: Option<String>,

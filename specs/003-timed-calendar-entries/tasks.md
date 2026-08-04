@@ -21,7 +21,7 @@ ______________________________________________________________________
 
 **Purpose**: Schema and offline-cache groundwork every story builds on.
 
-- [X] T001 Add migration `crates/horae/migrations/0005_time_entry_start_minute.sql` adding nullable `start_minute smallint` with the range and within-day CHECK constraints per [data-model.md](./data-model.md).
+- [X] T001 Add migration `crates/horae/migrations/0005_time_entry_start_minute.sql` adding nullable `start_minute integer` with the range and within-day CHECK constraints per [data-model.md](./data-model.md).
 - [X] T002 Apply the migration to the dev DB and regenerate the committed `.sqlx/` cache (`cargo sqlx prepare --workspace -- --features server --all-targets`).
 
 ______________________________________________________________________
@@ -94,8 +94,8 @@ ______________________________________________________________________
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T022 [P] Map `start_minute` → `started_time`/`ended_time` (nullable) in the Harvest v2 read shape per [contracts/harvest-api.md](./contracts/harvest-api.md) — `crates/horae/src/harvest/`.
-- [ ] T023 [P] Regenerate `.sqlx/` after all query changes; run `cargo clippy -p horae --features server` and `nix fmt` until clean (Constitution V).
+- [X] T022 [P] Map `start_minute` → `started_time`/`ended_time` (nullable) in the Harvest v2 read shape per [contracts/harvest-api.md](./contracts/harvest-api.md) — `crates/horae/src/harvest/`.
+- [X] T023 [P] Regenerate `.sqlx/` after all query changes; run `cargo clippy -p horae --features server` and `nix fmt` until clean (Constitution V).
 - [ ] T024 [P] Walk quickstart.md scenarios 1–8 against `dx serve`; confirm totals invariant (SC-003) and no regression to existing entries.
 
 ______________________________________________________________________

@@ -4,11 +4,12 @@ All spec ambiguities were resolved in the `## Clarifications` session; no `NEEDS
 
 ## D1 — Start-time representation
 
-**Decision**: Store the start time as an integer **minutes-since-midnight** in a `smallint` column `start_minute` (range 0–1439), nullable. Interpreted in the organization's working day (the same local day as `spent_date`); no time zone is attached.
+**Decision**: Store the start time as an integer **minutes-since-midnight** in an `integer` column `start_minute` (range 0–1439), nullable. Interpreted in the organization's working day (the same local day as `spent_date`); no time zone is attached.
 
 **Rationale**: Constitution I (Exactness) forbids floats for time and mandates integer minutes; minutes-since-midnight is the exact, index-free, arithmetic-friendly form. It composes directly with the existing integer `minutes` duration (`end = start_minute + minutes`) and with the pixel math in the calendar. It maps trivially to Harvest's API `started_time` (a wall-clock *time*), and back.
 
 **Alternatives considered**:
+
 - `timestamptz` (full instant): rejected — introduces a time zone and an instant where the domain only needs a time of day tied to an existing date; invites float/instant drift and is heavier than needed.
 - Postgres `time` type: rejected — reintroduces sub-minute precision and formatting ambiguity; integer minutes is exact and matches the rest of the schema (`minutes`, `round_minutes`).
 

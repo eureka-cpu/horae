@@ -8,13 +8,13 @@ One nullable column on the existing `time_entries` table. No new tables; PKs rem
 
 | Column | Type | Null | Notes |
 |--------|------|------|-------|
-| `start_minute` | `smallint` | YES | Minutes since local midnight, 0–1439. `NULL` = untimed (duration-only). |
+| `start_minute` | `integer` | YES | Minutes since local midnight, 0–1439. `NULL` = untimed (duration-only). |
 
 **Constraints** (in migration `0005_time_entry_start_minute.sql`):
 
 ```sql
 ALTER TABLE time_entries
-  ADD COLUMN start_minute smallint,
+  ADD COLUMN start_minute integer,
   ADD CONSTRAINT time_entries_start_minute_range
     CHECK (start_minute IS NULL OR (start_minute >= 0 AND start_minute <= 1439)),
   ADD CONSTRAINT time_entries_within_day
