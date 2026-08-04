@@ -96,7 +96,7 @@ ______________________________________________________________________
 
 - [X] T022 [P] Map `start_minute` → `started_time`/`ended_time` (nullable) in the Harvest v2 read shape per [contracts/harvest-api.md](./contracts/harvest-api.md) — `crates/horae/src/harvest/`.
 - [X] T023 [P] Regenerate `.sqlx/` after all query changes; run `cargo clippy -p horae --features server` and `nix fmt` until clean (Constitution V).
-- [ ] T024 [P] Walk quickstart.md scenarios 1–8 against `dx serve`; confirm totals invariant (SC-003) and no regression to existing entries.
+- [X] T024 [P] Walk quickstart.md scenarios 1–8 against `dx serve`; confirm totals invariant (SC-003) and no regression to existing entries.
 
 ______________________________________________________________________
 

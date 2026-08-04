@@ -13,9 +13,14 @@ fn normalize_start(
     match start_minute {
         None => Ok((minutes, None)),
         Some(sm) if (0..=1439).contains(&sm) => {
+            // Snap the start to the grid so every write path (drag-move/resize,
+            // typed times) lands on a tidy boundary (FR-008); snap first, then
+            // clamp the duration against the snapped start.
+            let snapped = horae_core::time_of_day::snap(sm, horae_core::time_of_day::SNAP_STEP)
+                .clamp(0, 1439);
             let clamped =
-                horae_core::time_of_day::clamp_to_day(sm as u16, minutes.max(0) as u32) as i32;
-            Ok((clamped, Some(sm)))
+                horae_core::time_of_day::clamp_to_day(snapped as u16, minutes.max(0) as u32) as i32;
+            Ok((clamped, Some(snapped)))
         }
         Some(_) => Err(server_err("start time must be within the day (0..=1439)")),
     }
@@ -494,4 +499,40 @@ pub async fn reschedule_time_entry(
 
     tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(entry)
+}
+
+#[cfg(all(test, feature = "server"))]
+mod tests {
+    use super::normalize_start;
+
+    #[test]
+    fn snaps_unaligned_start_to_the_grid() {
+        // A drag-move can hand in a sub-grid start (e.g. 4:04); every write path
+        // must snap it (FR-008). 244 → 240 (4:00), duration unchanged.
+        let (minutes, start) = normalize_start(210, Some(244)).unwrap();
+        assert_eq!(start, Some(240));
+        assert_eq!(minutes, 210);
+    }
+
+    #[test]
+    fn clamps_duration_against_the_snapped_start() {
+        // Snap first (1430 → 1425), then clamp so start + minutes never crosses
+        // midnight (FR-012): 1425 + 60 would exceed the day, clamped to 15.
+        let (minutes, start) = normalize_start(60, Some(1430)).unwrap();
+        assert_eq!(start, Some(1425));
+        assert_eq!(minutes, 15);
+    }
+
+    #[test]
+    fn untimed_start_is_left_untouched() {
+        let (minutes, start) = normalize_start(90, None).unwrap();
+        assert_eq!(start, None);
+        assert_eq!(minutes, 90);
+    }
+
+    #[test]
+    fn rejects_out_of_range_start() {
+        assert!(normalize_start(60, Some(-1)).is_err());
+        assert!(normalize_start(60, Some(1440)).is_err());
+    }
 }
