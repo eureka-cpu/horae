@@ -166,6 +166,38 @@ fn iso_week_monday(date: NaiveDate) -> NaiveDate {
 
 const DAY_LABELS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/// How many days the Calendar view shows at once.
+#[derive(Clone, Copy, PartialEq)]
+enum CalSpan {
+    /// Mon–Sun.
+    Week,
+    /// Mon–Fri.
+    WorkWeek,
+    /// Just the anchor day.
+    Day,
+}
+
+impl CalSpan {
+    /// Weekday indices (0 = Mon) to render, given the anchor day's own index.
+    fn visible_days(self, anchor: usize) -> Vec<usize> {
+        match self {
+            CalSpan::Week => (0..7).collect(),
+            CalSpan::WorkWeek => (0..5).collect(),
+            CalSpan::Day => vec![anchor.min(6)],
+        }
+    }
+
+    /// Selector label. Distinct from the Day/Week view toggle so the two
+    /// segmented controls don't read as duplicates.
+    fn label(self) -> &'static str {
+        match self {
+            CalSpan::Week => "7 days",
+            CalSpan::WorkWeek => "5 days",
+            CalSpan::Day => "1 day",
+        }
+    }
+}
+
 #[component]
 pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
     let today = chrono::Utc::now().date_naive();
@@ -349,6 +381,9 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
         add_error.set(None);
         add_open.set(Some(e.spent_date));
     });
+
+    // How many days the Calendar shows (week / work-week / single day).
+    let mut cal_span = use_signal(|| CalSpan::Week);
 
     // Calendar drag: the slot/entry being manipulated, committed on release.
     let cal_drag = use_signal(|| None::<CalDrag>);
@@ -648,6 +683,21 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                         go.call((v, date.0));
                     },
                 }
+                // Calendar-only: how many days the grid spans.
+                if current_mode == ViewMode::Calendar {
+                    Segmented {
+                        items: vec!["7 days".to_string(), "5 days".to_string(), "1 day".to_string()],
+                        active: cal_span.read().label().to_string(),
+                        onselect: move |v: String| {
+                            cal_span
+                                .set(match v.as_str() {
+                                    "1 day" => CalSpan::Day,
+                                    "5 days" => CalSpan::WorkWeek,
+                                    _ => CalSpan::Week,
+                                });
+                        },
+                    }
+                }
             }
 
             // Toolbar: add entry + week pager
@@ -745,7 +795,10 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                         {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, select_day, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, cal_drag, drag_commit)}
+                        {
+                            let visible = cal_span.read().visible_days(*selected_day_offset.read() as usize);
+                            render_calendar_view(&by_day.read(), &daily_totals.read(), &visible, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, cal_drag, drag_commit)
+                        }
                     },
                 },
             }
@@ -1165,7 +1218,7 @@ fn untimed_ordered(day: &[TimeEntry]) -> Vec<TimeEntry> {
 fn render_calendar_view(
     by_day: &[Vec<TimeEntry>; 7],
     daily_totals: &[i32],
-    week_total: i32,
+    visible_days: &[usize],
     week_start: NaiveDate,
     today: NaiveDate,
     labels: &CalLabels,
@@ -1235,12 +1288,22 @@ fn render_calendar_view(
     // At least 8 rows so a light week still reads as a calendar.
     let max_hours = ((max_bottom_min + 59) / 60).max(8);
 
+    // The grid spans a variable number of days; size the columns to match and
+    // sum only the visible days for the header total.
+    let n = visible_days.len().max(1);
+    let shown_total: i32 = visible_days.iter().map(|&i| daily_totals[i]).sum();
+    let total_label = if n == 1 { "Day total" } else { "Week total" };
+    let grid_style = format!(
+        "grid-template-columns: 56px repeat({n}, 1fr) 100px; min-width: {}px;",
+        156 + n * 106
+    );
+
     rsx! {
         div { class: "ts-cal",
             div { class: "ts-cal-scroll",
-                div { class: "ts-cal-head",
+                div { class: "ts-cal-head", style: "{grid_style}",
                     span {}
-                    for i in 0..7 {
+                    for i in visible_days.iter().copied() {
                         {
                             let d = week_start + Duration::days(i as i64);
                             rsx! {
@@ -1252,13 +1315,14 @@ fn render_calendar_view(
                         }
                     }
                     div { class: "ts-cal-weektot",
-                        div { class: "ts-cal-weektot-label", "Week total" }
-                        div { class: "ts-cal-weektot-value", "{format_hm(week_total)}" }
+                        div { class: "ts-cal-weektot-label", "{total_label}" }
+                        div { class: "ts-cal-weektot-value", "{format_hm(shown_total)}" }
                     }
                 }
 
                 div {
                     class: if cal_drag.read().is_some() { "ts-cal-grid dragging" } else { "ts-cal-grid" },
+                    style: "{grid_style}",
                     onmouseleave: move |_| {
                         if cal_drag.read().is_some() {
                             cal_drag.set(None);
@@ -1271,7 +1335,7 @@ fn render_calendar_view(
                             }
                         }
                     }
-                    for i in 0..7 {
+                    for i in visible_days.iter().copied() {
                         div {
                             class: "{col_class(i)}",
                             // Press-drag on an empty column draws a slot; release
