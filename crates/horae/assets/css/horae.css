@@ -962,6 +962,11 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 .ts-cal-col.today .ts-cal-ev-project { color: var(--color-on-accent); font-weight: 700; }
 .ts-cal-ev-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-ev-dur { flex-shrink: 0; font-family: var(--font-family-mono); }
+/* Start–end clock label on a timed block. */
+.ts-cal-ev-time { font-size: 10.5px; font-family: var(--font-family-mono); color: var(--color-pine-fg); margin-top: 2px; }
+.ts-cal-col.today .ts-cal-ev-time { color: #4a3208; }
+/* The block being moved/resized: lift it above siblings and highlight the edge. */
+.ts-cal-event.live { z-index: 4; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
 .ts-cal-ev-task { font-size: 11px; color: var(--color-pine-fg); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-cal-col.today .ts-cal-ev-task { color: #4a3208; }
 .ts-cal-ev-client { font-size: 10.5px; color: #8fc4b3; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

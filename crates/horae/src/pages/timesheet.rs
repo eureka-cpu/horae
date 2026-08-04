@@ -954,6 +954,9 @@ struct CalEvent {
     project: String,
     task: String,
     duration: String,
+    /// Start–end clock label (e.g. "9:00–10:30") for timed entries; empty when
+    /// untimed.
+    time_label: String,
     client: String,
     entry: TimeEntry,
 }
@@ -1098,6 +1101,14 @@ fn render_calendar_view(
                 .get(&e.project_id)
                 .map(|(name, currency)| format!("{name} · {currency}"))
                 .unwrap_or_default();
+            let time_label = match e.start_minute {
+                Some(sm) => format!(
+                    "{}–{}",
+                    horae_core::time_of_day::format(sm as u16),
+                    horae_core::time_of_day::format((sm + e.minutes) as u16),
+                ),
+                None => String::new(),
+            };
             evs.push(CalEvent {
                 top: top_min * CAL_HOUR / 60,
                 height: (e.minutes * CAL_HOUR / 60).max(20),
@@ -1111,6 +1122,7 @@ fn render_calendar_view(
                     .unwrap_or_else(|| "Untitled".into()),
                 task: labels.tasks.get(&e.task_id).cloned().unwrap_or_default(),
                 duration: format_hm(e.minutes),
+                time_label,
                 client,
                 entry: e.clone(),
             });
@@ -1205,9 +1217,54 @@ fn render_calendar_view(
                                 }
                             }
                             for ev in day_events[i].iter() {
+                                {
+                                // Live preview: while this entry is being moved or
+                                // resized in its own column, drive its box from the
+                                // in-progress drag so you can see it grow/shrink and
+                                // read its new time (Create has its own ghost above).
+                                let live = cal_drag.read().as_ref().and_then(|d| {
+                                    if d.entry.as_ref().map(|e| e.id) != Some(ev.entry.id) {
+                                        return None;
+                                    }
+                                    match d.kind {
+                                        DragKind::Resize => {
+                                            let end = d.cur_min.max(
+                                                d.start_min
+                                                    + i32::from(horae_core::time_of_day::MIN_DURATION),
+                                            );
+                                            Some((d.start_min, end))
+                                        }
+                                        DragKind::Move if d.day == i => {
+                                            let s = (d.cur_min - (d.grab_min - d.start_min))
+                                                .clamp(0, 1439);
+                                            Some((s, s + d.orig_dur))
+                                        }
+                                        _ => None,
+                                    }
+                                });
+                                let (top_px, height_px, time_label) = match live {
+                                    Some((s, e)) => (
+                                        s * CAL_HOUR / 60,
+                                        ((e - s) * CAL_HOUR / 60).max(20),
+                                        format!(
+                                            "{}–{}",
+                                            horae_core::time_of_day::format(s as u16),
+                                            horae_core::time_of_day::format(e.min(1440) as u16),
+                                        ),
+                                    ),
+                                    None => (ev.top, ev.height, ev.time_label.clone()),
+                                };
+                                let ev_class = if live.is_some() {
+                                    "ts-cal-event timed live"
+                                } else if ev.timed {
+                                    "ts-cal-event timed"
+                                } else {
+                                    "ts-cal-event"
+                                };
+                                rsx! {
                                 div {
-                                    class: if ev.timed { "ts-cal-event timed" } else { "ts-cal-event" },
-                                    style: "top: {ev.top}px; height: {ev.height}px; left: calc(4px + {ev.lane} * (100% - 8px) / {ev.lanes}); width: calc((100% - 8px) / {ev.lanes} - 2px); right: auto;",
+                                    class: "{ev_class}",
+                                    style: "top: {top_px}px; height: {height_px}px; left: calc(4px + {ev.lane} * (100% - 8px) / {ev.lanes}); width: calc((100% - 8px) / {ev.lanes} - 2px); right: auto;",
                                     // Pressing a timed entry starts a move drag (its
                                     // body); a plain click with no move opens it for
                                     // editing. Untimed entries just open for editing.
@@ -1249,6 +1306,9 @@ fn render_calendar_view(
                                         span { class: "ts-cal-ev-name", "{ev.project}" }
                                         span { class: "ts-cal-ev-dur", "{ev.duration}" }
                                     }
+                                    if ev.timed {
+                                        div { class: "ts-cal-ev-time", "{time_label}" }
+                                    }
                                     if !ev.task.is_empty() {
                                         div { class: "ts-cal-ev-task", "{ev.task}" }
                                     }
@@ -1278,6 +1338,8 @@ fn render_calendar_view(
                                             },
                                         }
                                     }
+                                }
+                                }
                                 }
                             }
                         }
