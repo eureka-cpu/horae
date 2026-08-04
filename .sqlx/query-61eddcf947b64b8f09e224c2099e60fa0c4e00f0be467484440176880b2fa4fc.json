@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE time_entries SET spent_date = CURRENT_DATE + 1, start_minute = 780, minutes = 120, updated_at = now() WHERE id = $1 AND user_id = $2 AND state = $3 RETURNING start_minute, minutes",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "start_minute",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "minutes",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "entry_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "submitted",
+                "approved",
+                "invoiced"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "61eddcf947b64b8f09e224c2099e60fa0c4e00f0be467484440176880b2fa4fc"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT start_minute, minutes FROM time_entries WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "start_minute",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "minutes",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "79962dcb6dfbd3289af87a4a21174be2305ef410084b27fb0dd7e0551cfbd495"
+}

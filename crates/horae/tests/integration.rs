@@ -1822,3 +1822,303 @@ async fn last_active_admin_cannot_be_removed(pool: PgPool) {
         .unwrap();
     assert_eq!(other_active_admins(&pool, org_id, admin).await, 0);
 }
+
+// ---------------------------------------------------------------------------
+// A start time (minutes since midnight) round-trips, and the DB rejects an
+// out-of-range start or one whose duration would cross midnight (feature 003).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn start_minute_round_trips_and_is_constrained(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    async fn insert(
+        pool: &PgPool,
+        ids: (Uuid, Uuid, Uuid, Uuid, Uuid),
+        minutes: i32,
+        start: Option<i32>,
+    ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        let (id, org_id, user_id, project_id, task_id) = ids;
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state, start_minute) \
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, true, false, $7, $8)",
+            id,
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            minutes,
+            EntryState::Open as EntryState,
+            start,
+        )
+        .execute(pool)
+        .await
+    }
+
+    // A timed entry at 9:00 (540) for 2:30 (150) round-trips.
+    let timed = Uuid::now_v7();
+    insert(
+        &pool,
+        (timed, org_id, user_id, project_id, task_id),
+        150,
+        Some(540),
+    )
+    .await
+    .unwrap();
+    let row = sqlx::query!(
+        "SELECT start_minute, minutes FROM time_entries WHERE id = $1",
+        timed
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.start_minute, Some(540));
+    assert_eq!(row.minutes, 150);
+
+    // An untimed entry stores NULL.
+    let untimed = Uuid::now_v7();
+    insert(
+        &pool,
+        (untimed, org_id, user_id, project_id, task_id),
+        60,
+        None,
+    )
+    .await
+    .unwrap();
+    let row = sqlx::query!(
+        "SELECT start_minute FROM time_entries WHERE id = $1",
+        untimed
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.start_minute, None);
+
+    // Out-of-range start is rejected.
+    assert!(
+        insert(
+            &pool,
+            (Uuid::now_v7(), org_id, user_id, project_id, task_id),
+            30,
+            Some(1500)
+        )
+        .await
+        .is_err(),
+        "start_minute > 1439 must be rejected"
+    );
+
+    // A start + duration that crosses midnight is rejected (23:00 + 2h = 25:00).
+    assert!(
+        insert(
+            &pool,
+            (Uuid::now_v7(), org_id, user_id, project_id, task_id),
+            120,
+            Some(1380)
+        )
+        .await
+        .is_err(),
+        "an entry crossing midnight must be rejected"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Stopping a timer records the start-of-day minute from `started_at` (feature
+// 003), mirroring the stop_timer server fn's derivation.
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn stopping_timer_records_start_minute(pool: PgPool) {
+    use chrono::Timelike;
+
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // A timer that started at 09:07 UTC.
+    let started_at: chrono::DateTime<chrono::Utc> = "2026-08-04T09:07:00Z".parse().unwrap();
+    let entry_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, started_at, state) \
+         VALUES ($1, $2, $3, $4, $5, DATE '2026-08-04', 0, true, true, \
+                 TIMESTAMPTZ '2026-08-04 09:07:00+00', $6)",
+        entry_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Mirror stop_timer: derive the snapped start minute (09:07 → 540 = 09:00).
+    let raw = started_at.hour() as i32 * 60 + started_at.minute() as i32;
+    let snapped = horae_core::time_of_day::snap(raw, horae_core::time_of_day::SNAP_STEP)
+        .min(i32::from(horae_core::time_of_day::DAY_MINUTES) - 1);
+    assert_eq!(snapped, 540, "09:07 should snap to 09:00 (540)");
+    let minutes = 60;
+    let start_minute =
+        (snapped + minutes <= i32::from(horae_core::time_of_day::DAY_MINUTES)).then_some(snapped);
+
+    sqlx::query!(
+        "UPDATE time_entries SET is_running = false, minutes = $2, start_minute = $3, \
+             started_at = NULL WHERE id = $1",
+        entry_id,
+        minutes,
+        start_minute,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let row = sqlx::query!(
+        "SELECT start_minute, is_running FROM time_entries WHERE id = $1",
+        entry_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!row.is_running);
+    assert_eq!(row.start_minute, Some(540));
+}
+
+// ---------------------------------------------------------------------------
+// A start time is scheduling metadata only: totals equal the exact sum of
+// minutes regardless of how many entries are timed vs untimed (feature 003,
+// FR-011 / SC-003 / SC-004).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn totals_unaffected_by_start_minute(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    for (minutes, start) in [(30i32, None), (60, Some(540i32)), (90, Some(840))] {
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state, start_minute) \
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, true, false, $7, $8)",
+            Uuid::now_v7(),
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            minutes,
+            EntryState::Open as EntryState,
+            start,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    let total: Option<i64> = sqlx::query_scalar!(
+        "SELECT SUM(minutes)::bigint FROM time_entries WHERE user_id = $1",
+        user_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(total, Some(180), "total ignores start_minute");
+
+    let untimed: Option<i64> = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM time_entries WHERE user_id = $1 AND start_minute IS NULL",
+        user_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(untimed, Some(1), "the quick-add entry stays untimed (NULL)");
+}
+
+// ---------------------------------------------------------------------------
+// A reschedule (calendar move/resize) changes date/start/duration on an open
+// entry and is rejected on a locked one (feature 003, FR-013).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn reschedule_moves_open_entry_and_rejects_locked(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // An open timed entry: today 09:00 for 60m.
+    let open_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state, start_minute) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 60, true, false, $6, 540)",
+        open_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Reschedule to tomorrow 13:00 for 120m (mirrors reschedule_time_entry).
+    let moved = sqlx::query!(
+        "UPDATE time_entries \
+         SET spent_date = CURRENT_DATE + 1, start_minute = 780, minutes = 120, updated_at = now() \
+         WHERE id = $1 AND user_id = $2 AND state = $3 \
+         RETURNING start_minute, minutes",
+        open_id,
+        user_id,
+        EntryState::Open as EntryState,
+    )
+    .fetch_optional(&pool)
+    .await
+    .unwrap();
+    let moved = moved.expect("open entry should reschedule");
+    assert_eq!(moved.start_minute, Some(780));
+    assert_eq!(moved.minutes, 120);
+
+    // A submitted (locked) entry cannot be rescheduled.
+    let locked_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state, start_minute) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 60, true, false, $6, 540)",
+        locked_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Submitted as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let rejected = sqlx::query!(
+        "UPDATE time_entries \
+         SET start_minute = 780 \
+         WHERE id = $1 AND user_id = $2 AND state = $3 \
+         RETURNING id",
+        locked_id,
+        user_id,
+        EntryState::Open as EntryState,
+    )
+    .fetch_optional(&pool)
+    .await
+    .unwrap();
+    assert!(rejected.is_none(), "a locked entry must not be rescheduled");
+}
