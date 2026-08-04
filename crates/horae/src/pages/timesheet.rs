@@ -466,11 +466,9 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 let Some(entry) = d.entry.clone() else {
                     return;
                 };
-                if d.day != d.orig_day {
-                    open_edit.call(entry);
-                    return;
-                }
-                let day_date = ws + Duration::days(d.orig_day as i64);
+                // Drop column = target day; the same call reorders within a day and
+                // moves the entry to another day (its spent_date follows).
+                let target_date = ws + Duration::days(d.day as i64);
                 let mut ordered = entries
                     .read()
                     .as_ref()
@@ -478,19 +476,16 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                     .map(|all| {
                         let day: Vec<TimeEntry> = all
                             .iter()
-                            .filter(|e| e.spent_date == day_date)
+                            .filter(|e| e.spent_date == target_date)
                             .cloned()
                             .collect();
                         untimed_ordered(&day)
                     })
                     .unwrap_or_default();
                 let before: Vec<Uuid> = ordered.iter().map(|e| e.id).collect();
-                let Some(from) = ordered.iter().position(|e| e.id == entry.id) else {
-                    return;
-                };
-                let item = ordered.remove(from);
-                // Insertion slot from the drop position: count the entries whose
-                // midpoint sits above the pointer.
+                // Drop the moved entry from the target list (present only on a
+                // same-day reorder) and re-insert it at the drop position.
+                ordered.retain(|e| e.id != entry.id);
                 let mut cum = 0i32;
                 let mut to = ordered.len();
                 for (idx, e) in ordered.iter().enumerate() {
@@ -500,14 +495,15 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                     }
                     cum += e.minutes;
                 }
-                ordered.insert(to, item);
+                ordered.insert(to, entry.clone());
                 let after: Vec<Uuid> = ordered.iter().map(|e| e.id).collect();
-                if after == before {
+                // Same day and unchanged order → treat as a click and open editing.
+                if d.day == d.orig_day && after == before {
                     open_edit.call(entry);
                     return;
                 }
                 let ids: Vec<String> = after.iter().map(|id| id.to_string()).collect();
-                let date = day_date.to_string();
+                let date = target_date.to_string();
                 commit(Box::pin(async move {
                     server_fns::reorder_untimed_entries(date, ids).await.is_ok()
                 }));
@@ -1436,6 +1432,28 @@ fn render_calendar_view(
                                     }
                                 }
                             }
+                            // While reordering/moving an untimed block, a ghost of it
+                            // follows the cursor in the hovered column for feedback.
+                            if let Some(entry) = cal_drag
+                                .read()
+                                .clone()
+                                .filter(|d| d.day == i && d.kind == DragKind::Reorder)
+                                .and_then(|d| d.entry.map(|e| (e, d.cur_min)))
+                            {
+                                {
+                                    let (e, cur) = entry;
+                                    let h = (e.minutes * CAL_HOUR / 60).max(20);
+                                    let top = (cur * CAL_HOUR / 60 - h / 2).max(0);
+                                    let name = labels
+                                        .projects
+                                        .get(&e.project_id)
+                                        .cloned()
+                                        .unwrap_or_default();
+                                    rsx! {
+                                        div { class: "ts-cal-ghost drag", style: "top: {top}px; height: {h}px;", "{name}" }
+                                    }
+                                }
+                            }
                             // Cursor-following "+ Add time" over a free slot; a click
                             // there seeds a timed entry at that hour (drag_commit).
                             if let Some(top) = cal_drag
@@ -1475,7 +1493,15 @@ fn render_calendar_view(
                                     ),
                                     None => (ev.top, ev.height, ev.time_label.clone()),
                                 };
-                                let ev_class = if live.is_some() {
+                                // Dim the untimed block being reordered — its ghost
+                                // follows the cursor instead.
+                                let reordering = cal_drag.read().as_ref().is_some_and(|d| {
+                                    d.kind == DragKind::Reorder
+                                        && d.entry.as_ref().map(|e| e.id) == Some(ev.entry.id)
+                                });
+                                let ev_class = if reordering {
+                                    "ts-cal-event dragging"
+                                } else if live.is_some() {
                                     "ts-cal-event timed live"
                                 } else if ev.timed {
                                     "ts-cal-event timed"

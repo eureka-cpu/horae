@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE time_entries AS t\n             SET sort_order = v.ord, spent_date = $4\n           FROM unnest($1::uuid[], $2::int4[]) AS v(id, ord)\n           WHERE t.id = v.id AND t.user_id = $3 AND t.start_minute IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Int4Array",
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ebd8a8ab176519b9c3dca7dc2edf6f47c2c88d492272865cd567de0c903dfad3"
+}

@@ -501,10 +501,11 @@ pub async fn reschedule_time_entry(
     Ok(entry)
 }
 
-/// Reorder a day's untimed entries. `ordered_ids` lists the user's untimed
-/// entries for `spent_date` in the desired top-to-bottom order; each is assigned
-/// its position as `sort_order`. Cosmetic only — it never touches hours, date,
-/// or state, so it works regardless of whether the entries are locked.
+/// Place a set of untimed entries on `spent_date` in the given top-to-bottom
+/// order. Each id gets its position as `sort_order` and its `spent_date` set to
+/// the target day — so this both reorders a day's stack and moves an untimed
+/// entry to another day. Only untimed entries are touched; hours and state are
+/// left alone, so it works regardless of whether they're locked.
 #[server]
 pub async fn reorder_untimed_entries(
     spent_date: String,
@@ -523,9 +524,9 @@ pub async fn reorder_untimed_entries(
 
     sqlx::query!(
         r#"UPDATE time_entries AS t
-             SET sort_order = v.ord
+             SET sort_order = v.ord, spent_date = $4
            FROM unnest($1::uuid[], $2::int4[]) AS v(id, ord)
-           WHERE t.id = v.id AND t.user_id = $3 AND t.spent_date = $4"#,
+           WHERE t.id = v.id AND t.user_id = $3 AND t.start_minute IS NULL"#,
         &ids,
         &orders,
         user_id,
