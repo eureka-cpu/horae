@@ -24,6 +24,9 @@ pub struct TimeEntry {
     /// Optional start time as minutes since local midnight (0..=1439). `None` =
     /// untimed (duration-only); the calendar stacks those from the top of the day.
     pub start_minute: Option<i32>,
+    /// Explicit order among a day's untimed entries (calendar reordering). Timed
+    /// entries ignore it (they order by start time). Defaults to 0.
+    pub sort_order: i32,
     pub state: EntryState,
     pub invoice_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,

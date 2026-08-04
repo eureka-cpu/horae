@@ -63,7 +63,7 @@ pub async fn list_time_entries(
         TimeEntry,
         r#"SELECT id, org_id, user_id, project_id, task_id,
                 spent_date as "spent_date: chrono::NaiveDate",
-                minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                 started_at as "started_at: chrono::DateTime<chrono::Utc>",
                 state as "state: EntryState", invoice_id,
                 created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -138,7 +138,7 @@ pub async fn start_timer(
          VALUES ($1, $2, $3, $4, $5, $6, 0, $7, true, true, now(), $8)
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -208,7 +208,7 @@ pub async fn stop_timer(entry_id: String) -> Result<TimeEntry, ServerFnError> {
          WHERE id = $1 AND user_id = $2 AND is_running = true
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -238,7 +238,7 @@ pub async fn get_current_timer() -> Result<Option<TimeEntry>, ServerFnError> {
         TimeEntry,
         r#"SELECT id, org_id, user_id, project_id, task_id,
                 spent_date as "spent_date: chrono::NaiveDate",
-                minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                 started_at as "started_at: chrono::DateTime<chrono::Utc>",
                 state as "state: EntryState", invoice_id,
                 created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -308,7 +308,7 @@ pub async fn create_time_entry(
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11)
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -367,7 +367,7 @@ pub async fn update_time_entry(
          WHERE id = $1 AND user_id = $2 AND state = $6
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -421,7 +421,7 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
            WHERE id = $1 AND user_id = $2 AND state = $3
            RETURNING id, org_id, user_id, project_id, task_id,
                      spent_date as "spent_date: chrono::NaiveDate",
-                     minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                     minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                      started_at as "started_at: chrono::DateTime<chrono::Utc>",
                      state as "state: EntryState", invoice_id,
                      created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -472,7 +472,7 @@ pub async fn reschedule_time_entry(
          WHERE id = $1 AND user_id = $2 AND state = $6
          RETURNING id, org_id, user_id, project_id, task_id,
                    spent_date as "spent_date: chrono::NaiveDate",
-                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                   minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,
                    started_at as "started_at: chrono::DateTime<chrono::Utc>",
                    state as "state: EntryState", invoice_id,
                    created_at as "created_at: chrono::DateTime<chrono::Utc>",
@@ -499,6 +499,43 @@ pub async fn reschedule_time_entry(
 
     tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(entry)
+}
+
+/// Reorder a day's untimed entries. `ordered_ids` lists the user's untimed
+/// entries for `spent_date` in the desired top-to-bottom order; each is assigned
+/// its position as `sort_order`. Cosmetic only — it never touches hours, date,
+/// or state, so it works regardless of whether the entries are locked.
+#[server]
+pub async fn reorder_untimed_entries(
+    spent_date: String,
+    ordered_ids: Vec<String>,
+) -> Result<(), ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let spent_date: chrono::NaiveDate = spent_date
+        .parse()
+        .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
+    let ids = ordered_ids
+        .iter()
+        .map(|s| parse_uuid(s, "entry_id"))
+        .collect::<Result<Vec<_>, _>>()?;
+    let orders: Vec<i32> = (0..ids.len() as i32).collect();
+
+    sqlx::query!(
+        r#"UPDATE time_entries AS t
+             SET sort_order = v.ord
+           FROM unnest($1::uuid[], $2::int4[]) AS v(id, ord)
+           WHERE t.id = v.id AND t.user_id = $3 AND t.spent_date = $4"#,
+        &ids,
+        &orders,
+        user_id,
+        spent_date as chrono::NaiveDate,
+    )
+    .execute(&state.db)
+    .await
+    .map_err(server_err)?;
+
+    Ok(())
 }
 
 #[cfg(all(test, feature = "server"))]

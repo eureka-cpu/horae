@@ -2122,3 +2122,57 @@ async fn reschedule_moves_open_entry_and_rejects_locked(pool: PgPool) {
     .unwrap();
     assert!(rejected.is_none(), "a locked entry must not be rescheduled");
 }
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn reorder_untimed_assigns_positions(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // Three untimed entries on the same day, all at the default sort_order 0.
+    let ids: Vec<Uuid> = (0..3).map(|_| Uuid::now_v7()).collect();
+    for id in &ids {
+        sqlx::query!(
+            "INSERT INTO time_entries \
+               (id, org_id, user_id, project_id, task_id, spent_date, \
+                minutes, billable, is_running, state) \
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 60, true, false, $6)",
+            id,
+            org_id,
+            user_id,
+            project_id,
+            task_id,
+            EntryState::Open as EntryState,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    // Reorder to [third, first, second] — mirrors reorder_untimed_entries.
+    let ordered = vec![ids[2], ids[0], ids[1]];
+    let orders: Vec<i32> = vec![0, 1, 2];
+    sqlx::query!(
+        "UPDATE time_entries AS t SET sort_order = v.ord \
+         FROM unnest($1::uuid[], $2::int4[]) AS v(id, ord) \
+         WHERE t.id = v.id AND t.user_id = $3 AND t.spent_date = CURRENT_DATE",
+        &ordered,
+        &orders,
+        user_id,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let got: Vec<Uuid> = sqlx::query_scalar!(
+        "SELECT id FROM time_entries \
+         WHERE user_id = $1 AND spent_date = CURRENT_DATE \
+         ORDER BY sort_order",
+        user_id,
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(got, ordered, "entries read back in the requested order");
+}
