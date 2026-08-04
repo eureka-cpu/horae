@@ -85,10 +85,10 @@ ______________________________________________________________________
 
 **Independent Test**: Drag a block's bottom edge → duration changes; drag its body to another hour/day → start/date change; both persist; a submitted entry cannot be moved (quickstart scenario 5).
 
-- [ ] T018 [US4] Add `reschedule_time_entry(entry_id, spent_date, start_minute, minutes)` server fn (snap + clamp, `open`-state lock check) in `crates/horae/src/server_fns/time_entries.rs` per [contracts/server-fns.md](./contracts/server-fns.md).
-- [ ] T019 [US4] Calendar resize: drag a timed block's edges to change duration (bottom) or start+duration (top), committing via `reschedule_time_entry` — `crates/horae/src/pages/timesheet.rs` + CSS handles.
-- [ ] T020 [US4] Calendar move: drag a timed block to a different time or day, committing via `reschedule_time_entry`; suppress drag on locked entries with a message — `crates/horae/src/pages/timesheet.rs`.
-- [ ] T021 [US4] Integration test in `crates/horae/tests/integration.rs`: reschedule round-trips date/start/duration; a non-`open` entry is rejected (FR-013).
+- [X] T018 [US4] Add `reschedule_time_entry(entry_id, spent_date, start_minute, minutes)` server fn (snap + clamp, `open`-state lock check) in `crates/horae/src/server_fns/time_entries.rs` per [contracts/server-fns.md](./contracts/server-fns.md).
+- [X] T019 [US4] Calendar resize: drag a timed block's edges to change duration (bottom) or start+duration (top), committing via `reschedule_time_entry` — `crates/horae/src/pages/timesheet.rs` + CSS handles.
+- [X] T020 [US4] Calendar move: drag a timed block to a different time or day, committing via `reschedule_time_entry`; suppress drag on locked entries with a message — `crates/horae/src/pages/timesheet.rs`.
+- [X] T021 [US4] Integration test in `crates/horae/tests/integration.rs`: reschedule round-trips date/start/duration; a non-`open` entry is rejected (FR-013).
 
 ______________________________________________________________________
 

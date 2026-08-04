@@ -952,6 +952,10 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
   background: var(--color-primary-bg); border: 1px dashed var(--color-primary);
   border-radius: 7px;
 }
+/* Bottom-edge grip for resizing a timed entry. */
+.ts-cal-event { cursor: grab; }
+.ts-cal-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
+.ts-cal-event:hover .ts-cal-resize { background: rgba(255, 255, 255, 0.18); }
 .ts-cal-col.today .ts-cal-event { background: var(--color-accent); border-color: #e6b45f; }
 .ts-cal-ev-project { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11.5px; font-weight: 600; color: #f6f2e9; }
 .ts-cal-col.today .ts-cal-ev-project { color: var(--color-on-accent); font-weight: 700; }

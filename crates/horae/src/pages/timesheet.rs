@@ -348,19 +348,73 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
         add_open.set(Some(e.spent_date));
     });
 
-    // Calendar drag-to-create: the slot being drawn, committed on release.
+    // Calendar drag: the slot/entry being manipulated, committed on release.
     let cal_drag = use_signal(|| None::<CalDrag>);
     let drag_commit = use_callback(move |d: CalDrag| {
-        let day = *week_start.read() + Duration::days(d.day as i64);
-        let start = d.start_min.min(d.cur_min).clamp(0, 1439);
-        let raw = (d.cur_min - d.start_min).abs();
-        // Always open the entry form for the day; a real drag prefills the start
-        // time and duration, a click (near-zero movement) opens an untimed form.
-        open_add.call(day);
-        if raw >= i32::from(horae_core::time_of_day::MIN_DURATION) {
-            let dur = horae_core::time_of_day::clamp_to_day(start as u16, raw as u32) as i32;
-            add_start.set(Some(start));
-            add_duration.set(format_hm(dur));
+        let ws = *week_start.read();
+        let clamp = |start: i32, dur: i32| {
+            horae_core::time_of_day::clamp_to_day(start.clamp(0, 1439) as u16, dur.max(0) as u32)
+                as i32
+        };
+        match d.kind {
+            // Draw a new slot → open the entry form; a real drag prefills the
+            // start and duration, a near-zero drag opens an untimed form.
+            DragKind::Create => {
+                let day = ws + Duration::days(d.day as i64);
+                let start = d.start_min.min(d.cur_min).clamp(0, 1439);
+                let raw = (d.cur_min - d.start_min).abs();
+                open_add.call(day);
+                if raw >= i32::from(horae_core::time_of_day::MIN_DURATION) {
+                    add_start.set(Some(start));
+                    add_duration.set(format_hm(clamp(start, raw)));
+                }
+            }
+            // Move an entry → new start follows the pointer (keeping the grab
+            // offset), possibly to another day. No movement → open it for editing.
+            DragKind::Move => {
+                let Some(entry) = d.entry.clone() else {
+                    return;
+                };
+                let new_start = (d.cur_min - (d.grab_min - d.start_min)).clamp(0, 1439);
+                if new_start == d.start_min && d.day == d.orig_day {
+                    open_edit.call(entry);
+                    return;
+                }
+                let dur = clamp(new_start, d.orig_dur);
+                let date = (ws + Duration::days(d.day as i64)).to_string();
+                let id = entry.id.to_string();
+                let mut entries = entries;
+                spawn(async move {
+                    if server_fns::reschedule_time_entry(id, date, new_start, dur)
+                        .await
+                        .is_ok()
+                    {
+                        entries.restart();
+                    }
+                });
+            }
+            // Resize an entry → new duration from its start to the pointer.
+            DragKind::Resize => {
+                let Some(entry) = d.entry.clone() else {
+                    return;
+                };
+                let dur = clamp(
+                    d.start_min,
+                    (d.cur_min - d.start_min).max(i32::from(horae_core::time_of_day::MIN_DURATION)),
+                );
+                let date = (ws + Duration::days(d.orig_day as i64)).to_string();
+                let id = entry.id.to_string();
+                let start = d.start_min;
+                let mut entries = entries;
+                spawn(async move {
+                    if server_fns::reschedule_time_entry(id, date, start, dur)
+                        .await
+                        .is_ok()
+                    {
+                        entries.restart();
+                    }
+                });
+            }
         }
     });
 
@@ -976,13 +1030,31 @@ fn timed_lanes(day: &[TimeEntry]) -> (Vec<i32>, Vec<i32>) {
     (lane_of, lanes_of)
 }
 
-/// In-progress calendar drag: which day column, and the start/current minute of
-/// the slot being drawn (snapped). `day` is the 0..7 offset within the week.
-#[derive(Clone, Copy)]
+/// What a calendar drag is doing: drawing a new slot, or moving/resizing an
+/// existing timed entry.
+#[derive(Clone, Copy, PartialEq)]
+enum DragKind {
+    Create,
+    Move,
+    Resize,
+}
+
+/// In-progress calendar drag (minutes are snapped). `day` is the column under the
+/// pointer; for Move/Resize the target entry and its original span come along so
+/// the release can reschedule it (or, if it didn't move, open it for editing).
+#[derive(Clone)]
 struct CalDrag {
+    kind: DragKind,
     day: usize,
+    /// Create: the slot's anchor. Move/Resize: the entry's original start minute.
     start_min: i32,
     cur_min: i32,
+    /// Move: the pointer minute where the block was grabbed.
+    grab_min: i32,
+    /// Move/Resize target (None for Create).
+    entry: Option<TimeEntry>,
+    orig_dur: i32,
+    orig_day: usize,
 }
 
 #[expect(
@@ -1098,25 +1170,38 @@ fn render_calendar_view(
                             // opens the entry form (a plain click has no start).
                             onmousedown: move |e: MouseEvent| {
                                 let m = cal_y_to_min(e.element_coordinates().y);
-                                cal_drag.set(Some(CalDrag { day: i, start_min: m, cur_min: m }));
+                                cal_drag.set(Some(CalDrag {
+                                    kind: DragKind::Create,
+                                    day: i,
+                                    start_min: m,
+                                    cur_min: m,
+                                    grab_min: m,
+                                    entry: None,
+                                    orig_dur: 0,
+                                    orig_day: i,
+                                }));
                             },
                             onmousemove: move |e: MouseEvent| {
-                                if cal_drag().map(|d| d.day) == Some(i) {
+                                if cal_drag.read().is_some() {
                                     let m = cal_y_to_min(e.element_coordinates().y);
                                     cal_drag.with_mut(|d| {
                                         if let Some(d) = d {
                                             d.cur_min = m;
+                                            if d.kind == DragKind::Move {
+                                                d.day = i;
+                                            }
                                         }
                                     });
                                 }
                             },
                             onmouseup: move |_| {
-                                if let Some(d) = cal_drag() {
+                                let drag = cal_drag.read().clone();
+                                if let Some(d) = drag {
                                     cal_drag.set(None);
                                     drag_commit.call(d);
                                 }
                             },
-                            if let Some(d) = cal_drag().filter(|d| d.day == i) {
+                            if let Some(d) = cal_drag.read().clone().filter(|d| d.day == i && d.kind == DragKind::Create) {
                                 {
                                     let a = d.start_min.min(d.cur_min);
                                     let top = a * CAL_HOUR / 60;
@@ -1130,13 +1215,41 @@ fn render_calendar_view(
                                 div {
                                     class: if ev.timed { "ts-cal-event timed" } else { "ts-cal-event" },
                                     style: "top: {ev.top}px; height: {ev.height}px; left: calc(4px + {ev.lane} * (100% - 8px) / {ev.lanes}); width: calc((100% - 8px) / {ev.lanes} - 2px); right: auto;",
-                                    // Don't let pressing an entry start a column drag.
-                                    onmousedown: move |e: MouseEvent| e.stop_propagation(),
-                                    onclick: {
+                                    // Pressing a timed entry starts a move drag (its
+                                    // body); a plain click with no move opens it for
+                                    // editing. Untimed entries just open for editing.
+                                    onmousedown: {
                                         let entry = ev.entry.clone();
+                                        let timed = ev.timed;
+                                        let start = ev.entry.start_minute.unwrap_or(0);
+                                        let dur = ev.entry.minutes;
                                         move |e: MouseEvent| {
                                             e.stop_propagation();
-                                            open_edit.call(entry.clone());
+                                            if timed {
+                                                let off =
+                                                    (e.element_coordinates().y * 60.0 / CAL_HOUR as f64) as i32;
+                                                let g = start + off;
+                                                cal_drag.set(Some(CalDrag {
+                                                    kind: DragKind::Move,
+                                                    day: i,
+                                                    start_min: start,
+                                                    cur_min: g,
+                                                    grab_min: g,
+                                                    entry: Some(entry.clone()),
+                                                    orig_dur: dur,
+                                                    orig_day: i,
+                                                }));
+                                            }
+                                        }
+                                    },
+                                    onclick: {
+                                        let entry = ev.entry.clone();
+                                        let timed = ev.timed;
+                                        move |e: MouseEvent| {
+                                            e.stop_propagation();
+                                            if !timed {
+                                                open_edit.call(entry.clone());
+                                            }
                                         }
                                     },
                                     div { class: "ts-cal-ev-project",
@@ -1148,6 +1261,29 @@ fn render_calendar_view(
                                     }
                                     if !ev.client.is_empty() {
                                         div { class: "ts-cal-ev-client", "{ev.client}" }
+                                    }
+                                    if ev.timed {
+                                        div {
+                                            class: "ts-cal-resize",
+                                            onmousedown: {
+                                                let entry = ev.entry.clone();
+                                                let start = ev.entry.start_minute.unwrap_or(0);
+                                                let dur = ev.entry.minutes;
+                                                move |e: MouseEvent| {
+                                                    e.stop_propagation();
+                                                    cal_drag.set(Some(CalDrag {
+                                                        kind: DragKind::Resize,
+                                                        day: i,
+                                                        start_min: start,
+                                                        cur_min: start + dur,
+                                                        grab_min: start + dur,
+                                                        entry: Some(entry.clone()),
+                                                        orig_dur: dur,
+                                                        orig_day: i,
+                                                    }));
+                                                }
+                                            },
+                                        }
                                     }
                                 }
                             }

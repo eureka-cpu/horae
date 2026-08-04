@@ -441,3 +441,57 @@ pub async fn delete_time_entry(entry_id: String) -> Result<(), ServerFnError> {
     tokio::spawn(check_project_budget(state, entry.project_id));
     Ok(())
 }
+
+/// Reschedule a timed entry from a calendar drag: move it (new date and/or start
+/// minute) and/or resize it (new duration) in one authorized call. Only allowed
+/// while the entry is 'open'.
+#[server]
+pub async fn reschedule_time_entry(
+    entry_id: String,
+    spent_date: String,
+    start_minute: i32,
+    minutes: i32,
+) -> Result<TimeEntry, ServerFnError> {
+    let user_id = session_user_id().await?;
+    let state = crate::state::global_state().await;
+    let entry_id = parse_uuid(&entry_id, "entry_id")?;
+    let spent_date: chrono::NaiveDate = spent_date
+        .parse()
+        .map_err(|_| server_err("Invalid date (use YYYY-MM-DD)"))?;
+    let (minutes, start_minute) = normalize_start(minutes, Some(start_minute))?;
+
+    let entry = sqlx::query_as!(
+        TimeEntry,
+        r#"UPDATE time_entries
+         SET spent_date = $3, start_minute = $4, minutes = $5, updated_at = now()
+         WHERE id = $1 AND user_id = $2 AND state = $6
+         RETURNING id, org_id, user_id, project_id, task_id,
+                   spent_date as "spent_date: chrono::NaiveDate",
+                   minutes, start_minute, rounded_minutes, notes, billable, is_running,
+                   started_at as "started_at: chrono::DateTime<chrono::Utc>",
+                   state as "state: EntryState", invoice_id,
+                   created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                   updated_at as "updated_at: chrono::DateTime<chrono::Utc>""#,
+        entry_id,
+        user_id,
+        spent_date as chrono::NaiveDate,
+        start_minute,
+        minutes,
+        EntryState::Open as EntryState,
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(server_err)?
+    .ok_or_else(|| conflict("Entry not found or is locked (not in 'open' state)"))?;
+
+    state
+        .plugins
+        .dispatch(crate::plugin::AppEvent::TimeEntryUpdated {
+            occurred_at: chrono::Utc::now(),
+            org_id: entry.org_id,
+            time_entry: time_entry_payload(&entry),
+        });
+
+    tokio::spawn(check_project_budget(state, entry.project_id));
+    Ok(entry)
+}

@@ -2042,3 +2042,83 @@ async fn totals_unaffected_by_start_minute(pool: PgPool) {
     .unwrap();
     assert_eq!(untimed, Some(1), "the quick-add entry stays untimed (NULL)");
 }
+
+// ---------------------------------------------------------------------------
+// A reschedule (calendar move/resize) changes date/start/duration on an open
+// entry and is rejected on a locked one (feature 003, FR-013).
+// ---------------------------------------------------------------------------
+
+#[sqlx::test(migrations = "./migrations")]
+#[serial]
+async fn reschedule_moves_open_entry_and_rejects_locked(pool: PgPool) {
+    let org_id = seed_org(&pool).await;
+    let user_id = seed_user(&pool, org_id, OrgRole::Member).await;
+    let (project_id, task_id, _) = seed_project_with_assignment(&pool, org_id, user_id).await;
+
+    // An open timed entry: today 09:00 for 60m.
+    let open_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state, start_minute) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 60, true, false, $6, 540)",
+        open_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Open as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Reschedule to tomorrow 13:00 for 120m (mirrors reschedule_time_entry).
+    let moved = sqlx::query!(
+        "UPDATE time_entries \
+         SET spent_date = CURRENT_DATE + 1, start_minute = 780, minutes = 120, updated_at = now() \
+         WHERE id = $1 AND user_id = $2 AND state = $3 \
+         RETURNING start_minute, minutes",
+        open_id,
+        user_id,
+        EntryState::Open as EntryState,
+    )
+    .fetch_optional(&pool)
+    .await
+    .unwrap();
+    let moved = moved.expect("open entry should reschedule");
+    assert_eq!(moved.start_minute, Some(780));
+    assert_eq!(moved.minutes, 120);
+
+    // A submitted (locked) entry cannot be rescheduled.
+    let locked_id = Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO time_entries \
+           (id, org_id, user_id, project_id, task_id, spent_date, \
+            minutes, billable, is_running, state, start_minute) \
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 60, true, false, $6, 540)",
+        locked_id,
+        org_id,
+        user_id,
+        project_id,
+        task_id,
+        EntryState::Submitted as EntryState,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let rejected = sqlx::query!(
+        "UPDATE time_entries \
+         SET start_minute = 780 \
+         WHERE id = $1 AND user_id = $2 AND state = $3 \
+         RETURNING id",
+        locked_id,
+        user_id,
+        EntryState::Open as EntryState,
+    )
+    .fetch_optional(&pool)
+    .await
+    .unwrap();
+    assert!(rejected.is_none(), "a locked entry must not be rescheduled");
+}
