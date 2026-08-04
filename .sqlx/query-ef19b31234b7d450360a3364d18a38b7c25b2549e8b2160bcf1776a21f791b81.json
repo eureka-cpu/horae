@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT start_minute, is_running FROM time_entries WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "start_minute",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "is_running",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "ef19b31234b7d450360a3364d18a38b7c25b2549e8b2160bcf1776a21f791b81"
+}

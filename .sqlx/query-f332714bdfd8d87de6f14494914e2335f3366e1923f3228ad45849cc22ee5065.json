@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(amount_cents), 0)::bigint as \"sum!: i64\"\n           FROM invoice_line_items WHERE invoice_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sum!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "f332714bdfd8d87de6f14494914e2335f3366e1923f3228ad45849cc22ee5065"
+}

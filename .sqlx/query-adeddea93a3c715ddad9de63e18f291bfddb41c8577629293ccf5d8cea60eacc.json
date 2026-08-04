@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT round_minutes, round_dir::text FROM organizations WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "round_minutes",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 1,
+        "name": "round_dir",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "adeddea93a3c715ddad9de63e18f291bfddb41c8577629293ccf5d8cea60eacc"
+}

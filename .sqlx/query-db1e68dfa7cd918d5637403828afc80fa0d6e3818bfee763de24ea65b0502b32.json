@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT org_role::text as \"role!: String\", active FROM users WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "role!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "active",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "db1e68dfa7cd918d5637403828afc80fa0d6e3818bfee763de24ea65b0502b32"
+}
