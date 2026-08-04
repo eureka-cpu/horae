@@ -304,14 +304,16 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
     let mut add_start = use_signal(|| None::<i32>);
 
     // Whether the entry modal's primary action starts a timer (Harvest-style):
-    // a new entry on today's column with no duration typed yet. Otherwise the
-    // primary saves a fixed-duration entry.
+    // a new entry on today's column with no duration typed yet. Once a duration
+    // or a start time is set the entry is clearly a fixed one, so the primary
+    // saves instead of starting a timer.
     let timer_mode = use_memo(move || {
         let Some(date) = *add_open.read() else {
             return false;
         };
         editing.read().is_none()
             && date == today
+            && add_start.read().is_none()
             && !matches!(horae_core::duration::parse(&add_duration.read()), Ok(m) if m > 0)
     });
 
@@ -1341,6 +1343,26 @@ fn render_calendar_view(
                                 }
                                 }
                                 }
+                            }
+                            // Hover affordance to add an entry to this day (a
+                            // zero-length Create just opens the untimed form).
+                            div {
+                                class: "ts-cal-add-hint",
+                                onmousedown: move |e: MouseEvent| e.stop_propagation(),
+                                onclick: move |e: MouseEvent| {
+                                    e.stop_propagation();
+                                    drag_commit.call(CalDrag {
+                                        kind: DragKind::Create,
+                                        day: i,
+                                        start_min: 0,
+                                        cur_min: 0,
+                                        grab_min: 0,
+                                        entry: None,
+                                        orig_dur: 0,
+                                        orig_day: i,
+                                    });
+                                },
+                                "+ Add time"
                             }
                         }
                     }
