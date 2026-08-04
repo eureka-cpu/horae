@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO time_entries (id, org_id, user_id, project_id, task_id, spent_date, minutes, notes, billable, is_running, state, start_minute)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11)\n         RETURNING id, org_id, user_id, project_id, task_id,\n                   spent_date as \"spent_date: chrono::NaiveDate\",\n                   minutes, start_minute, rounded_minutes, notes, billable, is_running,\n                   started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n                   state as \"state: EntryState\", invoice_id,\n                   created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n                   updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"",
+  "query": "SELECT id, org_id, user_id, project_id, task_id,\n                spent_date as \"spent_date: chrono::NaiveDate\",\n                minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,\n                started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n                state as \"state: EntryState\", invoice_id,\n                created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n                updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"\n         FROM time_entries\n         WHERE user_id = $1\n           AND ($2::uuid IS NULL OR project_id = $2)\n           AND ($3::date IS NULL OR spent_date >= $3)\n           AND ($4::date IS NULL OR spent_date <= $4)\n         ORDER BY spent_date DESC, created_at DESC\n         LIMIT $5",
   "describe": {
     "columns": [
       {
@@ -45,31 +45,36 @@
       },
       {
         "ordinal": 8,
-        "name": "rounded_minutes",
+        "name": "sort_order",
         "type_info": "Int4"
       },
       {
         "ordinal": 9,
+        "name": "rounded_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
         "name": "notes",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "billable",
         "type_info": "Bool"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "is_running",
         "type_info": "Bool"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "started_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "state: EntryState",
         "type_info": {
           "Custom": {
@@ -86,17 +91,17 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "invoice_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "created_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
@@ -105,27 +110,9 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Uuid",
-        "Uuid",
-        "Uuid",
         "Date",
-        "Int4",
-        "Text",
-        "Bool",
-        {
-          "Custom": {
-            "name": "entry_state",
-            "kind": {
-              "Enum": [
-                "open",
-                "submitted",
-                "approved",
-                "invoiced"
-              ]
-            }
-          }
-        },
-        "Int4"
+        "Date",
+        "Int8"
       ]
     },
     "nullable": [
@@ -137,6 +124,7 @@
       false,
       false,
       true,
+      false,
       true,
       true,
       false,
@@ -148,5 +136,5 @@
       false
     ]
   },
-  "hash": "5aeed736f0a10ffe20023e02553faa775eb64cbbdd46474d971f893cd607097e"
+  "hash": "6dbad1ea150b0e25c3e6eff3e5cfd4f8645f1e57e0d05fc56c5a6eaf5178d222"
 }

@@ -358,14 +358,12 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
             horae_core::time_of_day::clamp_to_day(start.clamp(0, 1439) as u16, dur.max(0) as u32)
                 as i32
         };
-        // Move and Resize both persist through reschedule and refresh on success.
-        let reschedule = move |id: String, date: String, start: i32, dur: i32| {
+        // Run a mutation and refresh the week's entries when it succeeds. Shared
+        // by every drag that writes (move, resize, reorder).
+        let commit = move |fut: std::pin::Pin<Box<dyn std::future::Future<Output = bool>>>| {
             let mut entries = entries;
             spawn(async move {
-                if server_fns::reschedule_time_entry(id, date, start, dur)
-                    .await
-                    .is_ok()
-                {
+                if fut.await {
                     entries.restart();
                 }
             });
@@ -396,7 +394,12 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 }
                 let dur = clamp(new_start, d.orig_dur);
                 let date = (ws + Duration::days(d.day as i64)).to_string();
-                reschedule(entry.id.to_string(), date, new_start, dur);
+                let id = entry.id.to_string();
+                commit(Box::pin(async move {
+                    server_fns::reschedule_time_entry(id, date, new_start, dur)
+                        .await
+                        .is_ok()
+                }));
             }
             // Resize an entry → new duration from its start to the pointer.
             DragKind::Resize => {
@@ -405,7 +408,65 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                 };
                 let dur = clamp(d.start_min, d.resize_end() - d.start_min);
                 let date = (ws + Duration::days(d.orig_day as i64)).to_string();
-                reschedule(entry.id.to_string(), date, d.start_min, dur);
+                let id = entry.id.to_string();
+                let start = d.start_min;
+                commit(Box::pin(async move {
+                    server_fns::reschedule_time_entry(id, date, start, dur)
+                        .await
+                        .is_ok()
+                }));
+            }
+            // Reorder an untimed entry within its day's stack. No move (or a drop
+            // on another day) → treat as a click and open it for editing.
+            DragKind::Reorder => {
+                let Some(entry) = d.entry.clone() else {
+                    return;
+                };
+                if d.day != d.orig_day {
+                    open_edit.call(entry);
+                    return;
+                }
+                let day_date = ws + Duration::days(d.orig_day as i64);
+                let mut ordered = entries
+                    .read()
+                    .as_ref()
+                    .and_then(|r| r.as_ref().ok())
+                    .map(|all| {
+                        let day: Vec<TimeEntry> = all
+                            .iter()
+                            .filter(|e| e.spent_date == day_date)
+                            .cloned()
+                            .collect();
+                        untimed_ordered(&day)
+                    })
+                    .unwrap_or_default();
+                let before: Vec<Uuid> = ordered.iter().map(|e| e.id).collect();
+                let Some(from) = ordered.iter().position(|e| e.id == entry.id) else {
+                    return;
+                };
+                let item = ordered.remove(from);
+                // Insertion slot from the drop position: count the entries whose
+                // midpoint sits above the pointer.
+                let mut cum = 0i32;
+                let mut to = ordered.len();
+                for (idx, e) in ordered.iter().enumerate() {
+                    if d.cur_min < cum + e.minutes / 2 {
+                        to = idx;
+                        break;
+                    }
+                    cum += e.minutes;
+                }
+                ordered.insert(to, item);
+                let after: Vec<Uuid> = ordered.iter().map(|e| e.id).collect();
+                if after == before {
+                    open_edit.call(entry);
+                    return;
+                }
+                let ids: Vec<String> = after.iter().map(|id| id.to_string()).collect();
+                let date = day_date.to_string();
+                commit(Box::pin(async move {
+                    server_fns::reorder_untimed_entries(date, ids).await.is_ok()
+                }));
             }
         }
     });
@@ -684,7 +745,7 @@ pub fn Timesheet(view: ViewMode, date: Anchor) -> Element {
                         {render_day_view(&by_day.read(), &daily_totals.read(), sel_offset, select_day, &project_names.read(), &task_names.read(), open_edit, start_entry)}
                     },
                     ViewMode::Calendar => rsx! {
-                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, open_edit, cal_drag, drag_commit)}
+                        {render_calendar_view(&by_day.read(), &daily_totals.read(), week_total, ws, today, &CalLabels { projects: &project_names.read(), tasks: &task_names.read(), clients: &project_client.read() }, cal_drag, drag_commit)}
                     },
                 },
             }
@@ -1032,6 +1093,8 @@ enum DragKind {
     Create,
     Move,
     Resize,
+    /// Drag an untimed entry within its day's stack to reorder it.
+    Reorder,
 }
 
 /// In-progress calendar drag (minutes are snapped). `day` is the column under the
@@ -1078,6 +1141,23 @@ fn cal_time_label(start: i32, end: i32) -> String {
     )
 }
 
+/// A day's untimed (duration-only) entries in stacking order: by explicit
+/// `sort_order`, then newest-first (the pre-reorder default). Shared by the
+/// calendar placement and the reorder commit so both agree on the order.
+fn untimed_ordered(day: &[TimeEntry]) -> Vec<TimeEntry> {
+    let mut u: Vec<TimeEntry> = day
+        .iter()
+        .filter(|e| e.start_minute.is_none())
+        .cloned()
+        .collect();
+    u.sort_by(|a, b| {
+        a.sort_order
+            .cmp(&b.sort_order)
+            .then(b.created_at.cmp(&a.created_at))
+    });
+    u
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "view renderer takes the week's data, display maps, and the add/edit/drag actions"
@@ -1089,7 +1169,6 @@ fn render_calendar_view(
     week_start: NaiveDate,
     today: NaiveDate,
     labels: &CalLabels,
-    open_edit: Callback<TimeEntry>,
     mut cal_drag: Signal<Option<CalDrag>>,
     drag_commit: Callback<CalDrag>,
 ) -> Element {
@@ -1109,16 +1188,19 @@ fn render_calendar_view(
         // column count so none is hidden (SC-005). Keyed by index into `day`.
         let (lane_of, lanes_of) = timed_lanes(day);
 
-        let mut untimed_cum = 0i32;
+        // Untimed blocks stack from the top in reorder-aware order; precompute
+        // each one's top so the render loop can stay in the entries' own order.
+        let mut untimed_top: HashMap<Uuid, i32> = HashMap::new();
+        let mut cum = 0i32;
+        for e in untimed_ordered(day) {
+            untimed_top.insert(e.id, cum);
+            cum += e.minutes;
+        }
         let mut evs = Vec::new();
         for (idx, e) in day.iter().enumerate() {
             let (top_min, timed, lane, lanes) = match e.start_minute {
                 Some(sm) => (sm, true, lane_of[idx], lanes_of[idx].max(1)),
-                None => {
-                    let t = untimed_cum;
-                    untimed_cum += e.minutes;
-                    (t, false, 0, 1)
-                }
+                None => (untimed_top.get(&e.id).copied().unwrap_or(0), false, 0, 1),
             };
             max_bottom_min = max_bottom_min.max(top_min + e.minutes);
             let client = labels
@@ -1213,7 +1295,10 @@ fn render_calendar_view(
                                     cal_drag.with_mut(|d| {
                                         if let Some(d) = d {
                                             d.cur_min = m;
-                                            if d.kind == DragKind::Move {
+                                            // Move follows the pointer across days;
+                                            // Reorder tracks the column so a drop on
+                                            // another day snaps back.
+                                            if matches!(d.kind, DragKind::Move | DragKind::Reorder) {
                                                 d.day = i;
                                             }
                                         }
@@ -1299,16 +1384,20 @@ fn render_calendar_view(
                                                     orig_dur: dur,
                                                     orig_day: i,
                                                 }));
-                                            }
-                                        }
-                                    },
-                                    onclick: {
-                                        let entry = ev.entry.clone();
-                                        let timed = ev.timed;
-                                        move |e: MouseEvent| {
-                                            e.stop_propagation();
-                                            if !timed {
-                                                open_edit.call(entry.clone());
+                                            } else {
+                                                // Untimed: drag to reorder within the
+                                                // day's stack; cur_min tracks the drop.
+                                                let m = cal_y_to_min(e.element_coordinates().y);
+                                                cal_drag.set(Some(CalDrag {
+                                                    kind: DragKind::Reorder,
+                                                    day: i,
+                                                    start_min: 0,
+                                                    cur_min: m,
+                                                    grab_min: m,
+                                                    entry: Some(entry.clone()),
+                                                    orig_dur: dur,
+                                                    orig_day: i,
+                                                }));
                                             }
                                         }
                                     },

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM time_entries\n           WHERE id = $1 AND user_id = $2 AND state = $3\n           RETURNING id, org_id, user_id, project_id, task_id,\n                     spent_date as \"spent_date: chrono::NaiveDate\",\n                     minutes, start_minute, rounded_minutes, notes, billable, is_running,\n                     started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n                     state as \"state: EntryState\", invoice_id,\n                     created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n                     updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"",
+  "query": "UPDATE time_entries\n         SET spent_date = $3, start_minute = $4, minutes = $5, updated_at = now()\n         WHERE id = $1 AND user_id = $2 AND state = $6\n         RETURNING id, org_id, user_id, project_id, task_id,\n                   spent_date as \"spent_date: chrono::NaiveDate\",\n                   minutes, start_minute, sort_order, rounded_minutes, notes, billable, is_running,\n                   started_at as \"started_at: chrono::DateTime<chrono::Utc>\",\n                   state as \"state: EntryState\", invoice_id,\n                   created_at as \"created_at: chrono::DateTime<chrono::Utc>\",\n                   updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -45,31 +45,36 @@
       },
       {
         "ordinal": 8,
-        "name": "rounded_minutes",
+        "name": "sort_order",
         "type_info": "Int4"
       },
       {
         "ordinal": 9,
+        "name": "rounded_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
         "name": "notes",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "billable",
         "type_info": "Bool"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "is_running",
         "type_info": "Bool"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "started_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "state: EntryState",
         "type_info": {
           "Custom": {
@@ -86,17 +91,17 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "invoice_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "created_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
@@ -105,6 +110,9 @@
       "Left": [
         "Uuid",
         "Uuid",
+        "Date",
+        "Int4",
+        "Int4",
         {
           "Custom": {
             "name": "entry_state",
@@ -129,6 +137,7 @@
       false,
       false,
       true,
+      false,
       true,
       true,
       false,
@@ -140,5 +149,5 @@
       false
     ]
   },
-  "hash": "1847456bc3da98bd979dcc54070aa59f24d7700cee16720892baef93314fe1fe"
+  "hash": "cec730863392550b07225e7ddbd339c04b5548eab78120744c23433fc51538fc"
 }
