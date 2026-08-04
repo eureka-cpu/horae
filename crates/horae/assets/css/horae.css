@@ -919,8 +919,10 @@ tbody tr:hover { background: var(--color-bg-tertiary); }
 /* A fixed-height, scrollable panel so the full 24-hour day fits without pushing
    the page down; the day header stays pinned while the hours scroll. */
 .ts-cal-scroll { overflow: auto; max-height: calc(100vh - 15rem); }
+/* Column template + min-width are set inline (see grid_style) to match the
+   visible day count, so only `display: grid` lives here. */
 .ts-cal-head,
-.ts-cal-grid { display: grid; grid-template-columns: 56px repeat(7, 1fr) 100px; min-width: 900px; }
+.ts-cal-grid { display: grid; }
 .ts-cal-head {
   position: sticky; top: 0; z-index: 5; background: var(--color-bg);
   border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-3); margin-bottom: var(--space-1);

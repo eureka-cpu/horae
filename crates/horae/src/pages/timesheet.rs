@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{Datelike, Duration, NaiveDate};
+use dioxus::html::geometry::PixelsVector2D;
 use dioxus::prelude::*;
 use tracing::error;
 use uuid::Uuid;
@@ -1325,10 +1326,16 @@ fn render_calendar_view(
             div {
                 class: "ts-cal-scroll",
                 // Open on the earliest block (or the working hours), not midnight.
-                onmounted: move |_| {
-                    let _ = document::eval(&format!(
-                        "const s = document.querySelector('.ts-cal-scroll'); if (s) s.scrollTop = {scroll_px};"
-                    ));
+                onmounted: move |evt: MountedEvent| {
+                    spawn(async move {
+                        let _ = evt
+                            .data()
+                            .scroll(
+                                PixelsVector2D::new(0.0, f64::from(scroll_px)),
+                                ScrollBehavior::Instant,
+                            )
+                            .await;
+                    });
                 },
                 div { class: "ts-cal-head", style: "{grid_style}",
                     span {}
