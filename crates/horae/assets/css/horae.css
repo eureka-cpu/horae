@@ -66,6 +66,14 @@
   --ring: 0 0 0 3px rgba(79, 183, 154, 0.35);        /* focus-visible on custom controls */
   --ring-soft: 0 0 0 3px rgba(79, 183, 154, 0.18);   /* input focus glow */
 
+  /* Horae mark — inline SVG fills (see components/logo.rs) */
+  --icon-bg-fill: #1F5C4D;
+  --icon-horizon-line: #0F3D33;
+  --icon-horizon-fill: #164034;
+  --icon-sun-fill: #D99A3C;
+  --icon-ray-center: #E7C079;
+  --icon-ray-side: #E4B061;
+
   /* Typography */
   --font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-family-display: 'Newsreader', Georgia, serif;
@@ -107,6 +115,148 @@
   --sidebar-width: 264px;
   --nav-height: 56px;
   --app-pad: var(--space-8);   /* main content padding; tightens on small screens */
+}
+
+/* ── Themes ───────────────────────────────────────────────────────────────
+   `:root` above is the default (dark). `[data-theme]` on <html> overrides the
+   same custom properties — every component already reads them, so no
+   per-component theme rules are needed. Set/persisted by components/theme.rs.
+   ──────────────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  /* Primary — deep pine on paper */
+  --color-primary: #1F5C4D;
+  --color-primary-dark: #174a3c;
+  --color-primary-light: #3D8A73;
+  --color-primary-bg: rgba(31, 92, 77, 0.10);
+  --color-primary-border: rgba(31, 92, 77, 0.28);
+
+  /* Accent — brass */
+  --color-accent: #C6802A;
+  --color-accent-bg: rgba(198, 128, 42, 0.14);
+  --color-pine: #1F5C4D;
+  --color-pine-fg: #bfe0d4;
+
+  /* Paper surfaces */
+  --color-bg: #EFEAE0;
+  --color-bg-secondary: #F8F5EE;
+  --color-bg-tertiary: #F1ECE1;
+  --color-bg-overlay: #FFFFFF;
+  --color-scrim: rgba(34, 32, 27, 0.35);
+
+  /* Text — warm ink */
+  --color-text: #22201B;
+  --color-text-secondary: #6B6459;
+  --color-text-muted: #9A9182;
+
+  /* Borders */
+  --color-border: #E2DCCF;
+  --color-border-light: #EAE4D6;
+  --color-border-muted: #EAE4D6;
+
+  /* Semantic */
+  --color-success: #2F9E71;
+  --color-success-bg: #E3F3EC;
+  --color-success-fg: #1F7A56;
+  --color-success-line: #BEE1D0;
+  --color-warning: #B4842E;
+  --color-warning-bg: #FBF0DC;
+  --color-warning-fg: #8A5F19;
+  --color-warning-line: #EDD6A8;
+  --color-danger: #C94F49;
+  --color-danger-bg: #FBE7E6;
+  --color-danger-fg: #B23A35;
+  --color-danger-line: #F0C4C2;
+  --color-info: #1F5C4D;
+  --color-info-bg: rgba(31, 92, 77, 0.10);
+
+  /* Foregrounds on filled controls */
+  --color-on-primary: #FFFFFF;
+  --color-on-accent: #2B1A05;
+  --color-on-pine: #EAF5F1;
+
+  /* Control chrome */
+  --color-border-input: #D3CBB8;
+  --color-cell-empty-bg: #F8F5EE;
+  --color-cell-empty-border: #EAE4D6;
+  --color-cell-today-bg: #FBF3DE;
+  --color-border-danger: #D99490;
+  --color-accent-dark: #A66B22;
+  --color-pine-hover: #24705d;
+  --ring: 0 0 0 3px rgba(31, 92, 77, 0.35);
+  --ring-soft: 0 0 0 3px rgba(31, 92, 77, 0.18);
+
+  /* Horae mark stays on the same deep-pine tile as dark mode */
+}
+
+[data-theme="pine"] {
+  /* Primary — mint on deep pine */
+  --color-primary: #6EC8B5;
+  --color-primary-dark: #58B49F;
+  --color-primary-light: #8ADAC7;
+  --color-primary-bg: rgba(110, 200, 181, 0.14);
+  --color-primary-border: rgba(110, 200, 181, 0.3);
+
+  /* Accent — brass */
+  --color-accent: #E8B84B;
+  --color-accent-bg: rgba(232, 184, 75, 0.14);
+  --color-pine: #0F3D33;
+  --color-pine-fg: #A8E4D2;
+
+  /* Deep pine surfaces */
+  --color-bg: #112b22;
+  --color-bg-secondary: #1a3d2f;
+  --color-bg-tertiary: #1F5C4D;
+  --color-bg-overlay: #2A6C59;
+  --color-scrim: rgba(7, 20, 16, 0.68);
+
+  /* Text — cream */
+  --color-text: #F0EDE5;
+  --color-text-secondary: #9BBFB8;
+  --color-text-muted: #5E9B8F;
+
+  /* Borders */
+  --color-border: #265544;
+  --color-border-light: #1E4A3B;
+  --color-border-muted: #1E4A3B;
+
+  /* Semantic */
+  --color-success: #3FB489;
+  --color-success-bg: #143024;
+  --color-success-fg: #6EDBB0;
+  --color-success-line: #235940;
+  --color-warning: #D6A24A;
+  --color-warning-bg: #2A2415;
+  --color-warning-fg: #E7C169;
+  --color-warning-line: #4A3D22;
+  --color-danger: #E06661;
+  --color-danger-bg: #2B1917;
+  --color-danger-fg: #F0908B;
+  --color-danger-line: #4D2F2C;
+  --color-info: #6EC8B5;
+  --color-info-bg: rgba(110, 200, 181, 0.12);
+
+  /* Foregrounds on filled controls */
+  --color-on-primary: #0d211b;
+  --color-on-accent: #2B1C05;
+  --color-on-pine: #EAF5F1;
+
+  /* Control chrome */
+  --color-border-input: #34715c;
+  --color-cell-empty-bg: #173427;
+  --color-cell-empty-border: #26543f;
+  --color-cell-today-bg: #1f4a3a;
+  --color-border-danger: #6e3634;
+  --color-accent-dark: #CE9F3B;
+  --color-pine-hover: #164a3e;
+  --ring: 0 0 0 3px rgba(110, 200, 181, 0.35);
+  --ring-soft: 0 0 0 3px rgba(110, 200, 181, 0.18);
+
+  /* Horae mark — the bg-tertiary tile is already pine, so the tile itself
+     needs to go darker to stay distinct (matches site/index.html). */
+  --icon-bg-fill: #0F3D33;
+  --icon-horizon-line: #072a22;
+  --icon-horizon-fill: #0a352b;
+  --icon-sun-fill: #EFEAE0;
 }
 
 /* ── Breakpoints ──────────────────────────────────────────────────────────
@@ -173,8 +323,9 @@ h1, h2, h3, h4, h5, h6 {
   align-self: flex-end; margin: 0 0 7px 3px; flex-shrink: 0;
 }
 
-/* Horae mark — a self-contained logo tile; its inner geometry and palette are
-   intrinsic to the mark, so they stay literals rather than design tokens. */
+/* Horae mark — a self-contained logo tile; its inner geometry is intrinsic to
+   the mark, but its fills reference the --icon-* tokens so it re-themes with
+   the rest of the app (see components/logo.rs). */
 .horae-mark {
   width: 28px; height: 28px; flex-shrink: 0;
   border-radius: var(--radius-btn);

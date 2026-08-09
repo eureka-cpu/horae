@@ -12,5 +12,6 @@ pub mod menu;
 pub mod nav;
 pub mod sidebar;
 pub mod table;
+pub mod theme;
 pub mod timer_widget;
 pub mod toast;
