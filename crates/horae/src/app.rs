@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 
+use crate::components::theme::ThemeInit;
 use crate::route::Route;
 
 #[allow(non_snake_case)]
@@ -14,6 +15,7 @@ pub fn App() -> Element {
             rel: "stylesheet",
             href: asset!("/assets/css/horae-utils.css"),
         }
+        ThemeInit {}
         Router::<Route> {}
     }
 }
